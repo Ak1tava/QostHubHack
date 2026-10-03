@@ -1,0 +1,60 @@
+:root {
+  font-family: system-ui, sans-serif;
+  color: #183038;
+  background: #f4f7f7;
+  line-height: 1.5;
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  max-width: 48rem;
+  margin: 2rem auto;
+  padding: 1.5rem;
+}
+
+.auth-card {
+  max-width: 28rem;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid #c5d2d5;
+  border-radius: 0.5rem;
+  background: white;
+}
+
+label, input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+input {
+  min-height: 44px;
+  margin: 0.35rem 0 1rem;
+  padding: 0.6rem;
+  border: 1px solid #72888f;
+  border-radius: 0.4rem;
+  font: inherit;
+}
+
+button:disabled { cursor: default; opacity: 0.6; }
+[role="alert"] { color: #912424; }
+
+button {
+  min-height: 44px;
+  padding: 0.6rem 1rem;
+  margin: 0.25rem;
+  border: 1px solid #183038;
+  border-radius: 0.4rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.update-notice {
+  padding: 1rem;
+  border: 1px solid #183038;
+  border-radius: 0.5rem;
+  background: white;
+}

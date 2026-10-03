@@ -11,15 +11,15 @@
 <!-- CURRENT_STATE:START -->
 ## Текущее состояние — читать первым
 
-- **Обновлено:** 2026-10-03. **Этап:** документация готова, разработка не начата; календарные даты пяти рабочих дней не назначены.
+- **Обновлено:** 2026-10-03. **Этап:** Т01 и полная Т02 прошли интеграционную приёмку в `codex/t01-t02-integration` (REVIEW), [PR №2](https://github.com/Ak1tava/QostHubHack/pull/2). Слияние в main ожидается; календарные даты пяти рабочих дней не назначены.
 - **Готово:** T00 — описание продукта, рабочий стек, этот план и инструкция входа для ИИ.
-- **Реализовано в приложении:** ничего; до добавления документации GitHub сообщил пустой репозиторий без веток. Развёртывания и проверенного запуска нет.
-- **Следующая доступная задача:** T01. После её завершения — T02; A может готовить экранные компоненты по согласованным примерам, C — сценарии оценки для T09.
-- **В работе / на проверке:** нет. **Назначенные владельцы:** нет; A/B/C ниже — рекомендуемые роли, а не имена людей.
+- **Реализовано в этой ветке:** инфраструктурная Т01; модели/миграции, серверные auth/catalog/shift и права от B; production app, типизированный вход/сессия, migration-service и безопасный proxy от A. Контейнеры, PostgreSQL, браузер и PWA проверены в CI.
+- **Следующие задачи:** доставить проверенный актуальный head PR №2 в main и проверить CI main; затем получить подтверждение запуска вторым участником с чистого клона для DONE Т01. C подключится позже.
+- **В работе / на проверке:** T01/T02 REVIEW в `codex/t01-t02-integration`. **Владельцы:** A — инициатор / Codex (интеграция и frontend), B — Богдан / Codex (сервер Т02), C — будущий третий участник.
 - **Зафиксировано:** 3 человека / 5 дней; Telegram вместо FCM; действия по наряду в PWA; мастер принимает результат; синтетические данные для демо.
 - **Внешние зависимости:** API-ключ и бюджет модели, токен Telegram, адрес HTTPS-развёртывания и реальные данные ещё не подтверждены. Это не блокирует T01–T05, но блокирует проверку живых интеграций и сдачу T10.
 - **1С:** доступа и выгрузок нет; рабочая интеграция не входит в MVP.
-- **Свежая проверка:** проверена исходная пустота репозитория; кодовых тестов нет. Отметка T00 подтверждает только наличие подготовленной документации, а не готовность приложения.
+- **Свежая проверка:** [CI интеграции — PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37132211539) на `00c199b`: pytest 66/66, Vitest 13/13, Playwright 9/9, миграции/check/roundtrip, контракты, build, Compose, защита IP, recovery/persistence. Команды и результаты — `docs/T01-T02-verification.md`; независимое подтверждение запуска Т01 ещё не получено. До слияния публичная main остаётся на T00.
 <!-- CURRENT_STATE:END -->
 
 <a id="task-registry"></a>
@@ -29,9 +29,9 @@
 
 | ID | Результат | Статус | Рекомендуемая роль | Зависимости | Владелец / ветка / подтверждение |
 | --- | --- | --- | --- | --- | --- |
-| T00 | Документация и точка входа | DONE | Все | — | `readme.md`, `plans.md`, `AGENTS.md`; приложение не создано |
-| T01 | Запуск каркаса и базовые контракты | TODO | A + B | T00 | Не назначен |
-| T02 | Схема БД, вход и разграничение доступа | TODO | B | T01 | Не назначен |
+| T00 | Документация и точка входа | DONE | Все | — | `readme.md`, `plans.md`, `AGENTS.md`; подтверждает документацию |
+| T01 | Запуск каркаса и базовые контракты | REVIEW | A | T00 | A / Codex; `codex/t01-t02-integration`, [PR №2](https://github.com/Ak1tava/QostHubHack/pull/2), [CI PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37132211539); повторная приёмка пройдена, ожидаются main и подтверждение второго участника; исходные Т01 результаты сохранены в передаче |
+| T02 | Схема БД, вход и разграничение доступа | REVIEW | B + A | Общая основа T01 + C1; полная T01 не блокирует старт | Богдан / Codex — сервер `4ce5aca`; A / Codex — интеграция/клиент [00c199b](https://github.com/Ak1tava/QostHubHack/commit/00c199be8a4491685b66c3849169783e5eac668d), [CI PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37132211539), 66/13/9 тестов; `docs/T01-T02-verification.md`; ожидается main |
 | T03 | Жизненный цикл и журнал наряда | TODO | B | T02 | Не назначен |
 | T04 | Создание наряда и панель мастера | TODO | A | T02, T03 | Не назначен |
 | T05 | Исполнение, фото и материалы | TODO | A + B | T03 | Не назначен |
@@ -41,7 +41,23 @@
 | T09 | Демоданные и набор оценки ИИ | TODO | C | T02 | Не назначен |
 | T10 | Проверка, развёртывание и защита | TODO | Все | T04–T09 | Не назначен |
 
-**Роли:** A — PWA и интерфейс; B — API, БД, права и доставка событий; C — ИИ, данные, аналитика. До одновременной работы у каждой задачи и каждого общего файла должен быть один ответственный. При разной квалификации команды роли можно переставить в реестре.
+**Роли на старте:** A (инициатор) — каркас API и весь frontend, конфигурация, зависимости, контейнеры, health и экспорт OpenAPI; B (второй участник) — БД, миграции, серверная авторизация, права, справочники и модели T02; C подключится позже к ИИ/данным/аналитике. LoginPage, API-клиент и вся клиентская авторизация принадлежат A, хотя функциональный сценарий входа проверяется в T02.
+
+### Общая основа и владение файлами
+
+Это подготовка параллельной работы, а не приёмка T01/T02. План подготовки: закрепить C1 и владельцев → создать минимальный API/config и web с lock-файлами → проверить реальный HTTP-запуск и сборку → записать результаты → отдельный локальный коммит без push/merge.
+
+| Файлы / область | Единственный ответственный | Порядок изменения |
+| --- | --- | --- |
+| `services/api/app/main.py`, health, `app/core/config.py`, `.env.example` | A | B передаёт требуемые настройки и импорты существующих routers; A подключает их после появления модулей, без заглушек |
+| `services/api/pyproject.toml`, `uv.lock`, `apps/web/package.json`, `package-lock.json` | A | B сообщает пакет/версию/назначение; A меняет manifest и пересоздаёт lock менеджером в одном коммите; B подтягивает этот коммит |
+| `compose.yaml`, `infra/*`, `.gitignore`, инструкции запуска | A | B передаёт требования PostgreSQL и команду миграции; A включает их в общий запуск |
+| `app/export_openapi.py`, `packages/contracts/openapi.json`, `packages/contracts/api.generated.ts`, web `generate:api` | A | B меняет свои Pydantic-схемы; A подключает router, экспортирует OpenAPI и генерирует TS после интеграции; генерируемые файлы вручную не править |
+| `app/core/db.py`, `app/core/security.py`, серверные модули T02, миграции и тесты прав | B | Создать по C1; импортировать существующие settings, не создавать альтернативные main/config/manifests |
+| `apps/web/**`, включая `src/features/auth/LoginPage.tsx` и `src/lib/api.ts` | A | Реализовать клиентский вход по C1; B frontend не изменяет |
+| C1 и сводка `CURRENT_STATE` в `plans.md` | A | B предлагает совместимое уточнение; изменение общего интерфейса фиксирует A до реализации обеими сторонами. Каждый меняет только свою строку реестра и передачу |
+
+Правки общих файлов идут последовательно через A. Зависимый коммит A сначала переносится в ветку B (merge общей ветки или cherry-pick согласованного коммита), затем B продолжает работу; lock-файлы не разрешать ручным слиянием. Для проверки B может создать собственное тестовое FastAPI-приложение с router, не меняя общий `main.py`. Третьему участнику не резервируются реализации или пустые каталоги.
 
 **Порядок чтения:** состояние → строка задачи → необходимые контракты C1–C6 → одна карточка Txx → только затрагиваемый код. Полностью перечитывать план нужно при изменении архитектуры или ревью покрытия ТЗ.
 
@@ -93,6 +109,37 @@
 - Для действий: `Idempotency-Key` плюс `expected_version`; первый запрос атомарно сохраняет изменение, событие и outbox. Повтор возвращает тот же результат; тот же ключ с другим телом — 409; устаревшая версия — 409. Ошибки: 401 без входа, 403 для запретного действия, 404 для недоступного чужого объекта, 422 для невалидного ввода.
 - WebSocket `/api/v1/events` авторизуется сессией и отдаёт только разрешённые события: `event_id`, `type`, `work_order_id`, `version`, `occurred_at`. После переподключения клиент перечитывает актуальные данные через API; события служат сигналом обновления.
 - `WorkOrderView` содержит поля WorkOrder, is_overdue и allowed_actions; подробная карточка дополнительно содержит events и текущую submission. `PhotoView`: id, work_order_id, type, received_at, read_url (защищённый маршрут API). `SubmissionView`: поля Submission, id и missing_evidence. Эти схемы определяются в указанных в T02/T05 Pydantic-модулях; фронтенд не ведёт независимые копии типов.
+
+#### C1.1. Python, БД и подключение модулей
+
+- Рабочая директория — `services/api`, точка запуска — `app.main:app`. Python 3.12, uv; frontend — Node 24, npm. Точные разрешённые версии фиксируются lock-файлами.
+- SQLAlchemy 2 **sync**, `Session`, драйвер **psycopg 3** (`psycopg[binary]`), Alembic. Для короткого CRUD хакатона проще единый синхронный стек с явными транзакциями; async добавит отдельный жизненный цикл сессий без подтверждённой необходимости. HTTP handlers с БД — обычные `def`, чтобы FastAPI выполнял их в thread pool; синхронную БД не вызывать прямо в event loop WebSocket/async handlers.
+- `DATABASE_URL=postgresql+psycopg://USER:PASSWORD@HOST:5432/qosthub_demo`; спецсимволы логина/пароля URL-encode. Локально HOST=`localhost`, в Compose — `db`. В `.env.example` значение пустое. Нет fallback на SQLite и подключения к БД при импорте приложения.
+- Единственный импорт конфигурации: `from app.core.config import settings`. Поля — snake_case, env — UPPER_CASE. `.env` читается из корня репозитория, окружение имеет приоритет; пустые значения пропускаются. `database_url`, `session_secret`, ключи Telegram/OpenAI — `SecretStr | None`; потребитель получает значение через `.get_secret_value()` после проверки наличия, не пишет его в логи. Ключи интеграций проверяются только при использовании интеграции. Отсутствующие БД и ключи не блокируют импорт и liveness.
+- **`app/core/db.py` реализован B:** `Base(DeclarativeBase)` и `get_db() -> Iterator[Session]`; импорты потребителей — `from app.core.db import Base, get_db`. Один лениво создаваемый sync engine на процесс, фабрика `Session(..., autoflush=False, expire_on_commit=False)`, новая сессия на запрос, `Depends(get_db)`. Не использовать Session конкурентно и не делить её между запросами или worker jobs.
+- `get_db` выдаёт Session через yield, закрывает её в finally и откатывает незавершённую транзакцию; **не делает auto-commit после ответа**. Сервис команды управляет одной транзакцией: commit до успешного ответа, rollback при ошибке. SQLAlchemy autobegin учитывается: после чтения пользователя в той же Session не открывать вложенный `session.begin()`; сервис коммитит/откатывает уже начатую транзакцию. Вспомогательные функции только flush; изменение, событие и outbox атомарны. Worker открывает собственную Session; lifespan утилизирует engine. Миграции выполняются отдельной командой, не при startup. Реализовано в серверной Т02 и подключено lifespan общего приложения.
+- Каждый `router.py` экспортирует `router: APIRouter` с префиксом модуля (`/auth`, `/catalog` и т. п.), **без `/api/v1`**. В `main.py` общий `api_router = APIRouter(prefix="/api/v1")`; A добавляет `api_router.include_router(...)` **до** `app.include_router(api_router)`. Health остаются вне `/api/v1`. Несуществующие модули не импортировать.
+- Источник контрактов — серверные Pydantic-схемы и response_model/responses в routers. A реализует `uv run python -m app.export_openapi`, затем `npm --prefix apps/web run generate:api` для `packages/contracts/api.generated.ts`. Login/User/Error TS-типы импортируются из генерации, а не описываются независимо вручную. Runtime `/openapi.json`, экспорт в файл и генератор реализованы; в интеграции подключены настоящие схемы Т02.
+
+#### C1.2. Контракт входа и CSRF — реализует T02, клиент реализует A
+
+Все пути ниже относительно `/api/v1`, JSON в UTF-8; ответы auth используют `Cache-Control: no-store`. JWT, localStorage для сессии и передача session id в JSON не используются.
+
+| Запрос | Успех | Ошибки |
+| --- | --- | --- |
+| `GET /auth/csrf`, без тела; перед первым входом | 200 `{"csrf_token":"<opaque>"}`; создаёт короткую анонимную серверную сессию при отсутствии пригодной сессии; для действующей возвращает её токен без ротации | 429 при ограничении запросов |
+| `POST /auth/login`, `{"login":"<string>","password":"<string>"}`, `X-CSRF-Token` | 200 `{"user":UserView,"csrf_token":"<new-token>"}`; атомарно заменяет анонимную/старую сессию новой и ротирует cookie и CSRF | 401 `invalid_credentials` (одинаково для неизвестного логина/неверного секрета), 403 `csrf_failed`, 422 `validation_error`, 429 `rate_limited` |
+| `GET /auth/me`, без тела | 200 `{"user":UserView,"csrf_token":"<current-token>"}` | 401 `unauthenticated` при отсутствии, анонимной или истёкшей сессии |
+| `POST /auth/logout`, без тела, `X-CSRF-Token` | 204, пустое тело; серверная сессия инвалидируется, cookie удаляется с теми же Path/SameSite/Secure | 401 `unauthenticated`, 403 `csrf_failed` |
+
+- `LoginRequest`: login — непустая строка после trim, максимум 128; password — строка 1–128 символов (ПИН тоже строка, ведущие нули сохраняются, не trim). Неизвестные поля запрещены, роль из клиента не принимается.
+- `UserView`: `id: UUID`, `display_name: str`, `role: master|worker|manager|admin`, `specialty: str|null`, `grade: int|null`, `brigade_id: UUID|null`, `shift_id: UUID|null`. Все ключи присутствуют. Логин, хеш пароля, session id и Telegram id не выдаются. На сервере B определяет `LoginRequest`, `UserView`, `AuthResponse`, `CsrfResponse`, `ErrorResponse` в auth/schemas.py и отражает все статусы в OpenAPI.
+- Единая ошибка auth: `{"error":{"code":"invalid_credentials","message":"Неверный логин или пароль","details":[]}}`. `details` — массив `{"field":"login","message":"Обязательное поле"}` для 422, иначе пустой. Значения секретов и введённый пароль не включать. Дополнительный код `forbidden` — 403 для отказа по правам; 429 содержит `Retry-After` в секундах. B реализует обработку ошибок в своих модулях, A подключает обработчики в main; стандартный FastAPI 422 должен быть приведён к этому формату для auth.
+- Cookie `qosthub_session`: криптографически случайный непрозрачный идентификатор (не менее 256 бит); сервер хранит только его хеш, user_id/анонимность, CSRF и expiry. `HttpOnly`, `SameSite=Lax`, `Path=/`, без Domain, `Secure=true` на HTTPS; `SESSION_COOKIE_SECURE=false` допустим только для локального HTTP. Срок авторизованной сессии 12 часов без скользящего продления, анонимной — 15 минут; Max-Age соответствует серверному expiry. Logout и login инвалидируют прежнюю сессию.
+- CSRF — synchronizer token, случайный токен связан с серверной сессией и возвращается только JSON. Клиент получает его через `/auth/csrf` перед login, хранит в памяти, после reload восстанавливает через `/auth/me`. На **все POST/PUT/PATCH/DELETE, включая login/logout**, отправляет `X-CSRF-Token`; сервер сравнивает с токеном сессии в constant time. Для login отсутствие/истечение анонимной сессии — 403 `csrf_failed`; для защищённых запросов сначала проверка входа (401), затем CSRF (403).
+- Дополнительно изменяющие запросы проверяют точный origin из `PUBLIC_BASE_URL` (scheme/host/port): Origin обязателен, при его отсутствии разрешён Referer того же origin; оба отсутствуют/чужие → 403 `csrf_failed`. Клиент не вычисляет права сам. Локально web обращается относительными `/api/v1/...`, fetch `credentials: 'same-origin'`, Vite proxy сохраняет browser origin; wildcard CORS не нужен. После 401 клиент сбрасывает user/CSRF и повторно получает анонимный CSRF перед входом.
+
+Серверная T02 реализует этот контракт настоящими auth endpoints, серверными сессиями и security.py. Сценарии истёкшей сессии, поддельного Origin, отсутствующего/неверного CSRF и login/logout проверяются в серверных тестах; A проверяет клиентскую интеграцию и генерирует типы из подключённых маршрутов. Приняты предложенные B формы: каталог `{items,total,offset,limit}`, смена `{items,as_of}`; поля и допустимые значения определяются серверными Pydantic-схемами и OpenAPI.
 
 ### C2. Жизненный цикл
 
@@ -183,22 +230,27 @@
 **Создать:** `apps/web/package.json`, `apps/web/src/main.tsx`, `apps/web/vite.config.ts`, `services/api/pyproject.toml`, `services/api/app/main.py`, `services/api/app/core/config.py`, `packages/contracts/openapi.json`, `packages/contracts/api.generated.ts`, `infra/api.Dockerfile`, `infra/web.Dockerfile`, `compose.yaml`, `.env.example`, `.gitignore`, `docs/runbook.md` и lock-файлы выбранных менеджеров. **Изменить:** раздел запуска `readme.md`.
 **Интерфейсы:** `GET /health/live` → 200 без зависимостей; `GET /health/ready` → 200 при доступной БД или 503. Python app `app.main:app`; префикс `/api/v1`; одна точка генерации OpenAPI и клиентских типов.
 
-- [ ] Проверить поддерживаемые совместимые версии; зафиксировать зависимости и команды npm/uv в runbook. Контейнеры web/api/db должны запускаться с чистого клона; worker добавляется T06.
-- [ ] Реализовать health endpoints и экспорт схемы; добавить `services/api/app/export_openapi.py`, чтобы `uv run python -m app.export_openapi` из `services/api` обновлял `packages/contracts/openapi.json`. Добавить в web скрипт `generate:api` на основе OpenAPI, а также `test`, `typecheck`, `build` и `test:e2e` (последний запускает корневые `tests/e2e`).
-- [ ] Создать пример конфигурации без значений секретов: DATABASE_URL, SESSION_SECRET, TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET, PUBLIC_BASE_URL, OPENAI_API_KEY, AI_MODEL, PHOTO_STORAGE_PATH, APP_TIMEZONE. Без внешних токенов должны работать health и локальный интерфейс.
-- [ ] Проверить `docker compose config`, `docker compose up --build -d`, запрос `/health/ready`, `npm --prefix apps/web run typecheck`, `npm --prefix apps/web run build`. Зафиксировать фактические адреса, миграции и команды остановки в runbook.
-- [ ] Обновить состояние, создать коммит `chore: bootstrap app and API contracts`; статус DONE только после проверки запуска другим участником с чистого клона.
+**Владелец:** A (инициатор). Ветка — `codex/t01-bootstrap` от опубликованной основы `8a26387`. Существующий каркас сохранён и дополнен readiness, контейнерами, экспортом контрактов, PWA и тестовыми инструментами. По согласованному объёму LoginPage, API-клиент и клиентская сессия выполняются A при интеграции T02 по C1.2; их отсутствие не блокирует инфраструктурный T01.
+
+- [x] Проверить поддерживаемые совместимые версии; зафиксировать зависимости и команды npm/uv в runbook. Контейнеры web/api/db запускаются с чистого checkout в CI; worker добавляется T06. Подтверждение — CI `37127545893`, все три контейнера Healthy.
+- [x] Реализовать health endpoints и экспорт схемы; добавить `services/api/app/export_openapi.py`, чтобы `uv run python -m app.export_openapi` из `services/api` обновлял `packages/contracts/openapi.json`. Добавить в web скрипт `generate:api` на основе OpenAPI, а также `test`, `typecheck`, `build` и `test:e2e` (последний запускает корневые `tests/e2e`). Проверки: pytest 8/8, генерация, typecheck/build, Vitest 3/3 и Playwright 3/3 PASS локально.
+- [x] Создать пример конфигурации без значений секретов: DATABASE_URL, SESSION_SECRET, TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET, PUBLIC_BASE_URL, OPENAI_API_KEY, AI_MODEL, PHOTO_STORAGE_PATH, APP_TIMEZONE. Без внешних токенов работают liveness, экспорт и локальный интерфейс; readiness без БД возвращает 503.
+- [x] Проверить `docker compose config --quiet`, `docker compose up --build -d --wait`, запрос `/health/ready`, `npm --prefix apps/web run typecheck`, `npm --prefix apps/web run build`. CI PASS: readiness 200/503 и восстановление; адреса и остановка — runbook. Миграции создаются в T02.
+- [x] Обновить состояние, создать коммит `chore: bootstrap app and API contracts` — `f26c44a`; инфраструктура передана на REVIEW.
+- [ ] После интеграции подтвердить запуск другим участником с чистого клона и перевести T01 в DONE. Успешный CI не заменяет этот отдельный критерий приёмки.
 
 ### T02. Данные, вход и права
 
-**Создать:** `services/api/app/core/{db,security}.py`, `services/api/app/modules/auth/{router,schemas,service}.py`, `services/api/app/modules/catalog/{models,router,schemas}.py`, `services/api/app/modules/work_orders/{models,schemas}.py`, `services/api/migrations/`, `services/api/tests/test_authz.py`, `apps/web/src/features/auth/LoginPage.tsx`, `apps/web/src/lib/api.ts`.
-**Потребляет:** T01 и C1. **Отдаёт:** `get_current_user()` для Depends, модели C1, каталог и `GET /shift`; A получает OpenAPI-типы, C — миграции для seed.
+**Создать (B):** `services/api/app/core/{db,security}.py`, `services/api/app/modules/auth/{models,router,schemas,service}.py`, `services/api/app/modules/catalog/{models,router,schemas}.py`, `services/api/app/modules/work_orders/{models,schemas}.py`, `services/api/migrations/`, `services/api/tests/test_authz.py`. Auth/models.py хранит модели пользователя и серверной сессии. **Frontend создаёт A:** `apps/web/src/features/auth/LoginPage.tsx`, `apps/web/src/lib/api.ts`.
+**Потребляет:** опубликованную минимальную основу T01 и C1.1–C1.2; полного DONE T01 ждать не нужно. **Отдаёт:** `get_current_user()` для Depends, модели C1, каталог и `GET /shift`; A генерирует OpenAPI-типы, C позже получает миграции для seed.
 
-- [ ] В `test_authz.py` проверить существующие auth/catalog endpoints и общую функцию доступа на fixtures: без сессии 401; роль worker не получает право выдачи; мастер ограничен разрешёнными участками; просроченная сессия и неверный CSRF отклоняются. Проверки доступа к карточке и фото через HTTP добавляются в T03/T05 после появления этих endpoints; T02 не требует несуществующих маршрутов.
-- [ ] Создать миграции моделей C1 и интерфейсы авторизации; хешировать секреты, ограничить попытки входа, не доверять переданной клиентом роли. Минимальные локальные аккаунты создавать только демокомандой, не производственным default-паролем.
-- [ ] Реализовать login/logout/me и экран входа; объектные проверки доступа вынести в общую зависимость. Добавить тест авторизации handshake WebSocket при его реализации в T04.
-- [ ] Проверить `uv run pytest tests/test_authz.py -q` из `services/api` и миграцию новой пустой БД; обновить OpenAPI и клиентские типы.
-- [ ] Записать результат, создать коммит `feat: add identities catalog and access control`.
+**Владелец:** B (Богдан / Codex) — серверная реализация в `feat/T02-data-auth` от `8a26387`, head `4ce5aca`; A / Codex — интеграция и весь frontend в `codex/t01-t02-integration`. Base/get_db, модели, миграции, серверные auth/catalog/shift routers и проверки прав созданы B; фактическая проверка интегрированного приложения выполняется заново. Требования подключения — `docs/T02-integration.md`; C1.2 и реализация безопасности сохраняются.
+
+- [x] В `test_authz.py` проверить существующие auth/catalog endpoints и общую функцию доступа на fixtures: без сессии 401; роль worker не получает право выдачи; мастер ограничен разрешёнными участками; просроченная сессия и неверный CSRF отклоняются. Проверки доступа к карточке и фото через HTTP добавляются в T03/T05 после появления этих endpoints; T02 не требует несуществующих маршрутов.
+- [x] Создать миграции моделей C1 и интерфейсы авторизации; хешировать секреты, ограничить попытки входа, не доверять переданной клиентом роли. Минимальные локальные аккаунты создавать только демокомандой, не производственным default-паролем.
+- [x] B реализует csrf/login/logout/me по C1.2 и объектные проверки доступа; A реализует экран входа и клиентскую сессию. Добавить тест авторизации handshake WebSocket при его реализации в T04.
+- [x] B проверяет `uv run pytest tests/test_authz.py -q` из `services/api` и миграцию новой пустой БД; A после подключения routers обновляет OpenAPI и клиентские типы и проверяет вход через UI.
+- [x] Записать результат, создать коммит `feat: add identities catalog and access control`.
 
 ### T03. Переходы и история наряда
 
@@ -301,6 +353,10 @@
 | D06 | 2026-10-03 | Рейтинг 50/25/15/10 с открытыми компонентами | Предварительная продуктовая формула; проверить с командой/заказчиком, изменения версионировать |
 | D07 | 2026-10-03 | ИИ — рекомендации и доказательства; CLOSED только мастер | Требование ТЗ и защита от ложного принятия |
 | D08 | 2026-10-03 | Приватный файловый volume в MVP, заменяемый storage-интерфейс | Сокращает настройку; для пилота оценить S3 и резервное копирование |
+| D09 | 2026-10-03 | Общая основа, затем параллельно A/T01 и B/T02; C позже | Владение общими файлами у A; LoginPage и клиентская авторизация у A; T01/T02 не завершены |
+| D10 | 2026-10-03 | Sync SQLAlchemy 2 + psycopg 3; явные транзакции, серверная сессия + synchronizer CSRF | Конкретные интерфейсы и wire-форматы C1.1–C1.2; меньше инфраструктуры для CRUD MVP |
+| D11 | 2026-10-03 | T01 — инфраструктура; клиент входа A подключает при T02; контейнерная приёмка — GitHub Actions | Согласовано для завершения T01; серверной авторизации пока нет, локальный Docker не установлен |
+| D12 | 2026-10-03 | TypeScript 5.9.3 вместо 7.0.2 | `openapi-typescript 7.13.0` требует TypeScript 5; обычная установка без обхода peer dependencies, один web lock-файл |
 
 ## Внешние зависимости и вопросы, не блокирующие старт
 
@@ -334,7 +390,11 @@
 Изменённые контракты / решения: Cx / Dx либо «нет»
 ```
 
-**Активные передачи:** нет; первой взять T01.
+**Передача общей основы — REVIEW:** `chore/parallel-foundation`, владелец A. База — чистая `main` на `f2af222` (предыдущие коммиты `4f2f901`, `d6beddd`; всего 3). Клонировано по HTTPS, исходные локальные копии не менялись. Результат: API/config/liveness + минимальный web, оба lock-файла, `.env.example`, `.gitignore` и runbook; интерфейсы C1.1–C1.2 и решения D09–D10. Проверки и их команды — `docs/runbook.md`; итоговый commit определяется `git log -1 --format=%H` в этой ветке. Push/merge не выполнялись.
+
+**Передача A / T01 — REVIEW:** `codex/t01-bootstrap` от `8a26387`, основной коммит `f26c44a`. [GitHub Actions PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37127545893): pytest 8/8, Vitest 3/3, Playwright 3/3, typecheck/build, Docker Compose, реальная БД и оба persistent volumes. Локальная проверка также прошла; секреты/runtime-каталоги не закоммичены. Следующее действие — ревью и интеграция PR в `main`, затем проверка другим участником с чистого клона для DONE. Клиент входа реализуется A при T02; общий `db.py` и миграции остаются за B.
+
+**Передача A / интеграция Т01–Т02 — REVIEW:** `codex/t01-t02-integration`, merge историй `2c2a207`, код `00c199b`, [PR №2](https://github.com/Ak1tava/QostHubHack/pull/2). [CI PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37132211539): API 66, Vitest 13, Playwright 9; миграции, proxy, recovery и persistence. Следующее действие — проверенный merge и CI main, затем независимый чистый клон для Т01. Карточки/фото/WS и T03–T10 не выполнялись; их права/переходы проверяются при реализации соответствующих маршрутов.
 
 ## Справочные источники — читать только при необходимости
 
@@ -344,3 +404,5 @@
 - [Telegram deep linking](https://core.telegram.org/bots/features#deep-linking), [Bot API](https://core.telegram.org/bots/api): привязка, webhook и доставка уведомлений.
 - [OpenAI Responses / GPT-6](https://developers.openai.com/api/docs/guides/latest-model), [Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs): типизированный ответ не гарантирует фактическую правильность.
 - Context7 использован для `/obra/superpowers`, `/websites/developers_openai` и `/websites/fastapi_tiangolo`. Проверять документацию повторно при изменении технологии/API; при обычном продолжении задачи пользоваться зафиксированными решениями.
+
+**Передача B / T02 — REVIEW (2026-10-03):** Богдан / Codex, `feat/T02-data-auth`, база `8a26387`. Добавлены БД/модели/миграция, серверные csrf/login/logout/me, права, каталог и смена, локальная demo-команда. Проверка: PostgreSQL, `uv run --locked --with pytest --with httpx --with httpx2 pytest -q` → 50 PASS; миграции upgrade/check/downgrade PASS. Подробности и требования A — `docs/T02-integration.md`, подтверждение — `docs/T02-verification.md`. A подключает routers/обработчики/lifespan и проверяет LoginPage/OpenAPI/TS. Карточки/фото/WS — проверки при T03/T05/T04. Общие main/config/manifests/web и C1 не изменены; формы ответов catalog/shift предложены для согласования A. Push/merge не выполнялись.

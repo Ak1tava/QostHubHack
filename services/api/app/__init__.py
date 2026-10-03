@@ -1,0 +1,1 @@
+"""QostHubHack API."""
