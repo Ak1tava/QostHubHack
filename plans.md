@@ -11,15 +11,15 @@
 <!-- CURRENT_STATE:START -->
 ## Текущее состояние — читать первым
 
-- **Обновлено:** 2026-10-03. **Этап:** Т01 и полная Т02 интегрированы в main через [PR №2](https://github.com/Ak1tava/QostHubHack/pull/2), merge `8a8669a`; приёмка main пройдена. Календарные даты пяти рабочих дней не назначены.
-- **Готово:** T00 — документация; T01 — воспроизводимый каркас и контракты; T02 — миграции, серверные сессии/CSRF, права, справочники/смена и клиентский вход/выход.
-- **Реализовано в main:** инфраструктурная Т01; модели/миграции, auth/catalog/shift и права от B; production app, типизированный клиент, migration-service и безопасный proxy от A. Обе истории сохранены; PR №1 также получил MERGED.
-- **Следующие задачи:** ревью и интеграция T03 из [PR №4](https://github.com/Ak1tava/QostHubHack/pull/4), затем T04/T05/T06; T03 пока не включена в main. Дополнительная ручная проверка Т01 исключена из текущей приёмки по указанию пользователя.
-- **В работе / на проверке:** T03 — REVIEW в `codex/t03-work-order-lifecycle`, B / Codex; [проверка](docs/T03-verification.md). T01/T02 DONE после интеграции и CI main. **Владельцы:** A — инициатор / Codex (интеграция/frontend), B — Богдан / Codex (сервер Т02), C — будущий третий участник.
+- **Обновлено:** 2026-10-03. **Этап:** T01–T03 интегрированы в main; T03 через [PR №4](https://github.com/Ak1tava/QostHubHack/pull/4), merge `cf87f8d`; приёмка main пройдена. Календарные даты пяти рабочих дней не назначены.
+- **Готово:** T00 — документация; T01 — воспроизводимый каркас и контракты; T02 — миграции, серверные сессии/CSRF, права, справочники/смена и клиентский вход/выход; T03 — API нарядов, переходы, идемпотентность, история, интервалы и outbox.
+- **Реализовано в main:** инфраструктура, авторизация/права, каталоги/смена, production app, типизированный клиент и безопасный proxy; серверное ядро нарядов T03 и миграция 0002. HTTP отчёта/приёмки остаются в T05/T07, доставка outbox — T06.
+- **Следующие задачи:** назначить T04/T05/T06 по реестру; T03 больше не блокирует их старт. Дополнительная ручная проверка Т01 исключена из текущей приёмки по указанию пользователя.
+- **В работе / на проверке:** активных задач нет; T01–T03 DONE после интеграции и CI main. **Владельцы:** A — инициатор / Codex (интеграция/frontend), B — Богдан / Codex (сервер Т02), B / Codex — T03, C — будущий третий участник.
 - **Зафиксировано:** 3 человека / 5 дней; Telegram вместо FCM; действия по наряду в PWA; мастер принимает результат; синтетические данные для демо.
 - **Внешние зависимости:** API-ключ и бюджет модели, токен Telegram, адрес HTTPS-развёртывания и реальные данные ещё не подтверждены. Это не блокирует T01–T05, но блокирует проверку живых интеграций и сдачу T10.
 - **1С:** доступа и выгрузок нет; рабочая интеграция не входит в MVP.
-- **Свежая проверка:** [CI main — PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37133455089), `8a8669a`: pytest 67/67, Vitest 13/13, Playwright 9/9; миграции/check/roundtrip, экспорт без БД/стабильные контракты, typecheck/build, Compose, защита IP, recovery/persistence, auth/PWA/offline. Команды/результаты — `docs/T01-T02-verification.md`; ручной запуск другим участником не выполнялся и не требуется по уточнению пользователя от 2026-10-03.
+- **Свежая проверка:** [CI main — PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37139257953), `cf87f8d`: целевые T03/authz 108/108, полный pytest 1153/1153, Vitest 13/13, Playwright 9/9; PostgreSQL-конкуренция, миграции/check/roundtrip, контракты, typecheck/build, Compose, защита IP и recovery/persistence. Команды/результаты — `docs/T03-verification.md`; предыдущая приёмка — `docs/T01-T02-verification.md`.
 <!-- CURRENT_STATE:END -->
 
 <a id="task-registry"></a>
@@ -32,7 +32,7 @@
 | T00 | Документация и точка входа | DONE | Все | — | `readme.md`, `plans.md`, `AGENTS.md`; подтверждает документацию |
 | T01 | Запуск каркаса и базовые контракты | DONE | A | T00 | A / Codex; main, [PR №2](https://github.com/Ak1tava/QostHubHack/pull/2), [CI main PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37133455089); критерий второго участника снят пользователем 2026-10-03; `docs/T01-T02-verification.md` |
 | T02 | Схема БД, вход и разграничение доступа | DONE | B + A | Общая основа T01 + C1; полная T01 не блокирует старт | Богдан / Codex — сервер `4ce5aca`; A / Codex — интеграция/клиент; main [8a8669a](https://github.com/Ak1tava/QostHubHack/commit/8a8669a1cbc94e495bda921cbf7c5add910fc543), [CI main PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37133455089), 67/13/9 тестов; `docs/T01-T02-verification.md` |
-| T03 | Жизненный цикл и журнал наряда | REVIEW | B | T02 | B / Codex; `codex/t03-work-order-lifecycle`, [PR №4](https://github.com/Ak1tava/QostHubHack/pull/4); `28e983a`, [CI PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37138037026); `docs/T03-verification.md`; ожидает интеграции |
+| T03 | Жизненный цикл и журнал наряда | DONE | B | T02 | B / Codex; main `cf87f8d`, [PR №4 MERGED](https://github.com/Ak1tava/QostHubHack/pull/4), [CI main PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37139257953); pytest 1153, Vitest 13, Playwright 9; `docs/T03-verification.md` |
 | T04 | Создание наряда и панель мастера | TODO | A | T02, T03 | Не назначен |
 | T05 | Исполнение, фото и материалы | TODO | A + B | T03 | Не назначен |
 | T06 | Telegram, сроки и эскалации | TODO | B | T03 | Не назначен |
@@ -273,7 +273,7 @@ Outbox T03: одна запись на event_id, тип `work_order.<action>`, p
 - [x] Выполнить `uv run pytest tests/test_work_order_lifecycle.py tests/test_idempotency.py tests/test_authz.py -q`; добавить матрицу разрешённых переходов в результат проверки. Целевой шаг [CI `b4b7792`](https://github.com/Ak1tava/QostHubHack/actions/runs/37138511761) PASS; матрица — `docs/T03-verification.md`.
 - [x] Обновить контракт и план, создать коммит `feat: implement work order lifecycle and audit trail`. Коммит `28e983a`, PR №4.
 
-**Передача T03:** B / Codex, `codex/t03-work-order-lifecycle`. Реализованы API нарядов, ядро C2, идемпотентность, история/интервалы/outbox, миграция 0002 и клиентские контракты. Полная PostgreSQL/Compose/браузерная проверка `28e983a` успешна; команды, матрица и ограничения — `docs/T03-verification.md`. Общие изменения подключены последовательно, зависимые T04–T07 ещё не назначены. Следующее действие — проверить актуальные Checks PR №4 и интегрировать; только после успешной проверки main переводить в DONE. Для T05/T07 применять внутренний flush-only интерфейс из уточнения C1; T06 реализует доставку outbox.
+**Передача T03:** B / Codex; интегрировано в main `cf87f8d` через PR №4 по команде пользователя. Полная PostgreSQL/Compose/браузерная проверка main PASS; команды и матрица — `docs/T03-verification.md`. Следующее действие — назначить T04/T05/T06, не запускать их автоматически. Для T05/T07 применять внутренний flush-only интерфейс из уточнения C1; T06 реализует доставку outbox.
 
 ### T04. Мастер: создание и панель смены
 
