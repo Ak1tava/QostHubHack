@@ -2,7 +2,7 @@
 
 Нужны Python 3.12, uv и Node.js 24 с npm 12. Lock-файлы уже созданы: `services/api/uv.lock`, `apps/web/package-lock.json`. Проверенная среда: Windows, Python 3.12.14, uv 0.12.22, Node 24.19.0, npm 12.2.0. Команды ниже выполняются из корня репозитория, если не указан другой каталог.
 
-Для контейнерного запуска достаточно Docker с Compose v2; локальные Python/Node не нужны. Интеграционная ветка — `codex/t01-t02-integration`; после слияния используйте `main`.
+Для контейнерного запуска достаточно Docker с Compose v2; локальные Python/Node не нужны. Для работы используйте интегрированную `main`; Т01 и Т02 прошли полную автоматическую приёмку.
 
 ## Контейнерный запуск
 
@@ -98,7 +98,7 @@ npm --prefix apps/web run test:e2e
 
 CI создаёт эти базы до pytest, проверяет все серверные тесты на настоящем `app.main`, экспорт без БД и отсутствие diff при повторной генерации, Vitest/typecheck/build, образы и migration-service. Затем выполняет `alembic check`, `infra/verify_proxy.py` (раздельные IP-лимиты и отказ подмены через Nginx/прямой API), `infra/verify_stack.py` (отказ/восстановление БД, сохранность аккаунтов и фотохранилища) и Playwright через production Nginx. Браузерные аккаунты синтетические; пароли создаются в CI и маскируются. Auth-трейсы отключены; сырые браузерные отчёты не публикуются. При сбое сохраняются только Compose-статусы/логи с маскированием секретов из `.env` и окружения, включая E2E_PASSWORD.
 
-Фактические результаты интеграции — [T01-T02-verification.md](T01-T02-verification.md). Исторические проверки ниже относятся к указанным коммитам Т01/общей основы. Подтверждение другого участника с чистого клона интегрированного `main` остаётся отдельным критерием T01; CI его не заменяет.
+Фактические результаты интеграции — [T01-T02-verification.md](T01-T02-verification.md). Исторические проверки ниже относятся к указанным коммитам Т01/общей основы. 2026-10-03 пользователь исключил отдельный запуск другим участником из текущей приёмки Т01; эта ручная проверка не выполнялась. Критерии Т01/Т02 подтверждены интеграцией и успешным CI main.
 
 ## Фактические локальные проверки Т01 — 2026-10-03
 
@@ -121,7 +121,7 @@ Workflow `T01 bootstrap acceptance` использует чистый checkout, 
 
 Playwright затем проверяет Nginx proxy и offline-границы настоящего service worker. При сбое сохраняются очищенные от значений секретов Compose-логи и браузерные артефакты на 7 дней. Завершение job удаляет только одноразовые CI-volumes. Статус Т01 определяется только `plans.md`.
 
-**Фактический CI — PASS:** [run 37127545893](https://github.com/Ak1tava/QostHubHack/actions/runs/37127545893), commit `f26c44a1077a7388106be9b90e879fb6dfdf06fa`, Ubuntu 24.04. pytest 8/8, Vitest 3/3, Playwright 3/3; locked install, повторная генерация без diff, production build, Compose config/up и все контейнеры Healthy. `verify_stack.py` вывел `PASS: real SQL readiness, database outage/recovery, PostgreSQL and private photo volume persistence`. Внешние интеграционные токены были пустыми. Саморевью diff выполнено исполнителем без подагентов по AGENTS.md; независимая проверка другим участником после интеграции ещё требуется.
+**Фактический CI — PASS:** [run 37127545893](https://github.com/Ak1tava/QostHubHack/actions/runs/37127545893), commit `f26c44a1077a7388106be9b90e879fb6dfdf06fa`, Ubuntu 24.04. pytest 8/8, Vitest 3/3, Playwright 3/3; locked install, повторная генерация без diff, production build, Compose config/up и все контейнеры Healthy. `verify_stack.py` вывел `PASS: real SQL readiness, database outage/recovery, PostgreSQL and private photo volume persistence`. Внешние интеграционные токены были пустыми. Саморевью diff выполнено исполнителем без подагентов по AGENTS.md; независимая проверка другим участником на этом этапе не выполнялась; позднее пользователь исключил её из текущей приёмки (см. карточку Т01 в plans.md).
 
 ## Исторические проверки общей основы — 2026-10-03
 

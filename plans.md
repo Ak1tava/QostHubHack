@@ -11,15 +11,15 @@
 <!-- CURRENT_STATE:START -->
 ## Текущее состояние — читать первым
 
-- **Обновлено:** 2026-10-03. **Этап:** Т01 и полная Т02 прошли интеграционную приёмку в `codex/t01-t02-integration` (REVIEW), [PR №2](https://github.com/Ak1tava/QostHubHack/pull/2). Слияние в main ожидается; календарные даты пяти рабочих дней не назначены.
-- **Готово:** T00 — описание продукта, рабочий стек, этот план и инструкция входа для ИИ.
-- **Реализовано в этой ветке:** инфраструктурная Т01; модели/миграции, серверные auth/catalog/shift и права от B; production app, типизированный вход/сессия, migration-service и безопасный proxy от A. Контейнеры, PostgreSQL, браузер и PWA проверены в CI.
-- **Следующие задачи:** доставить проверенный актуальный head PR №2 в main и проверить CI main; затем получить подтверждение запуска вторым участником с чистого клона для DONE Т01. C подключится позже.
-- **В работе / на проверке:** T01/T02 REVIEW в `codex/t01-t02-integration`. **Владельцы:** A — инициатор / Codex (интеграция и frontend), B — Богдан / Codex (сервер Т02), C — будущий третий участник.
+- **Обновлено:** 2026-10-03. **Этап:** Т01 и полная Т02 интегрированы в main через [PR №2](https://github.com/Ak1tava/QostHubHack/pull/2), merge `8a8669a`; приёмка main пройдена. Календарные даты пяти рабочих дней не назначены.
+- **Готово:** T00 — документация; T01 — воспроизводимый каркас и контракты; T02 — миграции, серверные сессии/CSRF, права, справочники/смена и клиентский вход/выход.
+- **Реализовано в main:** инфраструктурная Т01; модели/миграции, auth/catalog/shift и права от B; production app, типизированный клиент, migration-service и безопасный proxy от A. Обе истории сохранены; PR №1 также получил MERGED.
+- **Следующие задачи:** выбрать следующую задачу из реестра и назначить владельца; T03–T10 в этой интеграции не выполнялись. Дополнительная ручная проверка Т01 исключена из текущей приёмки по указанию пользователя.
+- **В работе / на проверке:** T01/T02 DONE по реестру после интеграции и CI main. **Владельцы:** A — инициатор / Codex (интеграция/frontend), B — Богдан / Codex (сервер Т02), C — будущий третий участник.
 - **Зафиксировано:** 3 человека / 5 дней; Telegram вместо FCM; действия по наряду в PWA; мастер принимает результат; синтетические данные для демо.
 - **Внешние зависимости:** API-ключ и бюджет модели, токен Telegram, адрес HTTPS-развёртывания и реальные данные ещё не подтверждены. Это не блокирует T01–T05, но блокирует проверку живых интеграций и сдачу T10.
 - **1С:** доступа и выгрузок нет; рабочая интеграция не входит в MVP.
-- **Свежая проверка:** [CI интеграции — PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37132211539) на `00c199b`: pytest 66/66, Vitest 13/13, Playwright 9/9, миграции/check/roundtrip, контракты, build, Compose, защита IP, recovery/persistence. Команды и результаты — `docs/T01-T02-verification.md`; независимое подтверждение запуска Т01 ещё не получено. До слияния публичная main остаётся на T00.
+- **Свежая проверка:** [CI main — PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37133455089), `8a8669a`: pytest 67/67, Vitest 13/13, Playwright 9/9; миграции/check/roundtrip, экспорт без БД/стабильные контракты, typecheck/build, Compose, защита IP, recovery/persistence, auth/PWA/offline. Команды/результаты — `docs/T01-T02-verification.md`; ручной запуск другим участником не выполнялся и не требуется по уточнению пользователя от 2026-10-03.
 <!-- CURRENT_STATE:END -->
 
 <a id="task-registry"></a>
@@ -30,8 +30,8 @@
 | ID | Результат | Статус | Рекомендуемая роль | Зависимости | Владелец / ветка / подтверждение |
 | --- | --- | --- | --- | --- | --- |
 | T00 | Документация и точка входа | DONE | Все | — | `readme.md`, `plans.md`, `AGENTS.md`; подтверждает документацию |
-| T01 | Запуск каркаса и базовые контракты | REVIEW | A | T00 | A / Codex; `codex/t01-t02-integration`, [PR №2](https://github.com/Ak1tava/QostHubHack/pull/2), [CI PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37132211539); повторная приёмка пройдена, ожидаются main и подтверждение второго участника; исходные Т01 результаты сохранены в передаче |
-| T02 | Схема БД, вход и разграничение доступа | REVIEW | B + A | Общая основа T01 + C1; полная T01 не блокирует старт | Богдан / Codex — сервер `4ce5aca`; A / Codex — интеграция/клиент [00c199b](https://github.com/Ak1tava/QostHubHack/commit/00c199be8a4491685b66c3849169783e5eac668d), [CI PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37132211539), 66/13/9 тестов; `docs/T01-T02-verification.md`; ожидается main |
+| T01 | Запуск каркаса и базовые контракты | DONE | A | T00 | A / Codex; main, [PR №2](https://github.com/Ak1tava/QostHubHack/pull/2), [CI main PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37133455089); критерий второго участника снят пользователем 2026-10-03; `docs/T01-T02-verification.md` |
+| T02 | Схема БД, вход и разграничение доступа | DONE | B + A | Общая основа T01 + C1; полная T01 не блокирует старт | Богдан / Codex — сервер `4ce5aca`; A / Codex — интеграция/клиент; main [8a8669a](https://github.com/Ak1tava/QostHubHack/commit/8a8669a1cbc94e495bda921cbf7c5add910fc543), [CI main PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37133455089), 67/13/9 тестов; `docs/T01-T02-verification.md` |
 | T03 | Жизненный цикл и журнал наряда | TODO | B | T02 | Не назначен |
 | T04 | Создание наряда и панель мастера | TODO | A | T02, T03 | Не назначен |
 | T05 | Исполнение, фото и материалы | TODO | A + B | T03 | Не назначен |
@@ -230,21 +230,23 @@
 **Создать:** `apps/web/package.json`, `apps/web/src/main.tsx`, `apps/web/vite.config.ts`, `services/api/pyproject.toml`, `services/api/app/main.py`, `services/api/app/core/config.py`, `packages/contracts/openapi.json`, `packages/contracts/api.generated.ts`, `infra/api.Dockerfile`, `infra/web.Dockerfile`, `compose.yaml`, `.env.example`, `.gitignore`, `docs/runbook.md` и lock-файлы выбранных менеджеров. **Изменить:** раздел запуска `readme.md`.
 **Интерфейсы:** `GET /health/live` → 200 без зависимостей; `GET /health/ready` → 200 при доступной БД или 503. Python app `app.main:app`; префикс `/api/v1`; одна точка генерации OpenAPI и клиентских типов.
 
-**Владелец:** A (инициатор). Ветка — `codex/t01-bootstrap` от опубликованной основы `8a26387`. Существующий каркас сохранён и дополнен readiness, контейнерами, экспортом контрактов, PWA и тестовыми инструментами. По согласованному объёму LoginPage, API-клиент и клиентская сессия выполняются A при интеграции T02 по C1.2; их отсутствие не блокирует инфраструктурный T01.
+**Владелец:** A (инициатор). Ветка — `codex/t01-bootstrap` от опубликованной основы `8a26387`. Существующий каркас сохранён и дополнен readiness, контейнерами, экспортом контрактов, PWA и тестовыми инструментами. По согласованному объёму LoginPage, API-клиент и клиентская сессия реализованы A при интеграции T02 по C1.2; оба результата доставлены в main через PR №2.
 
 - [x] Проверить поддерживаемые совместимые версии; зафиксировать зависимости и команды npm/uv в runbook. Контейнеры web/api/db запускаются с чистого checkout в CI; worker добавляется T06. Подтверждение — CI `37127545893`, все три контейнера Healthy.
 - [x] Реализовать health endpoints и экспорт схемы; добавить `services/api/app/export_openapi.py`, чтобы `uv run python -m app.export_openapi` из `services/api` обновлял `packages/contracts/openapi.json`. Добавить в web скрипт `generate:api` на основе OpenAPI, а также `test`, `typecheck`, `build` и `test:e2e` (последний запускает корневые `tests/e2e`). Проверки: pytest 8/8, генерация, typecheck/build, Vitest 3/3 и Playwright 3/3 PASS локально.
 - [x] Создать пример конфигурации без значений секретов: DATABASE_URL, SESSION_SECRET, TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET, PUBLIC_BASE_URL, OPENAI_API_KEY, AI_MODEL, PHOTO_STORAGE_PATH, APP_TIMEZONE. Без внешних токенов работают liveness, экспорт и локальный интерфейс; readiness без БД возвращает 503.
 - [x] Проверить `docker compose config --quiet`, `docker compose up --build -d --wait`, запрос `/health/ready`, `npm --prefix apps/web run typecheck`, `npm --prefix apps/web run build`. CI PASS: readiness 200/503 и восстановление; адреса и остановка — runbook. Миграции создаются в T02.
 - [x] Обновить состояние, создать коммит `chore: bootstrap app and API contracts` — `f26c44a`; инфраструктура передана на REVIEW.
-- [ ] После интеграции подтвердить запуск другим участником с чистого клона и перевести T01 в DONE. Успешный CI не заменяет этот отдельный критерий приёмки.
+- [x] Интегрировать результат в main и подтвердить актуальный head успешным CI: PR №2, `8a8669a`, run `37133455089`.
+
+**Уточнение приёмки (2026-10-03):** пользователь исключил отдельный запуск вторым участником из текущих обязательных критериев («нет такой проверки нету и она сейчас не нужна»). Эта ручная проверка не выполнялась; DONE основан на интеграции и фактической автоматической приёмке.
 
 ### T02. Данные, вход и права
 
 **Создать (B):** `services/api/app/core/{db,security}.py`, `services/api/app/modules/auth/{models,router,schemas,service}.py`, `services/api/app/modules/catalog/{models,router,schemas}.py`, `services/api/app/modules/work_orders/{models,schemas}.py`, `services/api/migrations/`, `services/api/tests/test_authz.py`. Auth/models.py хранит модели пользователя и серверной сессии. **Frontend создаёт A:** `apps/web/src/features/auth/LoginPage.tsx`, `apps/web/src/lib/api.ts`.
 **Потребляет:** опубликованную минимальную основу T01 и C1.1–C1.2; полного DONE T01 ждать не нужно. **Отдаёт:** `get_current_user()` для Depends, модели C1, каталог и `GET /shift`; A генерирует OpenAPI-типы, C позже получает миграции для seed.
 
-**Владелец:** B (Богдан / Codex) — серверная реализация в `feat/T02-data-auth` от `8a26387`, head `4ce5aca`; A / Codex — интеграция и весь frontend в `codex/t01-t02-integration`. Base/get_db, модели, миграции, серверные auth/catalog/shift routers и проверки прав созданы B; фактическая проверка интегрированного приложения выполняется заново. Требования подключения — `docs/T02-integration.md`; C1.2 и реализация безопасности сохраняются.
+**Владелец:** B (Богдан / Codex) — серверная реализация в `feat/T02-data-auth` от `8a26387`, head `4ce5aca`; A / Codex — интеграция и весь frontend в `codex/t01-t02-integration`. Base/get_db, модели, миграции, серверные auth/catalog/shift routers и проверки прав созданы B; интегрированное приложение повторно проверено в CI main (67/13/9 PASS). Требования подключения — `docs/T02-integration.md`; C1.2 и реализация безопасности сохраняются.
 
 - [x] В `test_authz.py` проверить существующие auth/catalog endpoints и общую функцию доступа на fixtures: без сессии 401; роль worker не получает право выдачи; мастер ограничен разрешёнными участками; просроченная сессия и неверный CSRF отклоняются. Проверки доступа к карточке и фото через HTTP добавляются в T03/T05 после появления этих endpoints; T02 не требует несуществующих маршрутов.
 - [x] Создать миграции моделей C1 и интерфейсы авторизации; хешировать секреты, ограничить попытки входа, не доверять переданной клиентом роли. Минимальные локальные аккаунты создавать только демокомандой, не производственным default-паролем.
@@ -394,7 +396,7 @@
 
 **Передача A / T01 — REVIEW:** `codex/t01-bootstrap` от `8a26387`, основной коммит `f26c44a`. [GitHub Actions PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37127545893): pytest 8/8, Vitest 3/3, Playwright 3/3, typecheck/build, Docker Compose, реальная БД и оба persistent volumes. Локальная проверка также прошла; секреты/runtime-каталоги не закоммичены. Следующее действие — ревью и интеграция PR в `main`, затем проверка другим участником с чистого клона для DONE. Клиент входа реализуется A при T02; общий `db.py` и миграции остаются за B.
 
-**Передача A / интеграция Т01–Т02 — REVIEW:** `codex/t01-t02-integration`, merge историй `2c2a207`, код `00c199b`, [PR №2](https://github.com/Ak1tava/QostHubHack/pull/2). [CI PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37132211539): API 66, Vitest 13, Playwright 9; миграции, proxy, recovery и persistence. Следующее действие — проверенный merge и CI main, затем независимый чистый клон для Т01. Карточки/фото/WS и T03–T10 не выполнялись; их права/переходы проверяются при реализации соответствующих маршрутов.
+**Передача A / интеграция Т01–Т02 — DONE:** [PR №2](https://github.com/Ak1tava/QostHubHack/pull/2) интегрирован в main `8a8669a`; Т01 `bff99ab` и серверная Т02 `4ce5aca` — предки main, PR №1 MERGED. [CI финального head d0a9b49 PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37133133335), [CI main PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37133455089): API 67, Vitest 13, Playwright 9; все миграционные/контейнерные проверки пройдены. Т01/Т02 DONE; независимый ручной запуск исключён пользователем 2026-10-03 и не заявляется выполненным. Следующие задачи T03–T10 остаются неназначенными; карточки/фото/WS проверяются при реализации своих маршрутов.
 
 ## Справочные источники — читать только при необходимости
 
