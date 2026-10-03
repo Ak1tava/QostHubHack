@@ -1,8 +1,11 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
+
+WorkOrderPriority = Literal["emergency", "high", "normal", "planned"]
 
 WorkOrderStatus = Literal[
     "ISSUED",
@@ -19,6 +22,82 @@ WorkOrderStatus = Literal[
 ]
 
 
+def validate_assignment(assignee_id, brigade_id, responsible_id):
+    if assignee_id is not None:
+        valid = brigade_id is None and responsible_id is None
+    else:
+        valid = brigade_id is not None and responsible_id is not None
+    if not valid:
+        raise ValueError("Assign one worker or a brigade with a responsible worker")
+
+
+class WorkOrderCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    work_type: Literal["planned", "emergency"]
+    description: str = Field(min_length=1, max_length=10000)
+    area_id: UUID
+    equipment_id: UUID
+    assignee_id: UUID | None = None
+    brigade_id: UUID | None = None
+    responsible_id: UUID | None = None
+    priority: WorkOrderPriority = "normal"
+    due_at: AwareDatetime
+
+    @model_validator(mode="after")
+    def assignment_is_complete(self):
+        validate_assignment(self.assignee_id, self.brigade_id, self.responsible_id)
+        return self
+
+
+class ActionCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    action: Literal[
+        "accept", "queue", "reject", "reassign", "start", "pause", "resume",
+        "restart", "cancel", "reprioritize",
+    ]
+    expected_version: int = Field(gt=0)
+    reason: str | None = Field(default=None, min_length=1, max_length=4000)
+    assignee_id: UUID | None = None
+    brigade_id: UUID | None = None
+    responsible_id: UUID | None = None
+    priority: WorkOrderPriority | None = None
+
+    @model_validator(mode="after")
+    def fields_match_action(self):
+        allowed = {"action", "expected_version"}
+        if self.action in {"reject", "pause", "reassign", "cancel"}:
+            allowed.add("reason")
+            if self.reason is None:
+                raise ValueError("This action requires a reason")
+        if self.action == "reassign":
+            allowed.update({"assignee_id", "brigade_id", "responsible_id"})
+            validate_assignment(self.assignee_id, self.brigade_id, self.responsible_id)
+        if self.action == "reprioritize":
+            allowed.add("priority")
+            if self.priority is None:
+                raise ValueError("Reprioritization requires a priority")
+        if self.model_fields_set - allowed:
+            raise ValueError("Fields do not apply to this action")
+        return self
+
+
+class InternalActionCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    action: Literal["submit", "begin_review", "request_rework", "close", "override_close"]
+    expected_version: int = Field(gt=0)
+    assignment_version: int = Field(gt=0)
+    submission_id: UUID
+    reason: str | None = Field(default=None, min_length=1, max_length=4000)
+    review_id: UUID | None = None
+    decision_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def reason_is_present(self):
+        if self.action in {"request_rework", "override_close"} and self.reason is None:
+            raise ValueError("This action requires a reason")
+        return self
+
+
 class WorkOrderView(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
@@ -31,11 +110,59 @@ class WorkOrderView(BaseModel):
     brigade_id: UUID | None
     responsible_id: UUID | None
     master_id: UUID
-    priority: Literal["emergency", "high", "normal", "planned"]
+    priority: WorkOrderPriority
     due_at: datetime
     status: WorkOrderStatus
     version: int
     assignment_version: int
+    queue_position: int | None = None
     created_at: datetime
     is_overdue: bool
     allowed_actions: list[str] = Field(default_factory=list)
+
+
+class WorkOrderEventView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    work_order_id: UUID
+    actor_id: UUID | None
+    action: str
+    version: int
+    assignment_version: int
+    reason: str | None
+    payload: dict
+    occurred_at: datetime
+
+
+class SubmissionMaterialView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    material_id: UUID
+    quantity: Decimal = Field(gt=0)
+
+
+class SubmissionView(BaseModel):
+    id: UUID
+    work_order_id: UUID
+    revision: int
+    assignment_version: int
+    worker_id: UUID
+    work_description: str
+    fault_code_id: UUID
+    no_materials_used: bool
+    materials: list[SubmissionMaterialView] = Field(default_factory=list)
+    after_photo_ids: list[UUID] = Field(default_factory=list)
+    comment: str | None
+    submitted_at: datetime
+    missing_evidence: list[str] = Field(default_factory=list)
+
+
+class WorkOrderDetail(WorkOrderView):
+    events: list[WorkOrderEventView] = Field(default_factory=list)
+    submission: SubmissionView | None = None
+
+
+class WorkOrderList(BaseModel):
+    items: list[WorkOrderView]
+    total: int
+    offset: int
+    limit: int

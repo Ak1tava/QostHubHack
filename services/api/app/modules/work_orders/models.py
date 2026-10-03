@@ -1,4 +1,4 @@
-"""C1 persistence only. Lifecycle commands are implemented in T03."""
+"""Work orders, immutable revisions, lifecycle audit and transactional outbox."""
 
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -6,18 +6,26 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import (
     JSON,
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
     Integer,
+    Index,
     Numeric,
+    Sequence,
     String,
     Text,
     UniqueConstraint,
+    false,
+    func,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
+
+ORDER_NUMBER_SEQUENCE = Sequence("work_order_number_seq", metadata=Base.metadata)
 
 
 def utcnow():
@@ -70,6 +78,7 @@ class WorkOrder(Base):
 
 class WorkOrderEvent(Base):
     __tablename__ = "work_order_events"
+    __table_args__ = (UniqueConstraint("work_order_id", "version"),)
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     work_order_id: Mapped[UUID] = mapped_column(
         ForeignKey("work_orders.id"), index=True
@@ -100,6 +109,9 @@ class Submission(Base):
     worker_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
     work_description: Mapped[str] = mapped_column(Text)
     work_code_id: Mapped[UUID] = mapped_column(ForeignKey("work_codes.id"))
+    no_materials_used: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=false()
+    )
     comment: Mapped[str | None] = mapped_column(Text)
     submitted_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow
@@ -196,3 +208,51 @@ class DowntimeInterval(Base):
     start_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     end_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     reason: Mapped[str] = mapped_column(Text)
+
+
+Index(
+    "uq_work_orders_active_responsible",
+    func.coalesce(WorkOrder.assignee_id, WorkOrder.responsible_id),
+    unique=True,
+    postgresql_where=WorkOrder.status == "IN_PROGRESS",
+)
+
+
+class IdempotencyRecord(Base):
+    __tablename__ = "idempotency_records"
+    actor_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    fingerprint: Mapped[str] = mapped_column(String(64))
+    work_order_id: Mapped[UUID | None] = mapped_column(ForeignKey("work_orders.id"))
+    response_status: Mapped[int | None] = mapped_column(Integer)
+    response_body: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
+class OutboxEvent(Base):
+    __tablename__ = "outbox_events"
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    event_id: Mapped[UUID] = mapped_column(ForeignKey("work_order_events.id"), unique=True)
+    work_order_id: Mapped[UUID] = mapped_column(ForeignKey("work_orders.id"), index=True)
+    version: Mapped[int] = mapped_column(Integer)
+    assignment_version: Mapped[int] = mapped_column(Integer)
+    type: Mapped[str] = mapped_column(String(64))
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class WorkOrderInterval(Base):
+    __tablename__ = "work_order_intervals"
+    __table_args__ = (
+        CheckConstraint("kind IN ('active','pause','review')", name="valid_kind"),
+        CheckConstraint("end_at IS NULL OR end_at >= start_at", name="nonnegative_interval"),
+        Index(
+            "uq_work_order_intervals_open", "work_order_id", unique=True,
+            postgresql_where=text("end_at IS NULL"),
+        ),
+    )
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    work_order_id: Mapped[UUID] = mapped_column(ForeignKey("work_orders.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(16))
+    start_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    end_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

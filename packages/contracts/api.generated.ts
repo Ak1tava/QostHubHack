@@ -106,6 +106,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/work-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Orders */
+        get: operations["list_orders_api_v1_work_orders_get"];
+        put?: never;
+        /** Create Order */
+        post: operations["create_order_api_v1_work_orders_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-orders/{order_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Order */
+        get: operations["get_order_api_v1_work_orders__order_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-orders/{order_id}/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Apply Action */
+        post: operations["apply_action_api_v1_work_orders__order_id__actions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health/live": {
         parameters: {
             query?: never;
@@ -144,6 +196,26 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ActionCommand */
+        ActionCommand: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "accept" | "queue" | "reject" | "reassign" | "start" | "pause" | "resume" | "restart" | "cancel" | "reprioritize";
+            /** Assignee Id */
+            assignee_id?: string | null;
+            /** Brigade Id */
+            brigade_id?: string | null;
+            /** Expected Version */
+            expected_version: number;
+            /** Priority */
+            priority?: ("emergency" | "high" | "normal" | "planned") | null;
+            /** Reason */
+            reason?: string | null;
+            /** Responsible Id */
+            responsible_id?: string | null;
+        };
         /** AuthResponse */
         AuthResponse: {
             /** Csrf Token */
@@ -314,6 +386,60 @@ export interface components {
             /** Items */
             items: components["schemas"]["ShiftMemberView"][];
         };
+        /** SubmissionMaterialView */
+        SubmissionMaterialView: {
+            /**
+             * Material Id
+             * Format: uuid
+             */
+            material_id: string;
+            /** Quantity */
+            quantity: string;
+        };
+        /** SubmissionView */
+        SubmissionView: {
+            /** After Photo Ids */
+            after_photo_ids?: string[];
+            /** Assignment Version */
+            assignment_version: number;
+            /** Comment */
+            comment: string | null;
+            /**
+             * Fault Code Id
+             * Format: uuid
+             */
+            fault_code_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Materials */
+            materials?: components["schemas"]["SubmissionMaterialView"][];
+            /** Missing Evidence */
+            missing_evidence?: string[];
+            /** No Materials Used */
+            no_materials_used: boolean;
+            /** Revision */
+            revision: number;
+            /**
+             * Submitted At
+             * Format: date-time
+             */
+            submitted_at: string;
+            /** Work Description */
+            work_description: string;
+            /**
+             * Work Order Id
+             * Format: uuid
+             */
+            work_order_id: string;
+            /**
+             * Worker Id
+             * Format: uuid
+             */
+            worker_id: string;
+        };
         /** UserView */
         UserView: {
             /** Brigade Id */
@@ -361,6 +487,225 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+        };
+        /** WorkOrderCreate */
+        WorkOrderCreate: {
+            /**
+             * Area Id
+             * Format: uuid
+             */
+            area_id: string;
+            /** Assignee Id */
+            assignee_id?: string | null;
+            /** Brigade Id */
+            brigade_id?: string | null;
+            /** Description */
+            description: string;
+            /**
+             * Due At
+             * Format: date-time
+             */
+            due_at: string;
+            /**
+             * Equipment Id
+             * Format: uuid
+             */
+            equipment_id: string;
+            /**
+             * Priority
+             * @default normal
+             * @enum {string}
+             */
+            priority: "emergency" | "high" | "normal" | "planned";
+            /** Responsible Id */
+            responsible_id?: string | null;
+            /**
+             * Work Type
+             * @enum {string}
+             */
+            work_type: "planned" | "emergency";
+        };
+        /** WorkOrderDetail */
+        WorkOrderDetail: {
+            /** Allowed Actions */
+            allowed_actions?: string[];
+            /**
+             * Area Id
+             * Format: uuid
+             */
+            area_id: string;
+            /** Assignee Id */
+            assignee_id: string | null;
+            /** Assignment Version */
+            assignment_version: number;
+            /** Brigade Id */
+            brigade_id: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Description */
+            description: string;
+            /**
+             * Due At
+             * Format: date-time
+             */
+            due_at: string;
+            /**
+             * Equipment Id
+             * Format: uuid
+             */
+            equipment_id: string;
+            /** Events */
+            events?: components["schemas"]["WorkOrderEventView"][];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Overdue */
+            is_overdue: boolean;
+            /**
+             * Master Id
+             * Format: uuid
+             */
+            master_id: string;
+            /** Number */
+            number: string;
+            /**
+             * Priority
+             * @enum {string}
+             */
+            priority: "emergency" | "high" | "normal" | "planned";
+            /** Queue Position */
+            queue_position?: number | null;
+            /** Responsible Id */
+            responsible_id: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ISSUED" | "ACCEPTED" | "QUEUED" | "REJECTED" | "IN_PROGRESS" | "PAUSED" | "SUBMITTED" | "AI_REVIEW" | "REWORK" | "CLOSED" | "CANCELLED";
+            submission?: components["schemas"]["SubmissionView"] | null;
+            /** Version */
+            version: number;
+            /**
+             * Work Type
+             * @enum {string}
+             */
+            work_type: "planned" | "emergency";
+        };
+        /** WorkOrderEventView */
+        WorkOrderEventView: {
+            /** Action */
+            action: string;
+            /** Actor Id */
+            actor_id: string | null;
+            /** Assignment Version */
+            assignment_version: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+            /** Reason */
+            reason: string | null;
+            /** Version */
+            version: number;
+            /**
+             * Work Order Id
+             * Format: uuid
+             */
+            work_order_id: string;
+        };
+        /** WorkOrderList */
+        WorkOrderList: {
+            /** Items */
+            items: components["schemas"]["WorkOrderView"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Total */
+            total: number;
+        };
+        /** WorkOrderView */
+        WorkOrderView: {
+            /** Allowed Actions */
+            allowed_actions?: string[];
+            /**
+             * Area Id
+             * Format: uuid
+             */
+            area_id: string;
+            /** Assignee Id */
+            assignee_id: string | null;
+            /** Assignment Version */
+            assignment_version: number;
+            /** Brigade Id */
+            brigade_id: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Description */
+            description: string;
+            /**
+             * Due At
+             * Format: date-time
+             */
+            due_at: string;
+            /**
+             * Equipment Id
+             * Format: uuid
+             */
+            equipment_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Overdue */
+            is_overdue: boolean;
+            /**
+             * Master Id
+             * Format: uuid
+             */
+            master_id: string;
+            /** Number */
+            number: string;
+            /**
+             * Priority
+             * @enum {string}
+             */
+            priority: "emergency" | "high" | "normal" | "planned";
+            /** Queue Position */
+            queue_position?: number | null;
+            /** Responsible Id */
+            responsible_id: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ISSUED" | "ACCEPTED" | "QUEUED" | "REJECTED" | "IN_PROGRESS" | "PAUSED" | "SUBMITTED" | "AI_REVIEW" | "REWORK" | "CLOSED" | "CANCELLED";
+            /** Version */
+            version: number;
+            /**
+             * Work Type
+             * @enum {string}
+             */
+            work_type: "planned" | "emergency";
         };
     };
     responses: never;
@@ -624,6 +969,290 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_orders_api_v1_work_orders_get: {
+        parameters: {
+            query?: {
+                area_id?: string | null;
+                equipment_id?: string | null;
+                assignee_id?: string | null;
+                priority?: ("emergency" | "high" | "normal" | "planned") | null;
+                status?: ("ISSUED" | "ACCEPTED" | "QUEUED" | "REJECTED" | "IN_PROGRESS" | "PAUSED" | "SUBMITTED" | "AI_REVIEW" | "REWORK" | "CLOSED" | "CANCELLED") | null;
+                offset?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkOrderList"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_order_api_v1_work_orders_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkOrderCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkOrderView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_order_api_v1_work_orders__order_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkOrderDetail"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    apply_action_api_v1_work_orders__order_id__actions_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkOrderView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -14,8 +14,8 @@
 - **Обновлено:** 2026-10-03. **Этап:** Т01 и полная Т02 интегрированы в main через [PR №2](https://github.com/Ak1tava/QostHubHack/pull/2), merge `8a8669a`; приёмка main пройдена. Календарные даты пяти рабочих дней не назначены.
 - **Готово:** T00 — документация; T01 — воспроизводимый каркас и контракты; T02 — миграции, серверные сессии/CSRF, права, справочники/смена и клиентский вход/выход.
 - **Реализовано в main:** инфраструктурная Т01; модели/миграции, auth/catalog/shift и права от B; production app, типизированный клиент, migration-service и безопасный proxy от A. Обе истории сохранены; PR №1 также получил MERGED.
-- **Следующие задачи:** выбрать следующую задачу из реестра и назначить владельца; T03–T10 в этой интеграции не выполнялись. Дополнительная ручная проверка Т01 исключена из текущей приёмки по указанию пользователя.
-- **В работе / на проверке:** T01/T02 DONE по реестру после интеграции и CI main. **Владельцы:** A — инициатор / Codex (интеграция/frontend), B — Богдан / Codex (сервер Т02), C — будущий третий участник.
+- **Следующие задачи:** ревью и интеграция T03 из [PR №4](https://github.com/Ak1tava/QostHubHack/pull/4), затем T04/T05/T06; T03 пока не включена в main. Дополнительная ручная проверка Т01 исключена из текущей приёмки по указанию пользователя.
+- **В работе / на проверке:** T03 — REVIEW в `codex/t03-work-order-lifecycle`, B / Codex; [проверка](docs/T03-verification.md). T01/T02 DONE после интеграции и CI main. **Владельцы:** A — инициатор / Codex (интеграция/frontend), B — Богдан / Codex (сервер Т02), C — будущий третий участник.
 - **Зафиксировано:** 3 человека / 5 дней; Telegram вместо FCM; действия по наряду в PWA; мастер принимает результат; синтетические данные для демо.
 - **Внешние зависимости:** API-ключ и бюджет модели, токен Telegram, адрес HTTPS-развёртывания и реальные данные ещё не подтверждены. Это не блокирует T01–T05, но блокирует проверку живых интеграций и сдачу T10.
 - **1С:** доступа и выгрузок нет; рабочая интеграция не входит в MVP.
@@ -32,7 +32,7 @@
 | T00 | Документация и точка входа | DONE | Все | — | `readme.md`, `plans.md`, `AGENTS.md`; подтверждает документацию |
 | T01 | Запуск каркаса и базовые контракты | DONE | A | T00 | A / Codex; main, [PR №2](https://github.com/Ak1tava/QostHubHack/pull/2), [CI main PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37133455089); критерий второго участника снят пользователем 2026-10-03; `docs/T01-T02-verification.md` |
 | T02 | Схема БД, вход и разграничение доступа | DONE | B + A | Общая основа T01 + C1; полная T01 не блокирует старт | Богдан / Codex — сервер `4ce5aca`; A / Codex — интеграция/клиент; main [8a8669a](https://github.com/Ak1tava/QostHubHack/commit/8a8669a1cbc94e495bda921cbf7c5add910fc543), [CI main PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37133455089), 67/13/9 тестов; `docs/T01-T02-verification.md` |
-| T03 | Жизненный цикл и журнал наряда | TODO | B | T02 | Не назначен |
+| T03 | Жизненный цикл и журнал наряда | REVIEW | B | T02 | B / Codex; `codex/t03-work-order-lifecycle`, [PR №4](https://github.com/Ak1tava/QostHubHack/pull/4); `28e983a`, [CI PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37138037026); `docs/T03-verification.md`; ожидает интеграции |
 | T04 | Создание наряда и панель мастера | TODO | A | T02, T03 | Не назначен |
 | T05 | Исполнение, фото и материалы | TODO | A + B | T03 | Не назначен |
 | T06 | Telegram, сроки и эскалации | TODO | B | T03 | Не назначен |
@@ -111,6 +111,12 @@
 - Для действий: `Idempotency-Key` плюс `expected_version`; первый запрос атомарно сохраняет изменение, событие и outbox. Повтор возвращает тот же результат; тот же ключ с другим телом — 409; устаревшая версия — 409. Ошибки: 401 без входа, 403 для запретного действия, 404 для недоступного чужого объекта, 422 для невалидного ввода.
 - WebSocket `/api/v1/events` авторизуется сессией и отдаёт только разрешённые события: `event_id`, `type`, `work_order_id`, `version`, `occurred_at`. После переподключения клиент перечитывает актуальные данные через API; события служат сигналом обновления.
 - `WorkOrderView` содержит поля WorkOrder, is_overdue и allowed_actions; подробная карточка дополнительно содержит events и текущую submission. `PhotoView`: id, work_order_id, type, received_at, read_url (защищённый маршрут API). `SubmissionView`: поля Submission, id и missing_evidence. Эти схемы определяются в указанных в T02/T05 Pydantic-модулях; фронтенд не ведёт независимые копии типов.
+
+**Уточнение T03 для T04–T07:** создание возвращает 201, действие — 200; оба требуют `Idempotency-Key` (1–128 символов). Ключ уникален для пользователя среди команд нарядов; повтор тела/маршрута возвращает сохранённый ответ после проверки текущего доступа, иное тело/маршрут — 409. Неуспешная команда ключ не занимает. Список — `{items,total,offset,limit}`, offset=0, limit=50 (максимум 200), сортировка created_at DESC/id; фильтр assignee_id включает ответственного бригады. `WorkOrderView.queue_position` — позиция очереди исполнителя, постановка добавляет в конец; позиции могут иметь пропуски.
+
+HTTP `/actions` принимает только accept/queue/reject/reassign/start/pause/resume/restart/cancel/reprioritize. T05/T07 вызывают `work_orders.internal.apply_internal(db, order_id, command, actor=...)` внутри собственной транзакции: создают Submission/AIReview/MasterDecision, вызывают ядро, затем один commit либо rollback. Ядро делает только flush; служебный actor=None разрешён только для begin_review/request_rework, не для закрытия. `InternalActionCommand` требует expected_version, assignment_version и submission_id; решение мастера/результат ИИ передаются через decision_id/review_id и проверяются по сохранённым данным. На HTTP эта схема не публикуется. SubmissionView.fault_code_id соответствует существующему Submission.work_code_id; missing_evidence вычисляется сервером. `allowed_actions` пока содержит только подключённые публичные команды.
+
+Outbox T03: одна запись на event_id, тип `work_order.<action>`, payload `{event_id,type,work_order_id,version,assignment_version,occurred_at}`, published_at=null. Доставка/lease/retries — T06. Интервалы `active` (IN_PROGRESS), `pause` (PAUSED), `review` (SUBMITTED/AI_REVIEW) отдельны от DowntimeInterval.
 
 #### C1.1. Python, БД и подключение модулей
 
@@ -261,11 +267,13 @@
 **Создать:** `services/api/app/modules/work_orders/{router,service,state_machine,events}.py`, `services/api/tests/test_work_order_lifecycle.py`, `services/api/tests/test_idempotency.py`; **изменить:** модели/схемы T02, миграции и OpenAPI.
 **Потребляет:** C1–C3. **Отдаёт:** `apply_action(order_id: UUID, actor: User, command: ActionCommand, key: str) -> WorkOrderView`; `ActionCommand` содержит action, expected_version, reason и поля назначения/приоритета при необходимости. Создание, список, карточка, действия, упорядоченная история; outbox записывается той же транзакцией.
 
-- [ ] Закрепить таблицу переходов C2 тестами; отдельно проверить причины отказа/паузы/отмены и запрет второго активного наряда.
-- [ ] Проверить конкуренцию: два start с одной expected_version — один успех, второй 409; повтор ключа не дублирует событие; бывший исполнитель после переназначения получает отказ.
-- [ ] Реализовать атомарный переход с проверкой роли и версии; хранить before/after, автора и время. Очередь имеет явный порядок; отвергнутый наряд можно переназначить без потери истории.
-- [ ] Выполнить `uv run pytest tests/test_work_order_lifecycle.py tests/test_idempotency.py tests/test_authz.py -q`; добавить матрицу разрешённых переходов в результат проверки.
-- [ ] Обновить контракт и план, создать коммит `feat: implement work order lifecycle and audit trail`.
+- [x] Закрепить таблицу переходов C2 тестами; отдельно проверить причины отказа/паузы/отмены и запрет второго активного наряда. Результат: `docs/T03-verification.md`.
+- [x] Проверить конкуренцию: два start с одной expected_version — один успех, второй 409; повтор ключа не дублирует событие; бывший исполнитель после переназначения получает отказ. PostgreSQL CI PASS, `28e983a`.
+- [x] Реализовать атомарный переход с проверкой роли и версии; хранить before/after, автора и время. Очередь имеет явный порядок; отвергнутый наряд можно переназначить без потери истории. Код: `services/api/app/modules/work_orders/`.
+- [x] Выполнить `uv run pytest tests/test_work_order_lifecycle.py tests/test_idempotency.py tests/test_authz.py -q`; добавить матрицу разрешённых переходов в результат проверки. Целевой шаг [CI `b4b7792`](https://github.com/Ak1tava/QostHubHack/actions/runs/37138511761) PASS; матрица — `docs/T03-verification.md`.
+- [x] Обновить контракт и план, создать коммит `feat: implement work order lifecycle and audit trail`. Коммит `28e983a`, PR №4.
+
+**Передача T03:** B / Codex, `codex/t03-work-order-lifecycle`. Реализованы API нарядов, ядро C2, идемпотентность, история/интервалы/outbox, миграция 0002 и клиентские контракты. Полная PostgreSQL/Compose/браузерная проверка `28e983a` успешна; команды, матрица и ограничения — `docs/T03-verification.md`. Общие изменения подключены последовательно, зависимые T04–T07 ещё не назначены. Следующее действие — проверить актуальные Checks PR №4 и интегрировать; только после успешной проверки main переводить в DONE. Для T05/T07 применять внутренний flush-only интерфейс из уточнения C1; T06 реализует доставку outbox.
 
 ### T04. Мастер: создание и панель смены
 
@@ -361,6 +369,7 @@
 | D10 | 2026-10-03 | Sync SQLAlchemy 2 + psycopg 3; явные транзакции, серверная сессия + synchronizer CSRF | Конкретные интерфейсы и wire-форматы C1.1–C1.2; меньше инфраструктуры для CRUD MVP |
 | D11 | 2026-10-03 | T01 — инфраструктура; клиент входа A подключает при T02; контейнерная приёмка — GitHub Actions | Согласовано для завершения T01; серверной авторизации пока нет, локальный Docker не установлен |
 | D12 | 2026-10-03 | TypeScript 5.9.3 вместо 7.0.2 | `openapi-typescript 7.13.0` требует TypeScript 5; обычная установка без обхода peer dependencies, один web lock-файл |
+| D13 | 2026-10-03 | T03 реализует все переходы ядра; HTTP отчёта/проверки/приёмки остаются T05/T07 | Согласовано пользователем; внутренний вызов с сохранёнными доказательствами исключает обход приёмки через `/actions`; контракт дополнен выше |
 
 ## Внешние зависимости и вопросы, не блокирующие старт
 
