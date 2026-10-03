@@ -14,7 +14,10 @@ dist/
 *.tsbuildinfo
 playwright-report/
 test-results/
+artifacts/
 .worktrees/
+.tooling/
+.superpowers/
 .idea/
 .vscode/
 .DS_Store

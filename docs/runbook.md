@@ -1,8 +1,28 @@
-# Локальный запуск общей основы
+# Запуск и проверка Т01
 
 Нужны Python 3.12, uv и Node.js 24 с npm 12. Lock-файлы уже созданы: `services/api/uv.lock`, `apps/web/package-lock.json`. Проверенная среда: Windows, Python 3.12.14, uv 0.12.22, Node 24.19.0, npm 12.2.0. Команды ниже выполняются из корня репозитория, если не указан другой каталог.
 
-## API и web
+Для контейнерного запуска достаточно Docker с Compose v2; локальные Python/Node не нужны. До интеграции PR используйте опубликованную ветку `codex/t01-bootstrap`, а не документационную `main`.
+
+## Контейнерный запуск
+
+Скопируйте `.env.example` в корневой `.env`, только если файла ещё нет. Задайте случайный локальный `POSTGRES_PASSWORD` и `DATABASE_URL=postgresql+psycopg://qosthub:URL_ENCODED_PASSWORD@db:5432/qosthub`; в URL должен находиться тот же пароль с percent-encoding спецсимволов. Внешние токены оставьте пустыми. Не задавайте секреты через `VITE_`.
+
+```sh
+docker compose config --quiet
+docker compose up --build -d --wait --wait-timeout 120
+```
+
+Web и PWA: `http://localhost:5173`; API: `http://127.0.0.1:8000`; Swagger: `http://localhost:5173/docs`; `/health/live` → 200 `{"status":"ok"}`; `/health/ready` → 200 `{"status":"ready"}`. Неверная/недоступная БД → 503 `{"status":"not_ready"}`, liveness остаётся доступен. Nginx сохраняет общий browser origin, cookie и Origin; API/БД опубликованы только на loopback.
+
+```sh
+docker compose logs --tail 100
+docker compose down
+```
+
+Обычный `down` сохраняет volumes PostgreSQL и приватных фото; фото не раздаются Nginx. Миграций приложения в Т01 нет: T02 добавит отдельную команду Alembic, startup её автоматически не выполняет. Worker добавляется в T06.
+
+## Нативная разработка API и web
 
 `.env` необязателен. При необходимости скопируйте `.env.example` в `.env` в **корне репозитория**, не перезаписывая существующий файл; секреты и `DATABASE_URL` для запуска основы оставьте пустыми. Настройки читаются через `from app.core.config import settings`, переменные окружения имеют приоритет. Ключи никогда не задавать с префиксом `VITE_`: такие значения попадают в браузер.
 
@@ -14,7 +34,7 @@ uv sync --locked
 uv run --locked uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-API: `http://127.0.0.1:8000`; Swagger: `/docs`; OpenAPI: `/openapi.json`; `GET /health/live` → `200 {"status":"ok"}`. Для разработки можно добавить `--reload`. БД и Telegram/OpenAI не используются при старте. `/health/ready` ещё отсутствует (404), доступность БД пока не проверяется.
+API: `http://127.0.0.1:8000`; Swagger: `/docs`; OpenAPI: `/openapi.json`; `GET /health/live` → `200 {"status":"ok"}`. Для разработки можно добавить `--reload`. Импорт/startup не подключается к БД. Без `DATABASE_URL` readiness возвращает 503; для локальной PostgreSQL URL должен использовать `localhost`, а не Compose-host `db`.
 
 Терминал 2, из корня:
 
@@ -23,7 +43,7 @@ npm --prefix apps/web ci
 npm --prefix apps/web run dev
 ```
 
-Откройте `http://localhost:5173`. Vite слушает loopback, порт фиксирован (`strictPort`). Пути `/api` и `/health` проксируются в API на `127.0.0.1:8000`; browser origin остаётся `http://localhost:5173`, как в `PUBLIC_BASE_URL`. API-запросы frontend должны использовать относительные URL. При выборе другого browser origin обновите `PUBLIC_BASE_URL` перед реализацией входа. В production единый origin обеспечит reverse proxy из T01.
+Откройте `http://localhost:5173`. Vite слушает loopback, порт фиксирован (`strictPort`). API, health, Swagger и OpenAPI проксируются в `127.0.0.1:8000`; browser origin остаётся `http://localhost:5173`, как в `PUBLIC_BASE_URL`. Frontend использует относительные URL. При выборе другого browser origin обновите `PUBLIC_BASE_URL`. В контейнерах общий origin обеспечивает Nginx.
 
 Проверка сборки:
 
@@ -34,18 +54,58 @@ npm --prefix apps/web run build
 
 Результат сборки — `apps/web/dist`, он исключён из Git. `npm --prefix apps/web run preview` предназначен только для просмотра сборки, не заменяет будущий production reverse proxy. Остановка обоих серверов — `Ctrl+C` в каждом терминале.
 
-## Что есть и что делать дальше
+## Контракты, PWA и тесты
 
-- Созданы API `app.main:app`, конфигурация, liveness с Pydantic-схемой, runtime OpenAPI, минимальный React/TypeScript/Vite, lock-файлы, `.env.example` и `.gitignore`.
-- A (инициатор) продолжает T01: Dockerfile/Compose, `/health/ready` с настоящей проверкой БД (200/503), экспорт OpenAPI, генерацию TS, Vitest/Playwright/PWA и запуск с чистого клона другим участником. **LoginPage и вся клиентская авторизация тоже принадлежат A**; они не реализованы в основе.
+- Источник контрактов — реальные серверные Pydantic-схемы и подключённые routers. Генерируемые файлы вручную не исправляются; экспорт работает без БД и внешних токенов.
+- PWA кеширует статическую оболочку. API/health/документация работают только по сети; полноценная offline-синхронизация не реализована. Новая версия применяется после подтверждения пользователя. Service worker включён в production-сборке, а не в `npm run dev`; для установки на телефон требуется HTTPS (localhost — исключение).
+- TypeScript 5.9.3 совместим с openapi-typescript 7.13.0. Vitest 5.0.3, jsdom 28.1.0 и Playwright 1.63.0 закреплены в lock-файле. Корневые e2e используют отдельный tsconfig для разрешения пакетов из `apps/web`.
 - B может сразу начать T02 от опубликованной основы: `db.py`, `security.py`, модели, миграции, серверные сессии/CSRF, права и справочники. SQLAlchemy, psycopg и Alembic уже установлены; дополнительные зависимости запрашиваются у A. БД/модели/миграции/auth-модули в этой подготовке не создавались.
 - Не пересоздавать `main.py`, `config.py`, manifest/lock-файлы, web и инструкции. A — единственный ответственный за эти общие файлы, Compose и генерируемые контракты. B передаёт A импорты готовых routers, требования пакетов и настроек; A вносит отдельный коммит, B подтягивает его.
 
 Точные договорённости — [C1 в plans.md](../plans.md#c1-данные-авторизация-и-api): sync SQLAlchemy + `postgresql+psycopg://...`; будущие `Base`/`get_db`, Session на запрос и явный commit сервисом; `router` из каждого модуля, единственный `/api/v1` в main. Серверная HttpOnly cookie сохранена; согласованы JSON входа/выхода/me, единая ошибка и CSRF через `/auth/csrf` и `X-CSRF-Token`. Серверные Pydantic-схемы — источник OpenAPI, клиентские типы будут генерироваться A. Эти интерфейсы **не заменены фиктивными реализациями**. Третий участник подключается позже.
 
-Экспорт `uv run python -m app.export_openapi`, `generate:api`, `test`, `test:e2e`, Compose и команды миграций **пока не существуют**. T01 — IN_PROGRESS, T02 — TODO, общая основа — REVIEW до интеграции.
+Из `services/api`:
 
-## Фактические проверки 2026-10-03
+```sh
+uv run --locked pytest -q
+uv run --locked python -m app.export_openapi
+```
+
+Из корня:
+
+```sh
+npm --prefix apps/web run generate:api
+npm --prefix apps/web run typecheck
+npm --prefix apps/web run test -- --run
+npm --prefix apps/web run build
+npm --prefix apps/web exec -- playwright install chromium
+npm --prefix apps/web run test:e2e
+```
+
+Перед e2e запустите Compose либо API и `npm --prefix apps/web run preview -- --host 127.0.0.1 --port 5173 --strictPort`. E2E_BASE_URL позволяет указать другой адрес. Клиент входа, API-клиент сессии и авторизация выполняются при интеграции T02 по C1.2.
+
+## Фактические локальные проверки Т01 — 2026-10-03
+
+| Команда / проверка | Результат |
+| --- | --- |
+| `uv run --locked pytest -q` из `services/api` | PASS: 8 тестов; первоначально 7 отказов на отсутствующих readiness/export, затем 8/8 |
+| Экспорт OpenAPI без доступной БД | PASS: стабильный JSON, совпадает с runtime; ответы readiness 200/503 |
+| `npm --prefix apps/web run generate:api` | PASS: TypeScript сгенерирован из OpenAPI |
+| `npm --prefix apps/web run typecheck` | PASS: приложение, тестовые настройки и корневые e2e |
+| `npm --prefix apps/web run test -- --run` | PASS: 3 теста подтверждения, откладывания и ошибки обновления PWA |
+| `npm --prefix apps/web run build` | PASS: Vite/PWA; manifest, service worker и 11 precache entries |
+| `npm --prefix apps/web run test:e2e` | PASS: 3 Chromium-теста на production preview + реальном API; БД отсутствовала, readiness 503 |
+| `npm --prefix apps/web audit --json` | PASS: 0 известных уязвимостей |
+
+Docker локально отсутствует; реальный PostgreSQL и Nginx локальной проверкой не подтверждены. Нативный HTTPS Git работает через существующий credential helper; недействительный токен `gh` не заменялся. npm/uv/Chromium установлены только в игнорируемую `.tooling` этой рабочей копии.
+
+## Контейнерная приёмка GitHub Actions
+
+Workflow `T01 bootstrap acceptance` использует чистый checkout, locked install, проверку дрейфа контрактов, pytest/Vitest/build и production Compose. `infra/verify_stack.py` в одноразовом CI-окружении проверяет настоящий SELECT 1, остановку/восстановление БД, неизменность PostgreSQL-кластера и сохранность приватного файлового volume после `down`/`up`. Скрипт требует `CI=true` и не предназначен для работающего стенда.
+
+Playwright затем проверяет Nginx proxy и offline-границы настоящего service worker. При сбое сохраняются очищенные от значений секретов Compose-логи и браузерные артефакты на 7 дней. Завершение job удаляет только одноразовые CI-volumes. Результат контейнерного CI пока ожидается; статус Т01 определяется только `plans.md`.
+
+## Исторические проверки общей основы — 2026-10-03
 
 Исходный Git: `main...origin/main`, рабочее дерево чистое; последние коммиты `f2af222`, `4f2f901`, `d6beddd` (всего 3). Ветка проверки — `chore/parallel-foundation`, созданная от `f2af222`; итоговый SHA подготовки: `git log -1 --format=%H` в этой ветке. SSH clone не прошёл проверку host key; HTTPS clone успешен. Исходная копия документации вне этого клона не менялась.
 
@@ -83,7 +143,7 @@ $env:TELEGRAM_BOT_TOKEN = ''
 
 Docker/БД/миграции, функциональный вход и e2e **не проверялись и не реализованы**. Это не приёмка T01/T02 и не независимая проверка другим участником с чистого клона.
 
-## Как передать основу обоим участникам
+## Историческая передача общей основы
 
 Эти команды предназначены для владельца; агент push/merge не выполнял. В данном клоне:
 
@@ -96,7 +156,7 @@ git push -u origin chore/parallel-foundation
 ```sh
 git fetch origin
 # A:
-git switch -c feat/T01-bootstrap origin/chore/parallel-foundation
+git switch -c codex/t01-bootstrap origin/chore/parallel-foundation
 # B (в другом клоне):
 git switch -c feat/T02-data-auth origin/chore/parallel-foundation
 ```

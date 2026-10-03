@@ -14,3 +14,20 @@ main {
   margin: 4rem auto;
   padding: 1.5rem;
 }
+
+button {
+  min-height: 44px;
+  padding: 0.6rem 1rem;
+  margin: 0.25rem;
+  border: 1px solid #183038;
+  border-radius: 0.4rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.update-notice {
+  padding: 1rem;
+  border: 1px solid #183038;
+  border-radius: 0.5rem;
+  background: white;
+}
