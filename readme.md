@@ -131,7 +131,7 @@ compose.yaml                     # воспроизводимый запуск �
 3. Выбрать доступную задачу, указать владельца и ветку в плане, затем читать только её контракты и зависимости.
 4. Внести код и подтверждение проверки; обновить статус и следующую точку продолжения в том же PR.
 
-Контейнерный запуск и нативная разработка описаны в [docs/runbook.md](docs/runbook.md). Для Compose заполните локальные `POSTGRES_PASSWORD` и `DATABASE_URL` в `.env`, затем выполните `docker compose up --build -d --wait`. Web: `http://localhost:5173`; API: `http://127.0.0.1:8000`. Внешние токены для T01 не нужны. Миграции, авторизация и рабочие экраны реализуются следующими задачами; разделение T01/T02 — в [plans.md](plans.md#task-registry).
+Контейнерный запуск и нативная разработка описаны в [docs/runbook.md](docs/runbook.md). Для Compose заполните локальные `POSTGRES_PASSWORD` и `DATABASE_URL` к `qosthub_demo` в `.env`, затем выполните `docker compose up --build -d --wait`: отдельный migration-service подготовит схему до запуска API. Создайте аккаунты командой `docker compose exec api .venv/bin/python -m app.modules.auth.demo --confirm-demo`. Web: `http://localhost:5173`; API: `http://127.0.0.1:8000`. Реализованы серверные сессии/CSRF, права, справочники/смена и клиентский вход/выход; внешние токены необязательны. Статусы и следующие задачи — в [plans.md](plans.md#task-registry).
 
 ## Ограничения и качество
 

@@ -6,7 +6,6 @@ import os
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.engine import make_url
@@ -95,23 +94,19 @@ def database():
 def app(database, monkeypatch):
     from app.core.config import settings
     from app.core.db import get_db
-    from app.modules.auth.router import register_auth_handlers, router
-    from app.modules.catalog.router import router as catalog_router
-    from app.modules.catalog.router import shift_router
+    from app.main import app
 
     monkeypatch.setattr(settings, "public_base_url", "http://localhost:5173")
     monkeypatch.setattr(settings, "session_cookie_secure", False)
-    app = FastAPI()
-    register_auth_handlers(app)
-    app.include_router(router, prefix="/api/v1")
-    app.include_router(catalog_router, prefix="/api/v1")
-    app.include_router(shift_router, prefix="/api/v1")
 
     def db_override():
         yield database["session"]
 
     app.dependency_overrides[get_db] = db_override
-    return app
+    try:
+        yield app
+    finally:
+        app.dependency_overrides.clear()
 
 
 @pytest.fixture

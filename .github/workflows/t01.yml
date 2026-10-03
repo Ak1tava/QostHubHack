@@ -1,4 +1,4 @@
-name: T01 bootstrap acceptance
+name: T01-T02 integration acceptance
 
 on:
   push:
@@ -11,13 +11,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: t01-${{ github.workflow }}-${{ github.ref }}
+  group: acceptance-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   acceptance:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
@@ -40,12 +40,42 @@ jobs:
       - name: Install locked API dependencies
         working-directory: services/api
         run: uv sync --locked
-      - name: API behavior and schema export
-        working-directory: services/api
+      - name: Prepare disposable database and browser credentials
+        id: prepare_env
+        shell: python
         run: |
-          uv run --locked pytest -q
-          uv run --locked python -m app.export_openapi
-      - name: Contract drift, unit tests and production build
+          from pathlib import Path
+          import os, secrets
+          password = secrets.token_urlsafe(32)
+          pin = '00' + secrets.token_urlsafe(20)
+          print(f'::add-mask::{password}')
+          print(f'::add-mask::{pin}')
+          Path('.env').write_text(
+              f'POSTGRES_PASSWORD={password}\n'
+              f'DATABASE_URL=postgresql+psycopg://qosthub:{password}@db:5432/qosthub_demo\n'
+              'PUBLIC_BASE_URL=http://localhost:5173\nAPP_TIMEZONE=Asia/Qostanay\n'
+              'SESSION_SECRET=\nTELEGRAM_BOT_TOKEN=\nTELEGRAM_WEBHOOK_SECRET=\n'
+              'OPENAI_API_KEY=\nAI_MODEL=\nSESSION_COOKIE_SECURE=false\n', encoding='utf-8',
+          )
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as env:
+              for key, name in [('TEST_DATABASE_URL', 'qosthub_test_ci'), ('MIGRATION_TEST_DATABASE_URL', 'qosthub_migration_test_ci')]:
+                  url = f'postgresql+psycopg://qosthub:{password}@127.0.0.1:5432/{name}'
+                  print(f'::add-mask::{url}')
+                  env.write(f'{key}={url}\n')
+              env.write(f'E2E_LOGIN=e2e-worker\nE2E_PASSWORD={pin}\n')
+      - name: Create isolated test databases before pytest
+        run: |
+          docker compose config --quiet
+          docker compose up -d --wait db
+          docker compose exec -T db createdb -U qosthub qosthub_test_ci
+          docker compose exec -T db createdb -U qosthub qosthub_migration_test_ci
+      - name: All API behavior and empty-database migration roundtrip
+        working-directory: services/api
+        run: uv run --locked pytest -q
+      - name: Export OpenAPI without a database
+        working-directory: services/api
+        run: DATABASE_URL=invalid-url uv run --locked python -m app.export_openapi
+      - name: Contract drift, Vitest, typecheck and production build
         run: |
           npm --prefix apps/web run generate:api
           git diff --exit-code -- packages/contracts
@@ -53,29 +83,18 @@ jobs:
           npm --prefix apps/web run build
       - name: Install Chromium
         run: npm --prefix apps/web exec -- playwright install --with-deps chromium
-      - name: Prepare disposable local database credentials
-        id: prepare_env
-        shell: python
-        run: |
-          from pathlib import Path
-          import secrets
-          password = secrets.token_urlsafe(32)
-          Path('.env').write_text(
-              f'POSTGRES_PASSWORD={password}\n'
-              f'DATABASE_URL=postgresql+psycopg://qosthub:{password}@db:5432/qosthub\n'
-              'PUBLIC_BASE_URL=http://localhost:5173\n'
-              'APP_TIMEZONE=Asia/Qostanay\n'
-              'SESSION_SECRET=\nTELEGRAM_BOT_TOKEN=\nTELEGRAM_WEBHOOK_SECRET=\n'
-              'OPENAI_API_KEY=\nAI_MODEL=\nSESSION_COOKIE_SECURE=false\n',
-              encoding='utf-8',
-          )
-      - name: Validate and start Compose
+      - name: Build and start production stack with migration service
         run: |
           docker compose config --quiet
           docker compose up --build -d --wait --wait-timeout 120
-      - name: Real PostgreSQL, recovery and persistent volumes
+          docker compose exec -T api .venv/bin/alembic check
+      - name: Seed synthetic browser accounts
+        run: services/api/.venv/bin/python infra/seed_acceptance.py
+      - name: Nginx IP isolation and spoof rejection
+        run: python infra/verify_proxy.py
+      - name: Real PostgreSQL, recovery and persistent data/photos
         run: python infra/verify_stack.py
-      - name: Browser and offline acceptance
+      - name: Production browser auth and PWA acceptance
         run: npm --prefix apps/web run test:e2e
       - name: Collect sanitized diagnostics
         if: failure()
@@ -84,7 +103,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: t01-failure-evidence
+          name: integration-failure-evidence
           path: |
             artifacts/
             apps/web/playwright-report/

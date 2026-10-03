@@ -46,7 +46,9 @@ def main() -> None:
         raise SystemExit("This command restarts the disposable CI stack; CI=true is required")
     wait_ready(200)
     assert health(WEB, "/health/ready") == (200, {"status": "ready"})
-    cluster = compose("exec", "-T", "db", "psql", "-U", "qosthub", "-d", "qosthub", "-Atc", "SELECT system_identifier FROM pg_control_system()")
+    cluster = compose("exec", "-T", "db", "psql", "-U", "qosthub", "-d", "qosthub_demo", "-Atc", "SELECT system_identifier FROM pg_control_system()")
+    users = compose("exec", "-T", "db", "psql", "-U", "qosthub", "-d", "qosthub_demo", "-Atc", "SELECT count(*) FROM users")
+    assert int(users) > 0, "Acceptance accounts were not seeded"
     marker = secrets.token_hex(16)
     python = "/workspace/services/api/.venv/bin/python"
     compose("exec", "-T", "api", python, "-c", "import sys; from pathlib import Path; Path('/workspace/data/photos/t01-probe.txt').write_text(sys.argv[1])", marker)
@@ -60,8 +62,9 @@ def main() -> None:
     compose("down")
     compose("up", "-d", "--wait", "--wait-timeout", "120")
     wait_ready(200)
-    restored_cluster = compose("exec", "-T", "db", "psql", "-U", "qosthub", "-d", "qosthub", "-Atc", "SELECT system_identifier FROM pg_control_system()")
+    restored_cluster = compose("exec", "-T", "db", "psql", "-U", "qosthub", "-d", "qosthub_demo", "-Atc", "SELECT system_identifier FROM pg_control_system()")
     assert restored_cluster == cluster, "PostgreSQL volume was reinitialized"
+    assert compose("exec", "-T", "db", "psql", "-U", "qosthub", "-d", "qosthub_demo", "-Atc", "SELECT count(*) FROM users") == users, "Account data did not persist"
     restored_marker = compose("exec", "-T", "api", python, "-c", "from pathlib import Path; print(Path('/workspace/data/photos/t01-probe.txt').read_text())")
     assert restored_marker == marker, "Photo volume did not persist"
     compose("exec", "-T", "api", python, "-c", "from pathlib import Path; Path('/workspace/data/photos/t01-probe.txt').unlink()")

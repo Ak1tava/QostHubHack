@@ -1,12 +1,12 @@
-# Запуск и проверка Т01
+# Запуск и проверка Т01–Т02
 
 Нужны Python 3.12, uv и Node.js 24 с npm 12. Lock-файлы уже созданы: `services/api/uv.lock`, `apps/web/package-lock.json`. Проверенная среда: Windows, Python 3.12.14, uv 0.12.22, Node 24.19.0, npm 12.2.0. Команды ниже выполняются из корня репозитория, если не указан другой каталог.
 
-Для контейнерного запуска достаточно Docker с Compose v2; локальные Python/Node не нужны. До интеграции PR используйте опубликованную ветку `codex/t01-bootstrap`, а не документационную `main`.
+Для контейнерного запуска достаточно Docker с Compose v2; локальные Python/Node не нужны. Интеграционная ветка — `codex/t01-t02-integration`; после слияния используйте `main`.
 
 ## Контейнерный запуск
 
-Скопируйте `.env.example` в корневой `.env`, только если файла ещё нет. Задайте случайный локальный `POSTGRES_PASSWORD` и `DATABASE_URL=postgresql+psycopg://qosthub:URL_ENCODED_PASSWORD@db:5432/qosthub`; в URL должен находиться тот же пароль с percent-encoding спецсимволов. Внешние токены оставьте пустыми. Не задавайте секреты через `VITE_`.
+Скопируйте `.env.example` в корневой `.env`, только если файла ещё нет. Задайте случайный локальный `POSTGRES_PASSWORD` и `DATABASE_URL=postgresql+psycopg://qosthub:URL_ENCODED_PASSWORD@db:5432/qosthub_demo`; в URL должен находиться тот же пароль с percent-encoding спецсимволов. Внешние токены оставьте пустыми. Не задавайте секреты через `VITE_`.
 
 ```sh
 docker compose config --quiet
@@ -20,7 +20,13 @@ docker compose logs --tail 100
 docker compose down
 ```
 
-Обычный `down` сохраняет volumes PostgreSQL и приватных фото; фото не раздаются Nginx. Миграций приложения в Т01 нет: T02 добавит отдельную команду Alembic, startup её автоматически не выполняет. Worker добавляется в T06.
+Обычный `down` сохраняет volumes PostgreSQL и приватных фото; фото не раздаются Nginx. Отдельный сервис `migrate` выполняет `alembic upgrade head` после готовности PostgreSQL; API запускается после успешного завершения этого сервиса. Импорт и lifespan приложения не выполняют миграции. Повторный явный запуск: `docker compose run --rm migrate`; проверка схемы: `docker compose exec api .venv/bin/alembic check`. Worker добавляется в T06.
+
+Если volume уже создавался для базы `qosthub`, изменение `POSTGRES_DB` не создаст новую базу автоматически. Запустите `docker compose up -d --wait db`, затем `docker compose exec db createdb -U qosthub qosthub_demo` один раз и повторите общий запуск. Существующая база и её данные сохраняются; `down --volumes` применяется только к одноразовой CI-среде.
+
+Nginx перезаписывает входящие `X-Forwarded-For`/`X-Real-IP` адресом соединения. Uvicorn доверяет только Nginx `172.30.42.10`, а не всей сети или `*`; прямое обращение к API не позволяет подменить IP. Compose использует сеть `172.30.42.0/24`; при конфликте с вашей сетью согласованно измените subnet, адрес web и `FORWARDED_ALLOW_IPS` в Compose.
+
+Создайте локальные аккаунты: `docker compose exec api .venv/bin/python -m app.modules.auth.demo --confirm-demo`. Команда интерактивно спрашивает два пароля, создаёт `demo-master`/`demo-worker`, участок, бригаду и смену; существующие аккаунты не перезаписываются. Она разрешена только для локальных `qosthub_demo*`/`qosthub_test*`. В web доступны вход и выход; ПИН вводится строкой. Серверные проверки прав, CSRF/Origin, ротация и отзыв сессии действуют на реальных маршрутах.
 
 ## Нативная разработка API и web
 
@@ -31,10 +37,12 @@ docker compose down
 ```sh
 cd services/api
 uv sync --locked
-uv run --locked uvicorn app.main:app --host 127.0.0.1 --port 8000
+uv run --locked uvicorn app.main:app --host 127.0.0.1 --port 8000 --no-proxy-headers
 ```
 
 API: `http://127.0.0.1:8000`; Swagger: `/docs`; OpenAPI: `/openapi.json`; `GET /health/live` → `200 {"status":"ok"}`. Для разработки можно добавить `--reload`. Импорт/startup не подключается к БД. Без `DATABASE_URL` readiness возвращает 503; для локальной PostgreSQL URL должен использовать `localhost`, а не Compose-host `db`.
+
+Для входа задайте локальный PostgreSQL URL с базой `qosthub_demo`, выполните из `services/api` команды `uv run --locked alembic upgrade head`, `uv run --locked alembic check`, `uv run --locked python -m app.modules.auth.demo --confirm-demo`. На локальном HTTP используйте `SESSION_COOKIE_SECURE=false`, на HTTPS cookie всегда Secure. `SESSION_SECRET` для непрозрачных сессий не используется.
 
 Терминал 2, из корня:
 
@@ -52,7 +60,7 @@ npm --prefix apps/web run typecheck
 npm --prefix apps/web run build
 ```
 
-Результат сборки — `apps/web/dist`, он исключён из Git. `npm --prefix apps/web run preview` предназначен только для просмотра сборки, не заменяет будущий production reverse proxy. Остановка обоих серверов — `Ctrl+C` в каждом терминале.
+Результат сборки — `apps/web/dist`, он исключён из Git. `npm --prefix apps/web run preview` предназначен только для просмотра сборки; production web и API запускаются через Nginx в Compose. Остановка обоих серверов — `Ctrl+C` в каждом терминале.
 
 ## Контракты, PWA и тесты
 
@@ -83,6 +91,14 @@ npm --prefix apps/web run test:e2e
 ```
 
 Перед e2e запустите Compose либо API и `npm --prefix apps/web run preview -- --host 127.0.0.1 --port 5173 --strictPort`. E2E_BASE_URL позволяет указать другой адрес. Клиент входа, API-клиент сессии и авторизация выполняются при интеграции T02 по C1.2.
+
+## Приёмка интеграции Т01–Т02
+
+Перед `uv run --locked pytest -q` создайте **две отдельные одноразовые** PostgreSQL-базы: `qosthub_test_ci` и `qosthub_migration_test_ci`. Задайте `TEST_DATABASE_URL` и `MIGRATION_TEST_DATABASE_URL` через окружение с этими именами; рабочий `DATABASE_URL` к fixtures не относится. Тесты удаляют/создают таблицы в первой базе, делают upgrade/check/downgrade/upgrade во второй. Запрещено направлять их в базу приложения; защитные проверки имён выполняются самими тестами.
+
+CI создаёт эти базы до pytest, проверяет все серверные тесты на настоящем `app.main`, экспорт без БД и отсутствие diff при повторной генерации, Vitest/typecheck/build, образы и migration-service. Затем выполняет `alembic check`, `infra/verify_proxy.py` (раздельные IP-лимиты и отказ подмены через Nginx/прямой API), `infra/verify_stack.py` (отказ/восстановление БД, сохранность аккаунтов и фотохранилища) и Playwright через production Nginx. Браузерные аккаунты синтетические; пароли создаются в CI и маскируются. Auth-трейсы отключены, чтобы cookie и тела запросов не попадали в артефакты.
+
+Фактические результаты интеграции — [T01-T02-verification.md](T01-T02-verification.md). Исторические проверки ниже относятся к указанным коммитам Т01/общей основы. Подтверждение другого участника с чистого клона интегрированного `main` остаётся отдельным критерием T01; CI его не заменяет.
 
 ## Фактические локальные проверки Т01 — 2026-10-03
 
