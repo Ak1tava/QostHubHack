@@ -34,7 +34,8 @@ def register_auth_handlers(app: FastAPI) -> None:
         )
 
     async def validation_error(request: Request, exc: RequestValidationError):
-        if not request.url.path.startswith("/api/v1/auth/"):
+        if not (request.url.path.startswith("/api/v1/auth/") or
+                request.url.path.startswith("/api/v1/work-orders")):
             return await request_validation_exception_handler(request, exc)
         details = [
             {

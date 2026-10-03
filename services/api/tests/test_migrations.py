@@ -1,14 +1,17 @@
 """Upgrade/downgrade only in an explicitly dedicated migration database."""
 
 import os
+from datetime import datetime, timezone
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 from alembic import command
 from alembic.autogenerate import compare_metadata
 from alembic.config import Config
 from alembic.migration import MigrationContext
-from sqlalchemy import create_engine, inspect, text
+from alembic.script import ScriptDirectory
+from sqlalchemy import create_engine, inspect, select, text
 from sqlalchemy.engine import make_url
 
 
@@ -39,11 +42,31 @@ def test_empty_postgres_migration_roundtrip():
             config.attributes["connection"] = connection
             command.downgrade(config, "base")
             assert set(inspect(connection).get_table_names()) <= {"alembic_version"}
+            command.upgrade(config, "0001")
+            user_id, area_id, equipment_id = uuid4(), uuid4(), uuid4()
+            connection.execute(auth_models.User.__table__.insert().values(
+                id=user_id, login="migration-worker", password_hash="not-a-real-hash",
+                display_name="Migration fixture", role="worker",
+            ))
+            connection.execute(catalog_models.Area.__table__.insert().values(
+                id=area_id, name="Migration area",
+            ))
+            connection.execute(catalog_models.Equipment.__table__.insert().values(
+                id=equipment_id, area_id=area_id, name="Migration equipment",
+            ))
+            for number in ["W001", "WO-000041"]:
+                connection.execute(models.WorkOrder.__table__.insert().values(
+                    number=number, work_type="planned", description="Migration fixture",
+                    area_id=area_id, equipment_id=equipment_id,
+                    master_id=user_id, assignee_id=user_id,
+                    due_at=datetime.now(timezone.utc),
+                ))
             command.upgrade(config, "head")
             assert (
                 connection.scalar(text("SELECT version_num FROM alembic_version"))
-                == "0001"
+                == ScriptDirectory.from_config(config).get_current_head()
             )
+            assert connection.scalar(select(models.ORDER_NUMBER_SEQUENCE.next_value())) == 42
             assert set(Base.metadata.tables) <= set(
                 inspect(connection).get_table_names()
             )
@@ -53,6 +76,7 @@ def test_empty_postgres_migration_roundtrip():
             )
             command.downgrade(config, "base")
             assert set(inspect(connection).get_table_names()) <= {"alembic_version"}
+            assert "work_order_number_seq" not in inspect(connection).get_sequence_names()
             command.upgrade(config, "head")
     finally:
         engine.dispose()

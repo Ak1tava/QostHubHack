@@ -32,7 +32,7 @@
 | T00 | Документация и точка входа | DONE | Все | — | `readme.md`, `plans.md`, `AGENTS.md`; подтверждает документацию |
 | T01 | Запуск каркаса и базовые контракты | DONE | A | T00 | A / Codex; main, [PR №2](https://github.com/Ak1tava/QostHubHack/pull/2), [CI main PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37133455089); критерий второго участника снят пользователем 2026-10-03; `docs/T01-T02-verification.md` |
 | T02 | Схема БД, вход и разграничение доступа | DONE | B + A | Общая основа T01 + C1; полная T01 не блокирует старт | Богдан / Codex — сервер `4ce5aca`; A / Codex — интеграция/клиент; main [8a8669a](https://github.com/Ak1tava/QostHubHack/commit/8a8669a1cbc94e495bda921cbf7c5add910fc543), [CI main PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37133455089), 67/13/9 тестов; `docs/T01-T02-verification.md` |
-| T03 | Жизненный цикл и журнал наряда | TODO | B | T02 | Не назначен |
+| T03 | Жизненный цикл и журнал наряда | IN_PROGRESS | B | T02 | B / Codex; `codex/t03-work-order-lifecycle`; API, переходы, журнал и outbox; проверка в работе |
 | T04 | Создание наряда и панель мастера | TODO | A | T02, T03 | Не назначен |
 | T05 | Исполнение, фото и материалы | TODO | A + B | T03 | Не назначен |
 | T06 | Telegram, сроки и эскалации | TODO | B | T03 | Не назначен |
@@ -111,6 +111,12 @@
 - Для действий: `Idempotency-Key` плюс `expected_version`; первый запрос атомарно сохраняет изменение, событие и outbox. Повтор возвращает тот же результат; тот же ключ с другим телом — 409; устаревшая версия — 409. Ошибки: 401 без входа, 403 для запретного действия, 404 для недоступного чужого объекта, 422 для невалидного ввода.
 - WebSocket `/api/v1/events` авторизуется сессией и отдаёт только разрешённые события: `event_id`, `type`, `work_order_id`, `version`, `occurred_at`. После переподключения клиент перечитывает актуальные данные через API; события служат сигналом обновления.
 - `WorkOrderView` содержит поля WorkOrder, is_overdue и allowed_actions; подробная карточка дополнительно содержит events и текущую submission. `PhotoView`: id, work_order_id, type, received_at, read_url (защищённый маршрут API). `SubmissionView`: поля Submission, id и missing_evidence. Эти схемы определяются в указанных в T02/T05 Pydantic-модулях; фронтенд не ведёт независимые копии типов.
+
+**Уточнение T03 для T04–T07:** создание возвращает 201, действие — 200; оба требуют `Idempotency-Key` (1–128 символов). Ключ уникален для пользователя среди команд нарядов; повтор тела/маршрута возвращает сохранённый ответ после проверки текущего доступа, иное тело/маршрут — 409. Неуспешная команда ключ не занимает. Список — `{items,total,offset,limit}`, offset=0, limit=50 (максимум 200), сортировка created_at DESC/id; фильтр assignee_id включает ответственного бригады. `WorkOrderView.queue_position` — позиция очереди исполнителя, постановка добавляет в конец; позиции могут иметь пропуски.
+
+HTTP `/actions` принимает только accept/queue/reject/reassign/start/pause/resume/restart/cancel/reprioritize. T05/T07 вызывают `work_orders.internal.apply_internal(db, order_id, command, actor=...)` внутри собственной транзакции: создают Submission/AIReview/MasterDecision, вызывают ядро, затем один commit либо rollback. Ядро делает только flush; служебный actor=None разрешён только для begin_review/request_rework, не для закрытия. `InternalActionCommand` требует expected_version, assignment_version и submission_id; решение мастера/результат ИИ передаются через decision_id/review_id и проверяются по сохранённым данным. На HTTP эта схема не публикуется. SubmissionView.fault_code_id соответствует существующему Submission.work_code_id; missing_evidence вычисляется сервером. `allowed_actions` пока содержит только подключённые публичные команды.
+
+Outbox T03: одна запись на event_id, тип `work_order.<action>`, payload `{event_id,type,work_order_id,version,assignment_version,occurred_at}`, published_at=null. Доставка/lease/retries — T06. Интервалы `active` (IN_PROGRESS), `pause` (PAUSED), `review` (SUBMITTED/AI_REVIEW) отдельны от DowntimeInterval.
 
 #### C1.1. Python, БД и подключение модулей
 
@@ -361,6 +367,7 @@
 | D10 | 2026-10-03 | Sync SQLAlchemy 2 + psycopg 3; явные транзакции, серверная сессия + synchronizer CSRF | Конкретные интерфейсы и wire-форматы C1.1–C1.2; меньше инфраструктуры для CRUD MVP |
 | D11 | 2026-10-03 | T01 — инфраструктура; клиент входа A подключает при T02; контейнерная приёмка — GitHub Actions | Согласовано для завершения T01; серверной авторизации пока нет, локальный Docker не установлен |
 | D12 | 2026-10-03 | TypeScript 5.9.3 вместо 7.0.2 | `openapi-typescript 7.13.0` требует TypeScript 5; обычная установка без обхода peer dependencies, один web lock-файл |
+| D13 | 2026-10-03 | T03 реализует все переходы ядра; HTTP отчёта/проверки/приёмки остаются T05/T07 | Согласовано пользователем; внутренний вызов с сохранёнными доказательствами исключает обход приёмки через `/actions`; контракт дополнен выше |
 
 ## Внешние зависимости и вопросы, не блокирующие старт
 
