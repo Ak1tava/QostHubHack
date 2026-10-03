@@ -103,7 +103,9 @@ Docker локально отсутствует; реальный PostgreSQL и N
 
 Workflow `T01 bootstrap acceptance` использует чистый checkout, locked install, проверку дрейфа контрактов, pytest/Vitest/build и production Compose. `infra/verify_stack.py` в одноразовом CI-окружении проверяет настоящий SELECT 1, остановку/восстановление БД, неизменность PostgreSQL-кластера и сохранность приватного файлового volume после `down`/`up`. Скрипт требует `CI=true` и не предназначен для работающего стенда.
 
-Playwright затем проверяет Nginx proxy и offline-границы настоящего service worker. При сбое сохраняются очищенные от значений секретов Compose-логи и браузерные артефакты на 7 дней. Завершение job удаляет только одноразовые CI-volumes. Результат контейнерного CI пока ожидается; статус Т01 определяется только `plans.md`.
+Playwright затем проверяет Nginx proxy и offline-границы настоящего service worker. При сбое сохраняются очищенные от значений секретов Compose-логи и браузерные артефакты на 7 дней. Завершение job удаляет только одноразовые CI-volumes. Статус Т01 определяется только `plans.md`.
+
+**Фактический CI — PASS:** [run 37127545893](https://github.com/Ak1tava/QostHubHack/actions/runs/37127545893), commit `f26c44a1077a7388106be9b90e879fb6dfdf06fa`, Ubuntu 24.04. pytest 8/8, Vitest 3/3, Playwright 3/3; locked install, повторная генерация без diff, production build, Compose config/up и все контейнеры Healthy. `verify_stack.py` вывел `PASS: real SQL readiness, database outage/recovery, PostgreSQL and private photo volume persistence`. Внешние интеграционные токены были пустыми. Саморевью diff выполнено исполнителем без подагентов по AGENTS.md; независимая проверка другим участником после интеграции ещё требуется.
 
 ## Исторические проверки общей основы — 2026-10-03
 
