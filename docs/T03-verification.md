@@ -17,7 +17,7 @@
 | `npm --prefix apps/web run test -- --run`; `npm --prefix apps/web run build` | **13 PASS**, typecheck/build PASS |
 | Compose production, `alembic check`, proxy IP isolation, recovery/persistence | PASS, миграции до запуска API; сохранность БД/фото после перезапуска |
 | Production Playwright auth/PWA | **9 PASS** |
-| `uv run --locked pytest tests/test_work_order_lifecycle.py tests/test_idempotency.py tests/test_authz.py -q` | Те же тесты PASS в полном наборе; отдельный шаг добавлен в workflow. Его результат и проверка последних дополнений — [Checks PR №4](https://github.com/Ak1tava/QostHubHack/pull/4/checks) |
+| `uv run --locked pytest tests/test_work_order_lifecycle.py tests/test_idempotency.py tests/test_authz.py -q` | **PASS**, отдельный шаг на `b4b7792` в [CI 37138511761](https://github.com/Ak1tava/QostHubHack/actions/runs/37138511761). Полный результат актуальной ветки — [Checks PR №4](https://github.com/Ak1tava/QostHubHack/pull/4/checks) |
 
 Фактическая полная приёмка реализации `28e983a`: [CI 37138037026 — SUCCESS](https://github.com/Ak1tava/QostHubHack/actions/runs/37138037026). Локальная PostgreSQL-проверка не выполнялась. После этого добавлены отдельная целевая команда CI, таймауты ожидания блокировок в конкурентных тестах, проверки override_close без фото и позднего ответа ИИ после отмены; их фактический результат доступен в актуальных Checks PR №4. Изменения остаются в ветке до интеграции.
 
