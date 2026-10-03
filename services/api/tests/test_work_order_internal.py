@@ -75,19 +75,21 @@ def test_submit_review_close_requires_master_decision(database):
     assert len(list(database["session"].scalars(select(OutboxEvent)))) == 3
 
 
-def test_emergency_report_without_photo_cannot_close(database):
+@pytest.mark.parametrize("status,action", [("AI_REVIEW", "close"), ("REWORK", "override_close")])
+def test_emergency_report_without_photo_cannot_close(database, status, action):
     from app.core.security import AuthError
     from app.modules.work_orders.models import MasterDecision
-    order = make_order(database, "AI_REVIEW", "emergency")
+    order = make_order(database, status, "emergency")
     report = make_submission(database, order)
     decision = MasterDecision(work_order_id=order.id, submission_id=report.id,
-                              master_id=database["master"].id, decision="accept")
+                              master_id=database["master"].id, decision="accept", reason="Проверено")
     database["session"].add(decision)
     database["session"].flush()
     with pytest.raises(AuthError) as exc:
-        kernel(database)(order.id, command(order, report, "close", decision_id=decision.id), database["master"])
+        kernel(database)(order.id, command(order, report, action, decision_id=decision.id,
+                                          reason="Проверено"), database["master"])
     assert exc.value.status_code == 409
-    assert order.status == "AI_REVIEW"
+    assert order.status == status
 
 
 def test_internal_stale_assignment_and_fake_worker_authority(database):
@@ -204,3 +206,23 @@ def test_new_submission_revision_required_after_rework(database):
     newer = make_submission(database, order, revision=2)
     run(order.id, command(order, newer, "submit"), database["worker"])
     assert order.status == "SUBMITTED"
+
+
+def test_late_ai_review_cannot_change_cancelled_order(database):
+    from app.core.security import AuthError
+    from app.modules.work_orders.models import WorkOrderEvent, OutboxEvent
+    from app.modules.work_orders.schemas import ActionCommand
+    from app.modules.work_orders.service import WorkOrderService
+    db = database["session"]
+    order = make_order(database, "AI_REVIEW")
+    report = make_submission(database, order)
+    review = make_review(database, order, report)
+    late = command(order, report, "request_rework", review_id=review.id, reason="Доработка")
+    db.commit()
+    WorkOrderService(db).apply_action(order.id, database["master"],
+        ActionCommand(action="cancel", expected_version=order.version, reason="Отмена"), "cancel")
+    with pytest.raises(AuthError) as exc:
+        kernel(database)(order.id, late)
+    assert exc.value.status_code == 409 and order.status == "CANCELLED"
+    assert len(list(db.scalars(select(WorkOrderEvent)))) == 1
+    assert len(list(db.scalars(select(OutboxEvent)))) == 1

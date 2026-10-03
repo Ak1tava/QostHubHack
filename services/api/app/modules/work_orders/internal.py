@@ -5,17 +5,21 @@ same Session transaction, committing all artifacts together or rolling back.
 No HTTP route accepts InternalActionCommand or a system actor.
 """
 from datetime import datetime, timezone
+from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.core.security import AuthError
+from app.modules.auth.models import User
 from app.modules.work_orders import events, queries
-from app.modules.work_orders.models import AIReview, MasterDecision, Submission, WorkOrderEvent
+from app.modules.work_orders.models import AIReview, MasterDecision, Submission, WorkOrder, WorkOrderEvent
+from app.modules.work_orders.schemas import InternalActionCommand
 from app.modules.work_orders.service import authorize, check_version, lock_order, lock_workers
 from app.modules.work_orders.state_machine import require_action_role, transition
 
 
-def apply_internal(db, order_id, command, *, actor=None):
+def apply_internal(db: Session, order_id: UUID, command: InternalActionCommand, *, actor: User | None = None) -> WorkOrder:
     order = lock_order(db, order_id)
     lock_workers(db, queries.responsible_id(order))
     role = actor.role if actor is not None else "system"

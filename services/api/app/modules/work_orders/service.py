@@ -2,17 +2,19 @@
 import hashlib
 import json
 from datetime import datetime, timezone
+from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 from app.core.security import AuthError, can_access_order, require_order_creation
 from app.modules.auth.models import User, UserArea
 from app.modules.catalog.models import Equipment
 from app.modules.work_orders import events, queries
 from app.modules.work_orders.models import IdempotencyRecord, ORDER_NUMBER_SEQUENCE, WorkOrder
-from app.modules.work_orders.schemas import WorkOrderView
+from app.modules.work_orders.schemas import ActionCommand, WorkOrderCreate, WorkOrderView
 from app.modules.work_orders.state_machine import require_action_role, transition
 
 
@@ -25,6 +27,8 @@ def lock_order(db, order_id):
 
 
 def lock_workers(db, *ids):
+    # NO KEY UPDATE serializes commands without upgrading the FK KEY SHARE lock
+    # already held on the actor by the idempotency insert (which could deadlock).
     ids = sorted({item for item in ids if item is not None}, key=str)
     if ids:
         list(db.scalars(select(User).where(User.id.in_(ids)).order_by(User.id)
@@ -63,7 +67,7 @@ def validate_assignment(db, area_id, command):
 
 
 class WorkOrderService:
-    def __init__(self, db):
+    def __init__(self, db: Session):
         self.db = db
 
     def _reserve(self, actor, path, command, key):
@@ -95,7 +99,7 @@ class WorkOrderService:
         self.db.commit()
         return result
 
-    def create(self, actor, command, key):
+    def create(self, actor: User, command: WorkOrderCreate, key: str) -> WorkOrderView:
         try:
             require_order_creation(self.db, actor, command.area_id)
             record, replay = self._reserve(actor, "POST /work-orders", command, key)
@@ -123,7 +127,7 @@ class WorkOrderService:
             self.db.rollback()
             raise
 
-    def apply_action(self, order_id, actor, command, key):
+    def apply_action(self, order_id: UUID, actor: User, command: ActionCommand, key: str) -> WorkOrderView:
         try:
             record, replay = self._reserve(actor, f"POST /work-orders/{order_id}/actions", command, key)
             order = lock_order(self.db, order_id)

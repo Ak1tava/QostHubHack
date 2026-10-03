@@ -8,7 +8,7 @@ from uuid import UUID
 import pytest
 from conftest import sign_in
 from fastapi.testclient import TestClient
-from sqlalchemy import event, select
+from sqlalchemy import event, select, text
 from sqlalchemy.orm import Session
 
 from work_order_helpers import (
@@ -33,8 +33,10 @@ def independent_requests(app, database):
     previous = app.dependency_overrides[get_db]
 
     def separate_session():
-        with Session(database["engine"], expire_on_commit=False) as session:
+        with Session(database["engine"], expire_on_commit=False, autoflush=False) as session:
             try:
+                session.execute(text("SET LOCAL lock_timeout = '5s'"))
+                session.execute(text("SET LOCAL statement_timeout = '15s'"))
                 yield session
             finally:
                 session.rollback()
