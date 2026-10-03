@@ -1,11 +1,15 @@
 """Save Compose diagnostics while removing values from secret environment fields."""
 from pathlib import Path
+import os
 import subprocess
 from urllib.parse import quote
 
 
 root = Path(__file__).resolve().parents[1]
 redactions = set()
+for key, value in os.environ.items():
+    if value and any(part in key for part in ("PASSWORD", "SECRET", "TOKEN", "KEY", "DATABASE_URL")):
+        redactions.update((value, quote(value, safe="")))
 env_path = root / ".env"
 if env_path.exists():
     for line in env_path.read_text(encoding="utf-8").splitlines():
