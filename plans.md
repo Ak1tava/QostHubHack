@@ -31,7 +31,7 @@
 | --- | --- | --- | --- | --- | --- |
 | T00 | Документация и точка входа | DONE | Все | — | `readme.md`, `plans.md`, `AGENTS.md`; подтверждает документацию |
 | T01 | Запуск каркаса и базовые контракты | IN_PROGRESS | A | T00 | Инициатор; основа `chore/parallel-foundation` (REVIEW), продолжение `feat/T01-bootstrap` после публикации; `docs/runbook.md` |
-| T02 | Схема БД, вход и разграничение доступа | TODO | B | Общая основа T01 + C1; полная T01 не блокирует старт | Второй участник; будущая `feat/T02-data-auth`; ветка и реализация ещё не созданы |
+| T02 | Схема БД, вход и разграничение доступа | REVIEW | B | Общая основа T01 + C1; полная T01 не блокирует старт | Богдан / Codex; `feat/T02-data-auth`; серверная часть на проверке, 54 pytest PASS; `docs/T02-verification.md`; подключение A/UI ожидается |
 | T03 | Жизненный цикл и журнал наряда | TODO | B | T02 | Не назначен |
 | T04 | Создание наряда и панель мастера | TODO | A | T02, T03 | Не назначен |
 | T05 | Исполнение, фото и материалы | TODO | A + B | T03 | Не назначен |
@@ -401,3 +401,5 @@
 - [Telegram deep linking](https://core.telegram.org/bots/features#deep-linking), [Bot API](https://core.telegram.org/bots/api): привязка, webhook и доставка уведомлений.
 - [OpenAI Responses / GPT-6](https://developers.openai.com/api/docs/guides/latest-model), [Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs): типизированный ответ не гарантирует фактическую правильность.
 - Context7 использован для `/obra/superpowers`, `/websites/developers_openai` и `/websites/fastapi_tiangolo`. Проверять документацию повторно при изменении технологии/API; при обычном продолжении задачи пользоваться зафиксированными решениями.
+
+**Передача B / T02 — REVIEW (2026-10-03):** Богдан / Codex, `feat/T02-data-auth`, база `8a26387`. Добавлены БД/модели/миграция, серверные csrf/login/logout/me, права, каталог и смена, локальная demo-команда. Проверка: PostgreSQL, `uv run --locked --with pytest --with httpx --with httpx2 pytest -q` → 50 PASS; миграции upgrade/check/downgrade PASS. Подробности и требования A — `docs/T02-integration.md`, подтверждение — `docs/T02-verification.md`. A подключает routers/обработчики/lifespan и проверяет LoginPage/OpenAPI/TS. Карточки/фото/WS — проверки при T03/T05/T04. Общие main/config/manifests/web и C1 не изменены; формы ответов catalog/shift предложены для согласования A. Push/merge не выполнялись.
