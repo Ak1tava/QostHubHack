@@ -140,6 +140,34 @@ class SubmissionMaterialView(BaseModel):
     quantity: Decimal = Field(gt=0)
 
 
+class SubmissionMaterialCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    material_id: UUID
+    quantity: Decimal = Field(gt=0, max_digits=14, decimal_places=4, allow_inf_nan=False)
+
+
+class SubmissionCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    expected_version: int = Field(gt=0)
+    assignment_version: int = Field(gt=0)
+    work_description: str = Field(min_length=1, max_length=10000)
+    fault_code_id: UUID
+    materials: list[SubmissionMaterialCreate] = Field(default_factory=list, max_length=200)
+    no_materials_used: bool = False
+    after_photo_ids: list[UUID] = Field(default_factory=list, max_length=20)
+    comment: str | None = Field(default=None, max_length=4000)
+
+    @model_validator(mode="after")
+    def evidence_is_consistent(self):
+        if bool(self.materials) == self.no_materials_used:
+            raise ValueError("Specify materials or explicitly mark none used")
+        if len({item.material_id for item in self.materials}) != len(self.materials):
+            raise ValueError("Material IDs must be unique")
+        if len(set(self.after_photo_ids)) != len(self.after_photo_ids):
+            raise ValueError("Photo IDs must be unique")
+        return self
+
+
 class SubmissionView(BaseModel):
     id: UUID
     work_order_id: UUID

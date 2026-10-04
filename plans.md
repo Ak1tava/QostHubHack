@@ -14,8 +14,8 @@
 - **Обновлено:** 2026-10-04. **Этап:** T01–T03 интегрированы в main; T03 через [PR №4](https://github.com/Ak1tava/QostHubHack/pull/4), merge `cf87f8d`; приёмка main пройдена. T04 реализована в отдельной ветке и ожидает интеграции/приёмки. Календарные даты пяти рабочих дней не назначены.
 - **Готово:** T00 — документация; T01 — воспроизводимый каркас и контракты; T02 — миграции, серверные сессии/CSRF, права, справочники/смена и клиентский вход/выход; T03 — API нарядов, переходы, идемпотентность, история, интервалы и outbox.
 - **Реализовано в main:** инфраструктура, авторизация/права, каталоги/смена, production app, типизированный клиент и безопасный proxy; серверное ядро нарядов T03 и миграция 0002. HTTP отчёта/приёмки остаются в T05/T07, доставка outbox — T06.
-- **Следующие задачи:** интеграция/приёмка T04 и ручные замеры на двух телефонах; назначить T05/T06 по реестру. Дополнительная ручная проверка Т01 исключена из текущей приёмки по указанию пользователя.
-- **В работе / на проверке:** T04 REVIEW — A / Codex, `codex/t04-foreman-workflow`; T01–T03 DONE после интеграции и CI main. **Владельцы:** A — инициатор / Codex (интеграция/frontend), B — Богдан / Codex (сервер Т02), B / Codex — T03, C — будущий третий участник.
+- **Следующие задачи:** интеграция/приёмка T04, затем T05 на её базе; ручные замеры на телефонах и назначение T06. Дополнительная ручная проверка Т01 исключена из текущей приёмки по указанию пользователя.
+- **В работе / на проверке:** T04 REVIEW — A / Codex, `codex/t04-foreman-workflow`; T05 REVIEW — A + B / Codex, `codex/t05-execution-evidence` от T04 `f74c42a`; код и локальная приёмка в [docs/T05-verification.md](docs/T05-verification.md). T01–T03 DONE после интеграции и CI main. **Владельцы:** A — инициатор / Codex (интеграция/frontend), B — Богдан / Codex (сервер Т02), B / Codex — T03, C — будущий третий участник.
 - **Зафиксировано:** 3 человека / 5 дней; Telegram вместо FCM; действия по наряду в PWA; мастер принимает результат; синтетические данные для демо.
 - **Внешние зависимости:** API-ключ и бюджет модели, токен Telegram, адрес HTTPS-развёртывания и реальные данные ещё не подтверждены. Это не блокирует T01–T05, но блокирует проверку живых интеграций и сдачу T10.
 - **1С:** доступа и выгрузок нет; рабочая интеграция не входит в MVP.
@@ -35,7 +35,7 @@
 | T02 | Схема БД, вход и разграничение доступа | DONE | B + A | Общая основа T01 + C1; полная T01 не блокирует старт | Богдан / Codex — сервер `4ce5aca`; A / Codex — интеграция/клиент; main [8a8669a](https://github.com/Ak1tava/QostHubHack/commit/8a8669a1cbc94e495bda921cbf7c5add910fc543), [CI main PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37133455089), 67/13/9 тестов; `docs/T01-T02-verification.md` |
 | T03 | Жизненный цикл и журнал наряда | DONE | B | T02 | B / Codex; main `cf87f8d`, [PR №4 MERGED](https://github.com/Ak1tava/QostHubHack/pull/4), [CI main PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37139257953); pytest 1153, Vitest 13, Playwright 9; `docs/T03-verification.md` |
 | T04 | Создание наряда и панель мастера | REVIEW | A | T02, T03 | A / Codex; `codex/t04-foreman-workflow`; pytest 1170 / Vitest 29 / Playwright 13 PASS; `docs/T04-verification.md`; ручные два телефона и интеграция ожидаются |
-| T05 | Исполнение, фото и материалы | TODO | A + B | T03 | Не назначен |
+| T05 | Исполнение, фото и материалы | REVIEW | A + B | T03 | A + B / Codex; `codex/t05-execution-evidence` от T04 `f74c42a`; приёмка API 126, Vitest 47, production Playwright 14, native photo restart PASS; [проверка](docs/T05-verification.md) |
 | T06 | Telegram, сроки и эскалации | TODO | B | T03 | Не назначен |
 | T07 | ИИ-проверка и приёмка мастером | TODO | C + B | T03, T05, T06, T09 | Не назначен |
 | T08 | Отчёты, рейтинг и закономерности | TODO | C + A | T07, T09 | Не назначен |
@@ -119,6 +119,10 @@
 HTTP `/actions` принимает только accept/queue/reject/reassign/start/pause/resume/restart/cancel/reprioritize. T05/T07 вызывают `work_orders.internal.apply_internal(db, order_id, command, actor=...)` внутри собственной транзакции: создают Submission/AIReview/MasterDecision, вызывают ядро, затем один commit либо rollback. Ядро делает только flush; служебный actor=None разрешён только для begin_review/request_rework, не для закрытия. `InternalActionCommand` требует expected_version, assignment_version и submission_id; решение мастера/результат ИИ передаются через decision_id/review_id и проверяются по сохранённым данным. На HTTP эта схема не публикуется. SubmissionView.fault_code_id соответствует существующему Submission.work_code_id; missing_evidence вычисляется сервером. `allowed_actions` пока содержит только подключённые публичные команды.
 
 Outbox T03: одна запись на event_id, тип `work_order.<action>`, payload `{event_id,type,work_order_id,version,assignment_version,occurred_at}`, published_at=null. Доставка/lease/retries — T06. Интервалы `active` (IN_PROGRESS), `pause` (PAUSED), `review` (SUBMITTED/AI_REVIEW) отдельны от DowntimeInterval.
+
+**Уточнение T05 для T07:** `POST /work-orders/{id}/submissions` возвращает 201 `SubmissionView`, требует `Idempotency-Key`, `expected_version`, `assignment_version` и поля C3. Материалы уникальны по material_id, количество decimal(14,4) > 0; список пуст только при no_materials_used=true. Новая revision принимает только свежие after-фото этого наряда от ответственного с submission_id=null; предыдущие связи и расход неизменяемы. Наряд/отчёт/расход/событие/outbox фиксируются атомарно через ядро T03. `allowed_actions` включает submit для ответственного IN_PROGRESS; HTTP `/actions` его не принимает. Для emergency без after-фото сохраняется missing_evidence=[after_photo]; T07 читает этот серверный результат, закрытие по-прежнему блокируется ядром.
+
+`POST /work-orders/{id}/photos`: multipart file, type=before|after, опциональный captured_at с часовым поясом; ответ 201 `PhotoView`. Добавлены captured_at, content_hash и perceptual_hash (64-bit dHash), read_url ведёт на защищённый GET `/photos/{id}`. Автор — только текущий ответственный worker, состояния ISSUED/ACCEPTED/QUEUED/IN_PROGRESS/PAUSED/REWORK; блокировка наряда сериализует загрузку с переназначением/подачей. Разрешены фактически декодируемые JPEG/PNG/WebP до 5 МиБ, 16 Мп и 8192 px по стороне; заявленный MIME должен совпадать. Метаданные изображения удаляются; хеши — сигналы повторного использования, не доказательство свежести. Миграция 0003 добавляет nullable captured_at/perceptual_hash для старых фото.
 
 #### C1.1. Python, БД и подключение модулей
 
@@ -295,11 +299,13 @@ Outbox T03: одна запись на event_id, тип `work_order.<action>`, p
 **Создать:** `apps/web/src/features/work-orders/{MyOrdersPage,ExecutionPage,SubmissionForm}.tsx`, `services/api/app/modules/work_orders/submissions.py`, `services/api/app/modules/photos/{router,service,storage}.py`, `services/api/tests/test_submissions.py`, `services/api/tests/test_photos.py`; **изменить:** модели/миграции и OpenAPI.
 **Потребляет:** C1–C3. **Отдаёт:** `/my-orders`, действия исполнителя, API подачи revision отчёта и защищённых фото; `store_photo(order_id, actor, upload) -> PhotoView`, `submit_order(order_id, actor, payload, key) -> SubmissionView`.
 
-- [ ] В тестах закрепить сохранение работ/шифра/материалов; пустые материалы допустимы только с no_materials_used; отрицательные количества отклоняются; фото другого наряда и подмена MIME запрещены.
-- [ ] Реализовать экран очереди и все действия C2; причины обязательны. Сжать фото на клиенте; сохранять в приватный volume через интерфейс storage, выдавать только после проверки прав.
-- [ ] Создавать отчёт и строки расхода один раз на revision; повтор запроса не удваивает материалы. Неполный отчёт допускается к проверке с missing_evidence, но не к CLOSED. Предыдущие revision не редактируются.
+- [x] В тестах закрепить сохранение работ/шифра/материалов; пустые материалы допустимы только с no_materials_used; отрицательные количества отклоняются; фото другого наряда и подмена MIME запрещены.
+- [x] Реализовать экран очереди и все действия C2; причины обязательны. Сжать фото на клиенте; сохранять в приватный volume через интерфейс storage, выдавать только после проверки прав.
+- [x] Создавать отчёт и строки расхода один раз на revision; повтор запроса не удваивает материалы. Неполный отчёт допускается к проверке с missing_evidence, но не к CLOSED. Предыдущие revision не редактируются.
 - [ ] Выполнить `uv run pytest tests/test_submissions.py tests/test_photos.py tests/test_authz.py -q`; проверить сохранность фото после перезапуска и загрузку ≤10 секунд на указанной сети/размере файла; не выдавать локальный Wi‑Fi за мобильную проверку.
-- [ ] Записать результат и создать коммит `feat: capture execution reports photos and materials`.
+- [x] Записать результат и создать коммит `feat: capture execution reports photos and materials`; локальный head и команды — в передаче ниже.
+
+**Передача T05 — REVIEW (2026-10-04):** A + B / Codex, `codex/t05-execution-evidence` от запушенной T04 `f74c42a`. Исполнитель/очередь/отчёт, private фото и миграция 0003, атомарные immutable revision/материалы и OpenAPI/TS реализованы. Финальная приёмка API 126, Vitest 47, production Playwright 14, build/контракты и native photo restart PASS; команды, ограничения и ссылка на код — [docs/T05-verification.md](docs/T05-verification.md). Локальный head определяется `git log -1 --format=%H`; push/merge не выполнялись. Остались ручные телефоны/мобильная сеть и CI/Compose; интеграция сначала T04, затем T05, с сохранением актуальных чужих статусов. Изменённый контракт — уточнение C1 для T07; ИИ/приёмка остаются T07.
 
 ### T06. Telegram и контроль времени
 
@@ -358,6 +364,8 @@ Outbox T03: одна запись на event_id, тип `work_order.<action>`, p
 
 <a id="decisions"></a>
 ## Журнал решений
+
+- **2026-10-04, T05, A + B / Codex:** реализация основана на запушенной T04 `f74c42a`, без слияния в main. Уточнение C1 выше сохраняет служебный submit вне `/actions`; новая revision использует новые after-фото и не перепривязывает предыдущие. Фото сохраняются через private filesystem storage, MIME проверяется Pillow, SHA-256 исходного файла и dHash очищенных пикселей доступны T07; обычные ошибки записи/БД компенсируются, аварийный выход процесса может оставить файл без строки БД.
 
 - **2026-10-04, T04, A / Codex:** согласованный пользователем аддитивный фильтр `/shift` и `timezone`; WebSocket читает committed версии событий через отдельные короткие Session в thread pool раз в секунду, без timestamp-курсора и изменения outbox T06. Клиент сверяет HTTP каждые 3 секунды и после reconnect/focus. Для метрики 6 действий учитываются открытия/выборы/фокус/переходы/отправка, символы клавиатуры отдельно; реальные два телефона проверяются вручную. Зависимые T05/T06/T07 пока не назначены, прежние HTTP-поля и семантика команд сохранены.
 

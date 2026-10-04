@@ -12,8 +12,13 @@ export type Shift = components['schemas']['ShiftResponse'];
 export type ShiftMember = components['schemas']['ShiftMemberView'];
 export type Equipment = components['schemas']['EquipmentView'];
 export type Named = components['schemas']['NamedView'];
+export type Material = components['schemas']['MaterialView'];
+export type WorkCode = components['schemas']['WorkCodeView'];
+export type SubmissionCreate = components['schemas']['SubmissionCreate'];
+export type Submission = components['schemas']['SubmissionView'];
+export type Photo = components['schemas']['PhotoView'];
 type Catalog = components['schemas']['CatalogResponse'];
-type Kinds = { areas: Named; equipment: Equipment; brigades: Named };
+type Kinds = { areas: Named; equipment: Equipment; brigades: Named; materials: Material; 'work-codes': WorkCode };
 
 export const statuses: Record<WorkOrder['status'], string> = {
   ISSUED: 'Выданы', ACCEPTED: 'Приняты', QUEUED: 'Очередь', REJECTED: 'Отказ', IN_PROGRESS: 'В работе', PAUSED: 'Пауза',
@@ -42,6 +47,22 @@ export function useCatalogs(api: ApiClient) {
 
 export function useShift(api: ApiClient, areaId = '') {
   return useQuery(useCallback((signal: AbortSignal) => api.request<Shift>('/api/v1/shift', { query: { area_id: areaId || undefined }, signal }), [api, areaId]));
+}
+
+export function useExecutionCatalogs(api: ApiClient) {
+  return useQuery(useCallback(async (signal: AbortSignal) => {
+    const [materials, codes] = await Promise.all([catalog(api, 'materials', signal), catalog(api, 'work-codes', signal)]);
+    return { materials, codes };
+  }, [api]), 'refresh');
+}
+
+export function submitOrder(api: ApiClient, id: string, body: SubmissionCreate, key: string) {
+  return api.request<Submission>('/api/v1/work-orders/{order_id}/submissions', { params: { order_id: id }, method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key }, body: JSON.stringify(body) });
+}
+
+export function uploadPhoto(api: ApiClient, id: string, file: File, type: 'before' | 'after') {
+  const body = new FormData(); body.append('file', file); body.append('type', type);
+  return api.request<Photo>('/api/v1/work-orders/{order_id}/photos', { params: { order_id: id }, method: 'POST', body });
 }
 
 export function createOrder(api: ApiClient, body: CreateOrder, key: string) {

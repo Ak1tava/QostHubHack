@@ -69,9 +69,9 @@ jobs:
           docker compose up -d --wait db
           docker compose exec -T db createdb -U qosthub qosthub_test_ci
           docker compose exec -T db createdb -U qosthub qosthub_migration_test_ci
-      - name: T03 lifecycle, idempotency and authorization acceptance
+      - name: T03/T05 lifecycle, evidence, idempotency and authorization acceptance
         working-directory: services/api
-        run: uv run --locked pytest tests/test_work_order_lifecycle.py tests/test_idempotency.py tests/test_authz.py -q
+        run: uv run --locked pytest tests/test_work_order_lifecycle.py tests/test_idempotency.py tests/test_submissions.py tests/test_photos.py tests/test_authz.py -q
       - name: All API behavior and empty-database migration roundtrip
         working-directory: services/api
         run: uv run --locked pytest -q

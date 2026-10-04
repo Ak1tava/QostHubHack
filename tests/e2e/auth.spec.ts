@@ -79,7 +79,7 @@ from app.core.db import get_engine
 from app.modules.auth.demo import validate_demo_target
 from app.modules.auth.models import AuthSession, User
 validate_demo_target(settings.database_url.get_secret_value())
-assert make_url(settings.database_url.get_secret_value()).database in {'qosthub_demo', 'qosthub_demo_t04'}
+assert make_url(settings.database_url.get_secret_value()).database in {'qosthub_demo', 'qosthub_demo_t04', 'qosthub_demo_t05'}
 assert sys.argv[1].startswith('e2e-worker-')
 with Session(get_engine()) as db:
     db.execute(update(AuthSession).where(AuthSession.user_id.in_(select(User.id).where(User.login == sys.argv[1]))).values(expires_at=datetime.now(timezone.utc)-timedelta(seconds=1)))
