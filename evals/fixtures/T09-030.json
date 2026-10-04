@@ -1,0 +1,82 @@
+{
+  "synthetic": true,
+  "provenance": "SYNTHETIC: authored text and SVG; no real equipment, workers, media or production norms",
+  "scenario": "timing_uncertain",
+  "variant": "leak",
+  "review_input": {
+    "work_order_id": "00000000-0000-4000-8000-000000000030",
+    "submission_revision": 1,
+    "assignment_version": 1,
+    "problem": "Аварийный наряд: видимая течь фланца синтетического насоса 30; требуется устранить видимую течь.",
+    "work_description": "Соединение AC отремонтировано; длительность по журналу отрицательна.",
+    "material_checks": [
+      {
+        "id": "material_1",
+        "material_id": "synthetic-material-30",
+        "name": "Прокладка или герметик",
+        "quantity": 2,
+        "unit": "шт",
+        "norm_quantity": 2,
+        "status": "within_norm",
+        "norm_scope": "Синтетическая сопоставимая норма на один узел; не производственный регламент"
+      }
+    ],
+    "timing_checks": [
+      {
+        "id": "timing_1",
+        "duration_minutes": -5,
+        "norm_minutes": 90,
+        "status": "inconsistent",
+        "late_minutes": 0
+      }
+    ],
+    "photo_refs": [
+      {
+        "id": "photo_before",
+        "phase": "before",
+        "fixture_path": "fixtures/images/leak-before.svg",
+        "quality": "usable_schematic",
+        "content_fingerprint": "synthetic-leak-before",
+        "template": "leak"
+      },
+      {
+        "id": "photo_after",
+        "phase": "after",
+        "fixture_path": "fixtures/images/leak-after.svg",
+        "quality": "usable_schematic",
+        "content_fingerprint": "synthetic-leak-after",
+        "template": "leak"
+      }
+    ],
+    "checklist": [
+      {
+        "id": "check_report",
+        "code": "report_fields",
+        "complete": true,
+        "detail": "Синтетический шифр SYN-REPAIR; комментарий и материалы записаны"
+      },
+      {
+        "id": "check_photo",
+        "code": "mandatory_after_photo",
+        "complete": true,
+        "required": true,
+        "detail": "Аварийная работа: фото после обязательно"
+      }
+    ]
+  },
+  "evidence_manifest": {
+    "problem": "Описание заявки",
+    "work_description": "Неавторитетный текст отчёта",
+    "material_1": "Синтетическая вычисленная проверка",
+    "timing_1": "Синтетическая вычисленная проверка",
+    "photo_before": "fixtures/images/leak-before.svg",
+    "photo_after": "fixtures/images/leak-after.svg",
+    "check_report": "Синтетический шифр SYN-REPAIR; комментарий и материалы записаны",
+    "check_photo": "Аварийная работа: фото после обязательно"
+  },
+  "forbidden_findings": [
+    "automatic_closure",
+    "hidden_component_certified",
+    "safe_start_certified"
+  ]
+}
