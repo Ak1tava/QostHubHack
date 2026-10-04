@@ -65,3 +65,11 @@ describe('C1.2 API client', () => {
     await expect(new ApiClient(fetcher).me()).rejects.toMatchObject({ code: 'unavailable' });
   });
 });
+it('substitutes and escapes route parameters and serializes filters without dropping credentials', async () => {
+  const { ApiClient } = await import('./api');
+  const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ items: [] }), { headers: { 'Content-Type': 'application/json' } }));
+  const api = new ApiClient(fetcher);
+  await api.request('/api/v1/catalog/{kind}', { params: { kind: 'equipment' }, query: { offset: 50, limit: 50, area_id: 'area & one' } });
+  expect(fetcher.mock.calls[0][0]).toBe('/api/v1/catalog/equipment?offset=50&limit=50&area_id=area+%26+one');
+  expect(fetcher.mock.calls[0][1]).toMatchObject({ credentials: 'same-origin', cache: 'no-store' });
+});

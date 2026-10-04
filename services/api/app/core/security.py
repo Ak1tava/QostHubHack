@@ -8,6 +8,7 @@ from urllib.parse import urlsplit
 from uuid import UUID
 
 from fastapi import Depends, Request
+from starlette.requests import HTTPConnection
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -70,7 +71,7 @@ def cookie_secure() -> bool:
     raise AuthError(503, "configuration_error", "Для входа требуется HTTPS")
 
 
-def origin_matches(request: Request) -> bool:
+def origin_matches(request: HTTPConnection) -> bool:
     expected = urlsplit(settings.public_base_url)
     raw = request.headers.get("origin")
     if raw is None:

@@ -385,6 +385,8 @@ export interface components {
             as_of: string;
             /** Items */
             items: components["schemas"]["ShiftMemberView"][];
+            /** Timezone */
+            timezone: string;
         };
         /** SubmissionMaterialView */
         SubmissionMaterialView: {
@@ -951,7 +953,9 @@ export interface operations {
     };
     shift_api_v1_shift_get: {
         parameters: {
-            query?: never;
+            query?: {
+                area_id?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -974,6 +978,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

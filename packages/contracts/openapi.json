@@ -492,11 +492,16 @@
             },
             "title": "Items",
             "type": "array"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
           }
         },
         "required": [
           "items",
-          "as_of"
+          "as_of",
+          "timezone"
         ],
         "title": "ShiftResponse",
         "type": "object"
@@ -1588,6 +1593,25 @@
     "/api/v1/shift": {
       "get": {
         "operationId": "shift_api_v1_shift_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "area_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Area Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -1608,6 +1632,26 @@
               }
             },
             "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Shift",

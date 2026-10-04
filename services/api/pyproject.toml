@@ -10,6 +10,7 @@ dependencies = [
     "sqlalchemy>=2.0,<2.1",
     "psycopg[binary]>=3.2,<4.0",
     "alembic>=1.14,<2.0",
+    "websockets>=15,<17",
 ]
 
 [dependency-groups]
