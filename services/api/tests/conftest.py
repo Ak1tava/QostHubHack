@@ -31,6 +31,7 @@ def database():
     from app.modules.work_orders import (
         models,  # noqa: F401 — registers SQLAlchemy metadata
     )
+    from app.modules.telegram import models as telegram_models  # noqa: F401
 
     engine = create_engine(url)
     Base.metadata.drop_all(engine)

@@ -53,6 +53,20 @@ services:
       timeout: 10s
       retries: 12
       start_period: 10s
+  worker:
+    build:
+      context: .
+      dockerfile: infra/api.Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL with host db in root .env}
+    command: ["/workspace/services/api/.venv/bin/python", "-m", "app.workers.main"]
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
   web:
     build:
       context: .

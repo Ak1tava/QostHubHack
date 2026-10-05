@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     session_secret: SecretStr | None = None
     session_cookie_secure: bool = False
     telegram_bot_token: SecretStr | None = None
+    telegram_bot_username: str | None = None
     telegram_webhook_secret: SecretStr | None = None
     openai_api_key: SecretStr | None = None
     ai_model: str | None = None
