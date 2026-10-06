@@ -1,6 +1,7 @@
 # T07 — проверка и передача
 
-2026-10-06. Владелец C + B / Codex, ветка `codex/t07-ai-review`.
+2026-10-06. Владелец C + B / Codex, ветка `codex/t07-ai-review`,
+[draft PR №7](https://github.com/Ak1tava/QostHubHack/pull/7), код `87a5512`.
 База `origin/main` 7fd73c1; T09 56d3501 подключена merge c3e9277 без замены
 актуальных статусов T04–T06. Статус задачи определяется только [plans.md](../plans.md).
 
@@ -39,10 +40,18 @@ Luna low для простого планового текста, Sol medium д�
 | Согласованность контрактов | `python -m app.export_openapi`, `npm --prefix apps/web run generate:api` | оба SHA256 неизменны |
 | Offline dev и отсутствие ключа | команды из [evals/results.md](../evals/results.md) | 20 dev, 0 вызовов/$0; live exit 2, holdout не использован |
 
-Docker локально отсутствует. В CI добавлена `infra/verify_review_worker.py`:
-настоящие API/worker, blocked без ключа, restart, повторная доставка того же
-outbox submit, отсутствие двойной оценки и отмена. Результат Compose фиксируется
-после CI; успешная проверка синтаксиса скрипта не считается запуском Compose.
+Docker локально отсутствует; контейнерная приёмка выполнена в
+[CI 37497053891 — SUCCESS](https://github.com/Ak1tava/QostHubHack/actions/runs/37497053891),
+head `87a5512`. Полный PostgreSQL pytest: **1467 PASS** (199.51s),
+production Playwright: **15 PASS** без retries (26.7s). Миграции/Alembic check,
+контракты/TypeScript/Vitest/build, Compose/Nginx/IP isolation, outage/recovery,
+сохранность БД и приватных фото при пересоздании API — PASS.
+
+`DATABASE_URL="$PHOTO_ACCEPTANCE_DATABASE_URL" services/api/.venv/bin/python infra/verify_review_worker.py`
+— **PASS**: реальные API/ai-worker, blocked без ключа, restart, повторная доставка
+того же outbox submit, отсутствие двойной оценки и отмена. Аналогичная проверка
+существующего Telegram worker тоже PASS. Платных запросов не было.
+После проверенного `87a5512` изменяется только документация результатов и запуска.
 
 Независимый reviewer GPT-6 Astra выявил две ошибки: tuple/list в JSON freeze и
 истечение lease внутри финализации. Обе воспроизведены RED→GREEN; повторное
@@ -53,17 +62,10 @@ Context7 `/openai/openai-python` использован точечно для `r
 
 ## Запуск после добавления ключа
 
-Добавить OPENAI_API_KEY в корневую `.env` именно этой ветки/развёртывания.
-Настройки моделей/reasoning уже есть в [.env.example](../.env.example).
-
-```sh
-docker compose up --build -d --wait
-```
-
-Это применяет миграцию и запускает отдельный ai-worker с read-only photo volume.
-При изменении только ключа пересоздать worker: `docker compose up -d --force-recreate ai-worker`.
-Если миграция сообщает об оценках вне диапазона, решение о корректировке истории
-принимает владелец данных; миграция их не пересчитывает.
+До добавления ключа остановить фоновую обработку: `docker compose stop ai-worker`
+(если стек уже запущен). Лимит $5 относится к eval; обычные фоновые проверки не
+учитываются в его ledger. Затем добавить OPENAI_API_KEY в корневую `.env` именно
+этой ветки/развёртывания. Настройки уже есть в [.env.example](../.env.example).
 
 Живой eval запускать последовательно из `services/api` после `uv sync --locked`:
 
@@ -77,4 +79,15 @@ uv run --locked python -m app.modules.ai_review.eval_runner --live --split holdo
 Holdout — один проход; не удалять ledger/freeze/marker ради повторной настройки.
 Синтетические PNG из SVG не подтверждают качество на производственных фотографиях.
 Метрики и ограничения: [evals/T07-runner.md](../evals/T07-runner.md).
+
+После ограниченного прогона обычный стек запускается отдельно:
+
+```sh
+docker compose up --build -d --wait
+```
+
+Это применяет миграцию и запускает отдельный ai-worker с read-only photo volume.
+При изменении только ключа пересоздать worker: `docker compose up -d --force-recreate ai-worker`.
+Если миграция сообщает об оценках вне диапазона, решение о корректировке истории
+принимает владелец данных; миграция их не пересчитывает.
 До интеграции и подтверждённой живой приёмки задача остаётся REVIEW.

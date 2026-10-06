@@ -134,7 +134,7 @@ Refusal/incomplete/schema/error -> human_review, без эскалации. Ис
 
 Проверка provider/rules/eval: `.venv/Scripts/python.exe -m pytest tests/test_ai_review.py
 tests/test_ai_provider.py tests/test_ai_eval_runner.py -q -p no:cacheprovider
---basetemp=../../.tooling/t07/pytest-provider-temp` из services/api — **45 passed**
+--basetemp=../../.tooling/t07/pytest-provider-temp` из services/api — **47 passed**
 2026-10-06. Реальный OpenAI SDK использовал HTTP MockTransport; платных вызовов нет.
 Eval runner и ограничения: [evals/T07-runner.md](../evals/T07-runner.md),
 фактический offline результат: [evals/results.md](../evals/results.md).

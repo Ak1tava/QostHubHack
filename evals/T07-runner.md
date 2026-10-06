@@ -1,6 +1,8 @@
 # T07: запуск оценки
 
-Из `services/api` (uv sync включает dev dependency resvg-py):
+Перед добавлением ключа остановить запущенный `ai-worker` (`docker compose stop ai-worker`),
+чтобы обычные фоновые проверки не расходовали средства параллельно ограниченному eval.
+Его лимит $5 учитывает только вызовы runner. Из `services/api` (uv sync включает dev dependency resvg-py):
 
 ```powershell
 uv run python -m app.modules.ai_review.eval_runner --split dev
