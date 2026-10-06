@@ -12,6 +12,7 @@ import json
 import os
 from pathlib import Path
 import sys
+import time
 from uuid import uuid4
 
 from .prompts import PROMPT_VERSION, SYSTEM_PROMPT, prompt_payload
@@ -45,7 +46,14 @@ def write_json(path: Path, value, *, exclusive=False):
         target.write(json_text(value))
         target.flush()
         os.fsync(target.fileno())
-    temporary.replace(path)
+    for attempt in range(5):
+        try:
+            temporary.replace(path)
+            return
+        except PermissionError as error:
+            if getattr(error, 'winerror', None) not in {5, 32, 33} or attempt == 4:
+                raise
+            time.sleep(0.05 * 2 ** attempt)
 
 
 def safe_fixture_path(evals: Path, relative: str) -> Path:
@@ -146,6 +154,27 @@ class BudgetExceeded(RuntimeError):
     pass
 
 
+def load_dev_checkpoint(path: Path, config: dict, selected_case_ids: set[str], previous_source_hash=None):
+    saved = json.loads(path.read_text(encoding='utf-8'))
+    if saved.get('mode') != 'live':
+        raise ValueError('Only a live dev checkpoint can be resumed')
+    previous = saved['config']
+    history = list(saved.get('previous_configs', []))
+    if previous != config:
+        old_hash = previous.get('provider_source_hash')
+        compatible = {**previous, 'provider_source_hash': config.get('provider_source_hash')} == config
+        if not previous_source_hash or previous_source_hash != old_hash or not compatible:
+            raise ValueError('Dev configuration changed; source transition must be explicit and other fields identical')
+        history.append(previous)
+    elif previous_source_hash is not None and previous_source_hash != previous.get('provider_source_hash'):
+        raise ValueError('Declared previous source hash does not match the checkpoint')
+    rows = saved['rows']
+    ids = [row['case_id'] for row in rows]
+    if len(ids) != len(set(ids)) or not set(ids) <= selected_case_ids:
+        raise ValueError('Checkpoint contains duplicate or unrelated cases')
+    return rows, history
+
+
 class BudgetLedger:
     def __init__(self, path: Path, limit='5'):
         self.path = path
@@ -188,6 +217,18 @@ class BudgetLedger:
 
     def save(self):
         write_json(self.path, {'limit_usd': str(self.limit), 'spent_or_reserved_usd': str(self.spent), 'calls': self.records})
+
+
+def persisted_calls(ledger: BudgetLedger, case_ids: set[str]) -> list[dict]:
+    calls = []
+    for record in ledger.records:
+        metadata = record['metadata']
+        if metadata.get('case_id') not in case_ids:
+            continue
+        calls.append({'call_id': record['call_id'], 'usage': {}, 'latency_ms': 0,
+                      'error_code': 'interrupted_call', 'is_mock': False, 'response_id': None,
+                      'reserved_usd': record['reserved_usd'], 'estimated_cost_usd': None, **metadata})
+    return calls
 
 
 def usage_cost(model: str, usage: dict[str, int]) -> Decimal | None:
@@ -257,7 +298,13 @@ def main(argv=None) -> int:
     parser.add_argument('--split', choices=('dev', 'holdout'), default='dev')
     parser.add_argument('--evals-dir', type=Path, default=ROOT / 'evals')
     parser.add_argument('--output-dir', type=Path, default=ROOT / '.tooling' / 't07' / 'evals')
+    parser.add_argument('--resume-dev', action='store_true', help='Resume completed live dev cases; never resume holdout')
+    parser.add_argument('--resume-from-source-hash', help='Explicit previous dev source hash after a compatible recovery fix')
     args = parser.parse_args(argv)
+    if args.resume_dev and (not args.live or args.split != 'dev' or args.freeze):
+        parser.error('--resume-dev requires --live --split dev and cannot freeze or resume holdout')
+    if args.resume_from_source_hash and not args.resume_dev:
+        parser.error('--resume-from-source-hash requires --resume-dev')
     from app.core.config import settings
 
     key = settings.openai_api_key.get_secret_value() if settings.openai_api_key else os.environ.get('OPENAI_API_KEY')
@@ -280,11 +327,19 @@ def main(argv=None) -> int:
                 claim_holdout(state_directory, config)
             cases = [json.loads(line) for line in (args.evals_dir / 'cases.jsonl').read_text(encoding='utf-8').splitlines()]
             selected = [case for case in cases if case['split'] == args.split]
+            case_ids = {case['case_id'] for case in selected}
+            rows, previous_configs = [], []
+            if args.resume_dev:
+                if (state_directory / 'holdout.started.json').exists():
+                    raise ValueError('Dev cannot be resumed after holdout has started')
+                rows, previous_configs = load_dev_checkpoint(args.output_dir / 'dev.results.json', config,
+                    case_ids, args.resume_from_source_hash)
+                completed = {row['case_id'] for row in rows}
+                selected = [case for case in selected if case['case_id'] not in completed]
             ledger = BudgetLedger(state_directory / 'budget.json')
             provider = BudgetedProvider(OpenAIReviewProvider(key, timeout=settings.ai_request_timeout_seconds,
                 max_output_tokens=settings.ai_max_output_tokens, complex_max_output_tokens=settings.ai_complex_max_output_tokens),
                 ledger, settings.ai_max_output_tokens, settings.ai_complex_max_output_tokens) if args.live else None
-            rows = []
             aborted = False
             for case in selected:
                 value, images = load_case_input(args.evals_dir, case)
@@ -303,17 +358,21 @@ def main(argv=None) -> int:
                     'forbidden_findings': sorted(codes & set(fixture['forbidden_findings'])),
                     'invalid_evidence_refs': sum(ref not in value.evidence_ids() for f in result.findings for ref in f.evidence_refs),
                     'result': result.model_dump(mode='json')})
-                calls = provider.calls if provider else []
+                calls = persisted_calls(ledger, case_ids) if provider else []
                 write_json(args.output_dir / f'{args.split}.results.json', {'mode': 'live' if args.live else 'rules_only',
-                    'config': config, 'rows': rows, 'calls': calls, 'metrics': metrics(rows, calls, ledger.spent), 'aborted_budget': False})
-            calls = provider.calls if provider else []
+                    'config': config, 'previous_configs': previous_configs, 'rows': rows, 'calls': calls,
+                    'metrics': metrics(rows, calls, ledger.spent), 'aborted_budget': False})
+            calls = persisted_calls(ledger, case_ids) if provider else []
             aggregate = metrics(rows, calls, ledger.spent)
             write_json(args.output_dir / f'{args.split}.results.json', {'mode': 'live' if args.live else 'rules_only', 'config': config,
-                'rows': rows, 'calls': calls, 'metrics': aggregate, 'aborted_budget': aborted})
+                'previous_configs': previous_configs, 'rows': rows, 'calls': calls, 'metrics': aggregate, 'aborted_budget': aborted})
             print(json_text(aggregate))
             return 3 if aborted else 0
     except (ValueError, FileExistsError) as error:
         print(f'Eval остановлен: {error}', file=sys.stderr)
+        return 2
+    except OSError as error:
+        print(f'Eval остановлен: ошибка файловой системы ({type(error).__name__}, {getattr(error, "winerror", error.errno)}).', file=sys.stderr)
         return 2
 
 

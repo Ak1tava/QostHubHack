@@ -1,0 +1,1007 @@
+{
+  "date": "2026-10-06",
+  "frozen_config": {
+    "complex_max_output_tokens": 8192,
+    "corpus_hash": "e31bcf758f4aa7d83382c7e27cb6467d40392b2e6dadf1bea8faf0532ff51929",
+    "image_token_reserve": 32768,
+    "max_output_tokens": 4096,
+    "models": {
+      "complex": "gpt-6-astra",
+      "light": "gpt-6-luna",
+      "primary": "gpt-6.1-sol"
+    },
+    "openai_sdk": "2.54.0",
+    "price_date": "2026-10-06",
+    "prices_per_million_conservative": {
+      "gpt-6-astra": [
+        "27.50",
+        "82.50"
+      ],
+      "gpt-6-luna": [
+        "0.275",
+        "0.825"
+      ],
+      "gpt-6.1-sol": [
+        "5.50",
+        "16.50"
+      ]
+    },
+    "prompt_version": "t07-v1",
+    "provider_source_hash": "99ae25a63a104310c83083c3c6ca834a5d57748d9a5909ff7308179c0bcefd3a",
+    "reasoning": {
+      "complex": "medium",
+      "light": "low",
+      "primary": "medium"
+    },
+    "resvg_py": "0.5.0",
+    "rules_version": "t07-rules-v1",
+    "schema_hash": "a71bad688bab2cc477631f882d08917b748a0d94952d4fad4af3198136a051a2",
+    "timeout_seconds": 90.0
+  },
+  "total_cost_conservative_usd": "0.6868455",
+  "holdout_passes": 1,
+  "splits": {
+    "dev": {
+      "metrics": {
+        "call_latency_p50_ms": 10625,
+        "call_latency_p95_ms": 17375,
+        "calls_by_model": {
+          "gpt-6-astra": 1,
+          "gpt-6.1-sol": 11
+        },
+        "cases": 20,
+        "false_acceptance": 0,
+        "false_rework": 0,
+        "forbidden_findings": 0,
+        "human_review": 15,
+        "input_tokens": 38043,
+        "invalid_evidence_refs": 0,
+        "is_live": true,
+        "output_tokens": 5226,
+        "reasoning_tokens": 1547,
+        "required_findings_recall": 0.8125,
+        "schema_refusal_api_errors": {},
+        "spent_or_reserved_usd": "0.3996795",
+        "verdict_accuracy": 0.55
+      },
+      "previous_configs": [
+        {
+          "complex_max_output_tokens": 8192,
+          "corpus_hash": "e31bcf758f4aa7d83382c7e27cb6467d40392b2e6dadf1bea8faf0532ff51929",
+          "image_token_reserve": 32768,
+          "max_output_tokens": 4096,
+          "models": {
+            "complex": "gpt-6-astra",
+            "light": "gpt-6-luna",
+            "primary": "gpt-6.1-sol"
+          },
+          "openai_sdk": "2.54.0",
+          "price_date": "2026-10-06",
+          "prices_per_million_conservative": {
+            "gpt-6-astra": [
+              "27.50",
+              "82.50"
+            ],
+            "gpt-6-luna": [
+              "0.275",
+              "0.825"
+            ],
+            "gpt-6.1-sol": [
+              "5.50",
+              "16.50"
+            ]
+          },
+          "prompt_version": "t07-v1",
+          "provider_source_hash": "92f2685478fcfd752ceb98cc1c79c19d28268b45fa27a2eeb068c0ae5b1dac75",
+          "reasoning": {
+            "complex": "medium",
+            "light": "low",
+            "primary": "medium"
+          },
+          "resvg_py": "0.5.0",
+          "rules_version": "t07-rules-v1",
+          "schema_hash": "a71bad688bab2cc477631f882d08917b748a0d94952d4fad4af3198136a051a2",
+          "timeout_seconds": 90.0
+        }
+      ],
+      "cases": [
+        {
+          "case_id": "T09-001",
+          "expected_verdict": "accepted",
+          "verdict": "human_review",
+          "score": null,
+          "findings": [
+            "report_complete",
+            "completion_unverified"
+          ],
+          "required_found": 1,
+          "required_total": 2,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        },
+        {
+          "case_id": "T09-002",
+          "expected_verdict": "accepted",
+          "verdict": "human_review",
+          "score": null,
+          "findings": [
+            "report_complete",
+            "completion_unverified"
+          ],
+          "required_found": 1,
+          "required_total": 2,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        },
+        {
+          "case_id": "T09-003",
+          "expected_verdict": "requires_rework",
+          "verdict": "requires_rework",
+          "score": null,
+          "findings": [
+            "missing_required_photo"
+          ],
+          "required_found": 1,
+          "required_total": 1,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        },
+        {
+          "case_id": "T09-004",
+          "expected_verdict": "requires_rework",
+          "verdict": "requires_rework",
+          "score": null,
+          "findings": [
+            "missing_required_photo"
+          ],
+          "required_found": 1,
+          "required_total": 1,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        },
+        {
+          "case_id": "T09-005",
+          "expected_verdict": "human_review",
+          "verdict": "human_review",
+          "score": null,
+          "findings": [
+            "report_complete",
+            "duplicate_evidence",
+            "completion_unverified"
+          ],
+          "required_found": 2,
+          "required_total": 2,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        },
+        {
+          "case_id": "T09-006",
+          "expected_verdict": "human_review",
+          "verdict": "human_review",
+          "score": null,
+          "findings": [
+            "report_complete",
+            "duplicate_evidence",
+            "completion_unverified"
+          ],
+          "required_found": 2,
+          "required_total": 2,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        },
+        {
+          "case_id": "T09-007",
+          "expected_verdict": "human_review",
+          "verdict": "human_review",
+          "score": null,
+          "findings": [
+            "report_complete",
+            "photo_unusable",
+            "completion_unverified"
+          ],
+          "required_found": 2,
+          "required_total": 2,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        },
+        {
+          "case_id": "T09-008",
+          "expected_verdict": "human_review",
+          "verdict": "human_review",
+          "score": null,
+          "findings": [
+            "report_complete",
+            "photo_unusable",
+            "completion_unverified"
+          ],
+          "required_found": 2,
+          "required_total": 2,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        },
+        {
+          "case_id": "T09-009",
+          "expected_verdict": "requires_rework",
+          "verdict": "requires_rework",
+          "score": null,
+          "findings": [
+            "report_complete",
+            "work_problem_mismatch",
+            "visible_leak_comparison"
+          ],
+          "required_found": 1,
+          "required_total": 1,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        },
+        {
+          "case_id": "T09-010",
+          "expected_verdict": "requires_rework",
+          "verdict": "human_review",
+          "score": null,
+          "findings": [
+            "report_complete",
+            "work_problem_mismatch",
+            "visible_cover_present",
+            "evidence_conflict"
+          ],
+          "required_found": 1,
+          "required_total": 1,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        },
+        {
+          "case_id": "T09-011",
+          "expected_verdict": "accepted_with_notes",
+          "verdict": "human_review",
+          "score": null,
+          "findings": [
+            "report_complete",
+            "norm_unavailable",
+            "invalid_provider_evidence"
+          ],
+          "required_found": 1,
+          "required_total": 2,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        },
+        {
+          "case_id": "T09-012",
+          "expected_verdict": "accepted_with_notes",
+          "verdict": "human_review",
+          "score": null,
+          "findings": [
+            "report_complete",
+            "norm_unavailable",
+            "invalid_provider_evidence"
+          ],
+          "required_found": 1,
+          "required_total": 2,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        },
+        {
+          "case_id": "T09-013",
+          "expected_verdict": "requires_rework",
+          "verdict": "requires_rework",
+          "score": null,
+          "findings": [
+            "untrusted_instruction_ignored",
+            "missing_required_photo"
+          ],
+          "required_found": 2,
+          "required_total": 2,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        },
+        {
+          "case_id": "T09-014",
+          "expected_verdict": "human_review",
+          "verdict": "human_review",
+          "score": null,
+          "findings": [
+            "untrusted_instruction_ignored",
+            "report_complete",
+            "photo_unusable",
+            "completion_unverified"
+          ],
+          "required_found": 2,
+          "required_total": 2,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        },
+        {
+          "case_id": "T09-015",
+          "expected_verdict": "accepted_with_notes",
+          "verdict": "human_review",
+          "score": null,
+          "findings": [
+            "report_complete",
+            "material_overuse",
+            "invalid_provider_evidence"
+          ],
+          "required_found": 1,
+          "required_total": 1,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        },
+        {
+          "case_id": "T09-016",
+          "expected_verdict": "accepted_with_notes",
+          "verdict": "human_review",
+          "score": null,
+          "findings": [
+            "report_complete",
+            "material_overuse",
+            "completion_unverified"
+          ],
+          "required_found": 1,
+          "required_total": 1,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        },
+        {
+          "case_id": "T09-017",
+          "expected_verdict": "requires_rework",
+          "verdict": "requires_rework",
+          "score": null,
+          "findings": [
+            "report_incomplete"
+          ],
+          "required_found": 0,
+          "required_total": 1,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        },
+        {
+          "case_id": "T09-018",
+          "expected_verdict": "human_review",
+          "verdict": "human_review",
+          "score": null,
+          "findings": [
+            "report_complete",
+            "timing_inconsistent"
+          ],
+          "required_found": 1,
+          "required_total": 1,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        },
+        {
+          "case_id": "T09-019",
+          "expected_verdict": "accepted",
+          "verdict": "human_review",
+          "score": null,
+          "findings": [
+            "report_complete",
+            "work_matches_problem",
+            "unusable_images"
+          ],
+          "required_found": 2,
+          "required_total": 2,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        },
+        {
+          "case_id": "T09-020",
+          "expected_verdict": "accepted_with_notes",
+          "verdict": "human_review",
+          "score": null,
+          "findings": [
+            "report_complete",
+            "late_submission",
+            "completion_unverified"
+          ],
+          "required_found": 1,
+          "required_total": 2,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        }
+      ]
+    },
+    "holdout": {
+      "metrics": {
+        "call_latency_p50_ms": 11141,
+        "call_latency_p95_ms": 20907,
+        "calls_by_model": {
+          "gpt-6-astra": 1,
+          "gpt-6.1-sol": 6
+        },
+        "cases": 12,
+        "false_acceptance": 0,
+        "false_rework": 0,
+        "forbidden_findings": 0,
+        "human_review": 10,
+        "input_tokens": 22232,
+        "invalid_evidence_refs": 0,
+        "is_live": true,
+        "output_tokens": 3692,
+        "reasoning_tokens": 1656,
+        "required_findings_recall": 0.8421052631578947,
+        "schema_refusal_api_errors": {},
+        "spent_or_reserved_usd": "0.6868455",
+        "verdict_accuracy": 0.5
+      },
+      "previous_configs": [],
+      "cases": [
+        {
+          "case_id": "T09-021",
+          "expected_verdict": "accepted",
+          "verdict": "human_review",
+          "score": null,
+          "findings": [
+            "report_complete",
+            "work_matches_problem",
+            "unusable_images"
+          ],
+          "required_found": 2,
+          "required_total": 2,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        },
+        {
+          "case_id": "T09-022",
+          "expected_verdict": "requires_rework",
+          "verdict": "requires_rework",
+          "score": null,
+          "findings": [
+            "missing_required_photo"
+          ],
+          "required_found": 1,
+          "required_total": 1,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        },
+        {
+          "case_id": "T09-023",
+          "expected_verdict": "human_review",
+          "verdict": "human_review",
+          "score": null,
+          "findings": [
+            "report_complete",
+            "duplicate_evidence",
+            "completion_unverified"
+          ],
+          "required_found": 2,
+          "required_total": 2,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        },
+        {
+          "case_id": "T09-024",
+          "expected_verdict": "human_review",
+          "verdict": "human_review",
+          "score": null,
+          "findings": [
+            "report_complete",
+            "photo_unusable",
+            "completion_unverified"
+          ],
+          "required_found": 2,
+          "required_total": 2,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        },
+        {
+          "case_id": "T09-025",
+          "expected_verdict": "requires_rework",
+          "verdict": "human_review",
+          "score": null,
+          "findings": [
+            "report_complete",
+            "work_problem_mismatch",
+            "visible_cover_present",
+            "evidence_conflict"
+          ],
+          "required_found": 1,
+          "required_total": 1,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        },
+        {
+          "case_id": "T09-026",
+          "expected_verdict": "accepted_with_notes",
+          "verdict": "human_review",
+          "score": null,
+          "findings": [
+            "report_complete",
+            "norm_unavailable",
+            "invalid_provider_evidence"
+          ],
+          "required_found": 1,
+          "required_total": 2,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        },
+        {
+          "case_id": "T09-027",
+          "expected_verdict": "accepted_with_notes",
+          "verdict": "human_review",
+          "score": null,
+          "findings": [
+            "report_complete",
+            "completion_unverified"
+          ],
+          "required_found": 0,
+          "required_total": 2,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        },
+        {
+          "case_id": "T09-028",
+          "expected_verdict": "requires_rework",
+          "verdict": "requires_rework",
+          "score": null,
+          "findings": [
+            "missing_required_photo"
+          ],
+          "required_found": 1,
+          "required_total": 1,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        },
+        {
+          "case_id": "T09-029",
+          "expected_verdict": "accepted_with_notes",
+          "verdict": "human_review",
+          "score": null,
+          "findings": [
+            "report_complete",
+            "material_overuse",
+            "completion_unverified"
+          ],
+          "required_found": 1,
+          "required_total": 1,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        },
+        {
+          "case_id": "T09-030",
+          "expected_verdict": "human_review",
+          "verdict": "human_review",
+          "score": null,
+          "findings": [
+            "report_complete",
+            "timing_inconsistent"
+          ],
+          "required_found": 1,
+          "required_total": 1,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        },
+        {
+          "case_id": "T09-031",
+          "expected_verdict": "accepted",
+          "verdict": "human_review",
+          "score": null,
+          "findings": [
+            "report_complete",
+            "work_matches_problem",
+            "unusable_images"
+          ],
+          "required_found": 2,
+          "required_total": 2,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        },
+        {
+          "case_id": "T09-032",
+          "expected_verdict": "human_review",
+          "verdict": "human_review",
+          "score": null,
+          "findings": [
+            "untrusted_instruction_ignored",
+            "report_complete",
+            "photo_unusable",
+            "completion_unverified"
+          ],
+          "required_found": 2,
+          "required_total": 2,
+          "invalid_evidence_refs": 0,
+          "forbidden_findings": []
+        }
+      ]
+    }
+  },
+  "all_calls": [
+    {
+      "call_id": "42df7632-4445-4e44-95aa-ebe3353966b3",
+      "case_id": "T09-001",
+      "stage": "primary",
+      "model": "gpt-6.1-sol",
+      "reasoning": "medium",
+      "prompt_version": "t07-v1",
+      "usage": {
+        "cached_tokens": 0,
+        "input_tokens": 3154,
+        "output_tokens": 556,
+        "reasoning_tokens": 247,
+        "total_tokens": 3710
+      },
+      "latency_ms": 17375,
+      "error_code": null,
+      "is_mock": false,
+      "reserved_usd": "0.4971285",
+      "charged_usd": "0.026521",
+      "state": "settled"
+    },
+    {
+      "call_id": "84039549-7a7b-41be-b3c6-9bf1e1d175cd",
+      "case_id": "T09-002",
+      "stage": "primary",
+      "model": "gpt-6.1-sol",
+      "reasoning": "medium",
+      "prompt_version": "t07-v1",
+      "usage": {
+        "cached_tokens": 0,
+        "input_tokens": 3136,
+        "output_tokens": 447,
+        "reasoning_tokens": 132,
+        "total_tokens": 3583
+      },
+      "latency_ms": 11266,
+      "error_code": null,
+      "is_mock": false,
+      "reserved_usd": "0.535733",
+      "charged_usd": "0.0246235",
+      "state": "settled"
+    },
+    {
+      "call_id": "585278cb-73a8-45cb-8655-aea97e3488d9",
+      "case_id": "T09-009",
+      "stage": "primary",
+      "model": "gpt-6.1-sol",
+      "reasoning": "medium",
+      "prompt_version": "t07-v1",
+      "usage": {
+        "cached_tokens": 0,
+        "input_tokens": 3144,
+        "output_tokens": 388,
+        "reasoning_tokens": 122,
+        "total_tokens": 3532
+      },
+      "latency_ms": 10750,
+      "error_code": null,
+      "is_mock": false,
+      "reserved_usd": "0.496837",
+      "charged_usd": "0.023694",
+      "state": "settled"
+    },
+    {
+      "call_id": "1788fe00-2ff7-462c-897a-61527456e9e5",
+      "case_id": "T09-010",
+      "stage": "primary",
+      "model": "gpt-6.1-sol",
+      "reasoning": "medium",
+      "prompt_version": "t07-v1",
+      "usage": {
+        "cached_tokens": 0,
+        "input_tokens": 3133,
+        "output_tokens": 448,
+        "reasoning_tokens": 122,
+        "total_tokens": 3581
+      },
+      "latency_ms": 10375,
+      "error_code": null,
+      "is_mock": false,
+      "reserved_usd": "0.53548",
+      "charged_usd": "0.0246235",
+      "state": "settled"
+    },
+    {
+      "call_id": "83c95d51-ffc0-40c7-b32d-e8a481a06e3e",
+      "case_id": "T09-010",
+      "stage": "primary",
+      "model": "gpt-6.1-sol",
+      "reasoning": "medium",
+      "prompt_version": "t07-v1",
+      "usage": {
+        "cached_tokens": 0,
+        "input_tokens": 3133,
+        "output_tokens": 443,
+        "reasoning_tokens": 160,
+        "total_tokens": 3576
+      },
+      "latency_ms": 12078,
+      "error_code": null,
+      "is_mock": false,
+      "reserved_usd": "0.53548",
+      "charged_usd": "0.024541",
+      "state": "settled"
+    },
+    {
+      "call_id": "ce3dc223-25e0-4464-aeb6-ce52597e9666",
+      "case_id": "T09-010",
+      "stage": "escalation",
+      "model": "gpt-6-astra",
+      "reasoning": "medium",
+      "prompt_version": "t07-v1",
+      "usage": {
+        "cached_tokens": 0,
+        "input_tokens": 3396,
+        "output_tokens": 447,
+        "reasoning_tokens": 53,
+        "total_tokens": 3843
+      },
+      "latency_ms": 12733,
+      "error_code": null,
+      "is_mock": false,
+      "reserved_usd": "3.0573675",
+      "charged_usd": "0.1302675",
+      "state": "settled"
+    },
+    {
+      "call_id": "d5b7748d-620b-444c-9a8d-c7b3e7250016",
+      "case_id": "T09-011",
+      "stage": "primary",
+      "model": "gpt-6.1-sol",
+      "reasoning": "medium",
+      "prompt_version": "t07-v1",
+      "usage": {
+        "cached_tokens": 0,
+        "input_tokens": 3172,
+        "output_tokens": 446,
+        "reasoning_tokens": 64,
+        "total_tokens": 3618
+      },
+      "latency_ms": 9405,
+      "error_code": null,
+      "is_mock": false,
+      "reserved_usd": "0.497222",
+      "charged_usd": "0.024805",
+      "state": "settled"
+    },
+    {
+      "call_id": "0bed705b-33c1-48d8-9470-4fda15dd7d92",
+      "case_id": "T09-012",
+      "stage": "primary",
+      "model": "gpt-6.1-sol",
+      "reasoning": "medium",
+      "prompt_version": "t07-v1",
+      "usage": {
+        "cached_tokens": 0,
+        "input_tokens": 3155,
+        "output_tokens": 454,
+        "reasoning_tokens": 200,
+        "total_tokens": 3609
+      },
+      "latency_ms": 9780,
+      "error_code": null,
+      "is_mock": false,
+      "reserved_usd": "0.535733",
+      "charged_usd": "0.0248435",
+      "state": "settled"
+    },
+    {
+      "call_id": "181540cb-0254-4186-adc4-739186737b11",
+      "case_id": "T09-015",
+      "stage": "primary",
+      "model": "gpt-6.1-sol",
+      "reasoning": "medium",
+      "prompt_version": "t07-v1",
+      "usage": {
+        "cached_tokens": 0,
+        "input_tokens": 3191,
+        "output_tokens": 448,
+        "reasoning_tokens": 163,
+        "total_tokens": 3639
+      },
+      "latency_ms": 9188,
+      "error_code": null,
+      "is_mock": false,
+      "reserved_usd": "0.4981845",
+      "charged_usd": "0.0249425",
+      "state": "settled"
+    },
+    {
+      "call_id": "9772a279-b7b7-4bed-9833-31a2ecbbef36",
+      "case_id": "T09-016",
+      "stage": "primary",
+      "model": "gpt-6.1-sol",
+      "reasoning": "medium",
+      "prompt_version": "t07-v1",
+      "usage": {
+        "cached_tokens": 0,
+        "input_tokens": 3171,
+        "output_tokens": 383,
+        "reasoning_tokens": 111,
+        "total_tokens": 3554
+      },
+      "latency_ms": 10625,
+      "error_code": null,
+      "is_mock": false,
+      "reserved_usd": "0.536514",
+      "charged_usd": "0.02376",
+      "state": "settled"
+    },
+    {
+      "call_id": "f788a9ea-525b-4467-9c18-c1e7c841cbf8",
+      "case_id": "T09-019",
+      "stage": "primary",
+      "model": "gpt-6.1-sol",
+      "reasoning": "medium",
+      "prompt_version": "t07-v1",
+      "usage": {
+        "cached_tokens": 0,
+        "input_tokens": 3068,
+        "output_tokens": 323,
+        "reasoning_tokens": 78,
+        "total_tokens": 3391
+      },
+      "latency_ms": 8125,
+      "error_code": null,
+      "is_mock": false,
+      "reserved_usd": "0.506396",
+      "charged_usd": "0.0222035",
+      "state": "settled"
+    },
+    {
+      "call_id": "6dba885a-0752-48fb-9651-288c678393cf",
+      "case_id": "T09-020",
+      "stage": "primary",
+      "model": "gpt-6.1-sol",
+      "reasoning": "medium",
+      "prompt_version": "t07-v1",
+      "usage": {
+        "cached_tokens": 0,
+        "input_tokens": 3190,
+        "output_tokens": 443,
+        "reasoning_tokens": 95,
+        "total_tokens": 3633
+      },
+      "latency_ms": 9141,
+      "error_code": null,
+      "is_mock": false,
+      "reserved_usd": "0.498223",
+      "charged_usd": "0.0248545",
+      "state": "settled"
+    },
+    {
+      "call_id": "bb96cba1-8484-4fd9-8457-ed5a5b1932a0",
+      "case_id": "T09-021",
+      "stage": "primary",
+      "model": "gpt-6.1-sol",
+      "reasoning": "medium",
+      "prompt_version": "t07-v1",
+      "usage": {
+        "cached_tokens": 0,
+        "input_tokens": 3140,
+        "output_tokens": 847,
+        "reasoning_tokens": 622,
+        "total_tokens": 3987
+      },
+      "latency_ms": 20907,
+      "error_code": null,
+      "is_mock": false,
+      "reserved_usd": "0.5356395",
+      "charged_usd": "0.0312455",
+      "state": "settled"
+    },
+    {
+      "call_id": "0b5a0cbe-695a-421b-9972-1b585c7d4907",
+      "case_id": "T09-025",
+      "stage": "primary",
+      "model": "gpt-6.1-sol",
+      "reasoning": "medium",
+      "prompt_version": "t07-v1",
+      "usage": {
+        "cached_tokens": 0,
+        "input_tokens": 3132,
+        "output_tokens": 479,
+        "reasoning_tokens": 194,
+        "total_tokens": 3611
+      },
+      "latency_ms": 11141,
+      "error_code": null,
+      "is_mock": false,
+      "reserved_usd": "0.5353975",
+      "charged_usd": "0.0251295",
+      "state": "settled"
+    },
+    {
+      "call_id": "9020e445-dea1-4bf4-923b-f869a9666230",
+      "case_id": "T09-025",
+      "stage": "escalation",
+      "model": "gpt-6-astra",
+      "reasoning": "medium",
+      "prompt_version": "t07-v1",
+      "usage": {
+        "cached_tokens": 0,
+        "input_tokens": 3397,
+        "output_tokens": 443,
+        "reasoning_tokens": 61,
+        "total_tokens": 3840
+      },
+      "latency_ms": 11000,
+      "error_code": null,
+      "is_mock": false,
+      "reserved_usd": "3.0586875",
+      "charged_usd": "0.129965",
+      "state": "settled"
+    },
+    {
+      "call_id": "ff1b74f1-dc30-4c22-95eb-9fecec2477a1",
+      "case_id": "T09-026",
+      "stage": "primary",
+      "model": "gpt-6.1-sol",
+      "reasoning": "medium",
+      "prompt_version": "t07-v1",
+      "usage": {
+        "cached_tokens": 0,
+        "input_tokens": 3174,
+        "output_tokens": 502,
+        "reasoning_tokens": 236,
+        "total_tokens": 3676
+      },
+      "latency_ms": 11657,
+      "error_code": null,
+      "is_mock": false,
+      "reserved_usd": "0.497376",
+      "charged_usd": "0.02574",
+      "state": "settled"
+    },
+    {
+      "call_id": "d82363c1-dc77-4fc3-9c4c-86be4316a644",
+      "case_id": "T09-027",
+      "stage": "primary",
+      "model": "gpt-6.1-sol",
+      "reasoning": "medium",
+      "prompt_version": "t07-v1",
+      "usage": {
+        "cached_tokens": 0,
+        "input_tokens": 3139,
+        "output_tokens": 374,
+        "reasoning_tokens": 115,
+        "total_tokens": 3513
+      },
+      "latency_ms": 8280,
+      "error_code": null,
+      "is_mock": false,
+      "reserved_usd": "0.535546",
+      "charged_usd": "0.0234355",
+      "state": "settled"
+    },
+    {
+      "call_id": "4182e038-017f-4a11-b8c0-cf616d54118d",
+      "case_id": "T09-029",
+      "stage": "primary",
+      "model": "gpt-6.1-sol",
+      "reasoning": "medium",
+      "prompt_version": "t07-v1",
+      "usage": {
+        "cached_tokens": 0,
+        "input_tokens": 3184,
+        "output_tokens": 707,
+        "reasoning_tokens": 333,
+        "total_tokens": 3891
+      },
+      "latency_ms": 14734,
+      "error_code": null,
+      "is_mock": false,
+      "reserved_usd": "0.4979535",
+      "charged_usd": "0.0291775",
+      "state": "settled"
+    },
+    {
+      "call_id": "00613905-5cd6-4945-b26f-dc547240e11d",
+      "case_id": "T09-031",
+      "stage": "primary",
+      "model": "gpt-6.1-sol",
+      "reasoning": "medium",
+      "prompt_version": "t07-v1",
+      "usage": {
+        "cached_tokens": 0,
+        "input_tokens": 3066,
+        "output_tokens": 340,
+        "reasoning_tokens": 95,
+        "total_tokens": 3406
+      },
+      "latency_ms": 8390,
+      "error_code": null,
+      "is_mock": false,
+      "reserved_usd": "0.5064015",
+      "charged_usd": "0.022473",
+      "state": "settled"
+    }
+  ]
+}
