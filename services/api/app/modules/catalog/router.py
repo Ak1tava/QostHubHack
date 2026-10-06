@@ -1,10 +1,12 @@
 from datetime import datetime, timezone
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
+from app.core.config import settings
 from app.core.security import (
     AuthError,
     allowed_area_ids,
@@ -99,11 +101,16 @@ def catalog(
 
 
 @shift_router.get(
-    "", response_model=ShiftResponse, responses={401: {"model": ErrorResponse}}
+    "", response_model=ShiftResponse, responses={401: {"model": ErrorResponse}, 404: {"model": ErrorResponse}}
 )
-def shift(actor: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def shift(area_id: UUID | None = None, actor: User = Depends(get_current_user), db: Session = Depends(get_db)):
     now = datetime.now(timezone.utc)
-    users = list(db.scalars(visible_users(db, actor).order_by(User.id)))
+    query = visible_users(db, actor)
+    if area_id is not None:
+        if area_id not in allowed_area_ids(db, actor):
+            raise AuthError(404, "not_found", "Участок не найден")
+        query = query.where(User.id.in_(select(UserArea.user_id).where(UserArea.area_id == area_id)))
+    users = list(db.scalars(query.order_by(User.id)))
     shifts = {
         s.id: s
         for s in db.scalars(
@@ -147,4 +154,4 @@ def shift(actor: User = Depends(get_current_user), db: Session = Depends(get_db)
                 else None,
             )
         )
-    return ShiftResponse(items=items, as_of=now)
+    return ShiftResponse(items=items, as_of=now, timezone=settings.app_timezone)

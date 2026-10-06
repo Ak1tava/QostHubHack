@@ -43,12 +43,15 @@ def view(db, order, actor, *, busy=None, now=None):
     busy = busy if busy is not None else busy_workers(db)
     values = {name: getattr(order, name) for name in WorkOrderView.model_fields
               if name not in {"is_overdue", "allowed_actions"}}
-    return WorkOrderView(**values, is_overdue=(order.due_at < now and order.status not in {
-        "SUBMITTED", "AI_REVIEW", "CLOSED", "CANCELLED"
-    }), allowed_actions=allowed_actions(
+    commands = allowed_actions(
         order.status, actor.role, is_responsible=is_responsible(order, actor),
         has_active_order=actor.id in busy,
-    ))
+    )
+    if order.status == "IN_PROGRESS" and is_responsible(order, actor):
+        commands.append("submit")
+    return WorkOrderView(**values, is_overdue=(order.due_at < now and order.status not in {
+        "SUBMITTED", "AI_REVIEW", "CLOSED", "CANCELLED"
+    }), allowed_actions=commands)
 
 
 def report_view(db, order, report):
@@ -75,7 +78,7 @@ def report_view(db, order, report):
         work_description=report.work_description, fault_code_id=report.work_code_id,
         no_materials_used=report.no_materials_used,
         materials=[{"material_id": m.material_id, "quantity": m.quantity} for m in materials],
-        after_photo_ids=after, comment=report.comment, submitted_at=report.submitted_at,
+        after_photo_ids=after, comment=report.comment, submitted_at=report.submitted_at.astimezone(timezone.utc),
         missing_evidence=missing,
     )
 

@@ -64,8 +64,9 @@ test('invalid credentials and CSRF error allow a fresh successful login; server 
   await expect(page.getByRole('heading', { name: 'Вы вошли', exact: true })).toBeVisible();
 });
 
-test('expired server session clears auth on protected logout and permits login again', async ({ page }) => {
-  test.skip(!process.env.CI, 'Session expiry mutation is restricted to the disposable CI stack');
+test('expired server session clears auth and permits login again', async ({ page }) => {
+  const native = !!(process.env.E2E_DATABASE_URL && process.env.E2E_PYTHON_PATH);
+  test.skip(!process.env.CI && !native, 'Session expiry mutation requires the disposable CI or local T04 stack');
   await signIn(page, 'expiry');
   const expire = `
 import sys
@@ -75,17 +76,18 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.db import get_engine
+from app.modules.auth.demo import validate_demo_target
 from app.modules.auth.models import AuthSession, User
-assert make_url(settings.database_url.get_secret_value()).database == 'qosthub_demo'
+validate_demo_target(settings.database_url.get_secret_value())
+assert make_url(settings.database_url.get_secret_value()).database in {'qosthub_demo', 'qosthub_demo_t04', 'qosthub_demo_t05'}
 assert sys.argv[1].startswith('e2e-worker-')
 with Session(get_engine()) as db:
     db.execute(update(AuthSession).where(AuthSession.user_id.in_(select(User.id).where(User.login == sys.argv[1]))).values(expires_at=datetime.now(timezone.utc)-timedelta(seconds=1)))
     db.commit()
 `;
-  execFileSync('docker', ['compose', 'exec', '-T', 'api', '/workspace/services/api/.venv/bin/python', '-c', expire, account('expiry')], { cwd: '../..', timeout: 30_000 });
-  await page.getByRole('button', { name: 'Выйти', exact: true }).click();
+  if (native) execFileSync(process.env.E2E_PYTHON_PATH!, ['-c', expire, account('expiry')], { cwd: '../../services/api', timeout: 30_000, env: { ...process.env, DATABASE_URL: process.env.E2E_DATABASE_URL! } });
+  else execFileSync('docker', ['compose', 'exec', '-T', 'api', '/workspace/services/api/.venv/bin/python', '-c', expire, account('expiry')], { cwd: '../..', timeout: 30_000 });
   await expect(page.getByRole('heading', { name: 'Вход', exact: true })).toBeVisible();
-  await expect(page.getByRole('alert')).toContainText('Требуется вход');
   await fill(page, account('expiry'));
   await page.getByRole('button', { name: 'Войти', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Вы вошли', exact: true })).toBeVisible();

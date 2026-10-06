@@ -8,6 +8,7 @@ from fastapi import Request, Response
 from sqlalchemy import case, delete, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
+from starlette.requests import HTTPConnection
 
 from app.core.security import (
     AuthError,
@@ -28,7 +29,7 @@ def now_utc():
     return datetime.now(timezone.utc)
 
 
-def read_session(db: Session, request: Request, *, lock: bool = False):
+def read_session(db: Session, request: HTTPConnection, *, lock: bool = False):
     token = request.cookies.get(COOKIE, "")
     if not token or len(token) > 128:
         return None

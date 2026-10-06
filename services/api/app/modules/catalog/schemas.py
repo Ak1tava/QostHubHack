@@ -56,3 +56,4 @@ class ShiftMemberView(BaseModel):
 class ShiftResponse(BaseModel):
     items: list[ShiftMemberView]
     as_of: datetime
+    timezone: str

@@ -89,6 +89,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/photos/{photo_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download Photo */
+        get: operations["download_photo_api_v1_photos__photo_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/shift": {
         parameters: {
             query?: never;
@@ -158,6 +175,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/work-orders/{order_id}/photos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload Photo */
+        post: operations["upload_photo_api_v1_work_orders__order_id__photos_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-orders/{order_id}/submissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit Order */
+        post: operations["submit_order_api_v1_work_orders__order_id__submissions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health/live": {
         parameters: {
             query?: never;
@@ -221,6 +272,18 @@ export interface components {
             /** Csrf Token */
             csrf_token: string;
             user: components["schemas"]["UserView"];
+        };
+        /** Body_upload_photo_api_v1_work_orders__order_id__photos_post */
+        Body_upload_photo_api_v1_work_orders__order_id__photos_post: {
+            /** Captured At */
+            captured_at?: string | null;
+            /** File */
+            file: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "before" | "after";
         };
         /** CatalogResponse */
         CatalogResponse: {
@@ -350,6 +413,37 @@ export interface components {
              */
             status: "not_ready";
         };
+        /** PhotoView */
+        PhotoView: {
+            /** Captured At */
+            captured_at?: string | null;
+            /** Content Hash */
+            content_hash: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Perceptual Hash */
+            perceptual_hash: string | null;
+            /** Read Url */
+            read_url: string;
+            /**
+             * Received At
+             * Format: date-time
+             */
+            received_at: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "before" | "after";
+            /**
+             * Work Order Id
+             * Format: uuid
+             */
+            work_order_id: string;
+        };
         /** ReadyResponse */
         ReadyResponse: {
             /**
@@ -385,6 +479,43 @@ export interface components {
             as_of: string;
             /** Items */
             items: components["schemas"]["ShiftMemberView"][];
+            /** Timezone */
+            timezone: string;
+        };
+        /** SubmissionCreate */
+        SubmissionCreate: {
+            /** After Photo Ids */
+            after_photo_ids?: string[];
+            /** Assignment Version */
+            assignment_version: number;
+            /** Comment */
+            comment?: string | null;
+            /** Expected Version */
+            expected_version: number;
+            /**
+             * Fault Code Id
+             * Format: uuid
+             */
+            fault_code_id: string;
+            /** Materials */
+            materials?: components["schemas"]["SubmissionMaterialCreate"][];
+            /**
+             * No Materials Used
+             * @default false
+             */
+            no_materials_used: boolean;
+            /** Work Description */
+            work_description: string;
+        };
+        /** SubmissionMaterialCreate */
+        SubmissionMaterialCreate: {
+            /**
+             * Material Id
+             * Format: uuid
+             */
+            material_id: string;
+            /** Quantity */
+            quantity: number | string;
         };
         /** SubmissionMaterialView */
         SubmissionMaterialView: {
@@ -949,9 +1080,85 @@ export interface operations {
             };
         };
     };
-    shift_api_v1_shift_get: {
+    download_photo_api_v1_photos__photo_id__get: {
         parameters: {
             query?: never;
+            header?: never;
+            path: {
+                photo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    shift_api_v1_shift_get: {
+        parameters: {
+            query?: {
+                area_id?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -974,6 +1181,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1213,6 +1438,159 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkOrderView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    upload_photo_api_v1_work_orders__order_id__photos_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_photo_api_v1_work_orders__order_id__photos_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhotoView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    submit_order_api_v1_work_orders__order_id__submissions_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmissionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmissionView"];
                 };
             };
             /** @description Unauthorized */

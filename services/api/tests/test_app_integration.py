@@ -45,3 +45,17 @@ def test_production_auth_errors_are_safe_and_not_cached(monkeypatch, payload, st
         assert "0042" not in response.text
     finally:
         main.app.dependency_overrides.clear()
+
+
+def test_invalid_photo_uuid_uses_declared_error_contract():
+    from app.core.security import get_current_user
+    main.app.dependency_overrides[get_db] = lambda: None
+    main.app.dependency_overrides[get_current_user] = lambda: object()
+    try:
+        with TestClient(main.app) as client:
+            response = client.get("/api/v1/photos/not-a-uuid")
+        assert response.status_code == 422
+        assert response.json().get("error", {}).get("code") == "validation_error"
+        assert response.headers["cache-control"] == "no-store"
+    finally:
+        main.app.dependency_overrides.clear()

@@ -11,9 +11,10 @@ from app.modules.auth.schemas import ErrorResponse
 from app.modules.work_orders import queries
 from app.modules.work_orders.schemas import (
     ActionCommand, WorkOrderCreate, WorkOrderDetail, WorkOrderList,
-    WorkOrderPriority, WorkOrderStatus, WorkOrderView,
+    WorkOrderPriority, WorkOrderStatus, WorkOrderView, SubmissionCreate, SubmissionView,
 )
 from app.modules.work_orders.service import WorkOrderService
+from app.modules.work_orders.submissions import SubmissionService
 
 router = APIRouter(prefix="/work-orders", tags=["work-orders"])
 ERRORS = {code: {"model": ErrorResponse} for code in (401, 403, 404, 409, 422)}
@@ -51,3 +52,10 @@ def apply_action(order_id: UUID, command: ActionCommand, response: Response, key
                   actor: User = Depends(get_current_user), db: Session = Depends(get_db)):
     response.headers["Cache-Control"] = "no-store"
     return WorkOrderService(db).apply_action(order_id, actor, command, key)
+
+
+@router.post("/{order_id}/submissions", response_model=SubmissionView, status_code=201, responses=ERRORS)
+def submit_order(order_id: UUID, command: SubmissionCreate, response: Response, key: Key,
+                 actor: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "no-store"
+    return SubmissionService(db).submit_order(order_id, actor, command, key)

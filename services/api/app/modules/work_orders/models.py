@@ -133,6 +133,8 @@ class Photo(Base):
     storage_key: Mapped[str] = mapped_column(String(512), unique=True)
     mime_type: Mapped[str] = mapped_column(String(64))
     content_hash: Mapped[str] = mapped_column(String(64), index=True)
+    perceptual_hash: Mapped[str | None] = mapped_column(String(16), index=True)
+    captured_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     received_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow
     )

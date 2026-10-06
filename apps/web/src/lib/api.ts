@@ -5,6 +5,10 @@ export type LoginRequest = components['schemas']['LoginRequest'];
 type AuthResponse = components['schemas']['AuthResponse'];
 type ErrorResponse = components['schemas']['ErrorResponse'];
 type Details = ErrorResponse['error']['details'];
+type RequestOptions = RequestInit & {
+  params?: Record<string, string>;
+  query?: Record<string, string | number | undefined>;
+};
 
 export class ApiError extends Error {
   constructor(
@@ -32,7 +36,12 @@ export class ApiClient {
     this.generation++;
   }
 
-  async request<T>(path: keyof paths, options: RequestInit = {}): Promise<T> {
+  async request<T>(path: keyof paths, options: RequestOptions = {}): Promise<T> {
+    const { params, query, ...requestOptions } = options;
+    const pathname = path.replace(/\{([^}]+)\}/g, (placeholder, name: string) => params?.[name] === undefined ? placeholder : encodeURIComponent(params[name]));
+    const search = new URLSearchParams();
+    Object.entries(query ?? {}).forEach(([name, value]) => { if (value !== undefined && value !== '') search.set(name, String(value)); });
+    const url = search.size ? `${pathname}?${search}` : pathname;
     const method = (options.method ?? 'GET').toUpperCase();
     const headers = new Headers(options.headers);
     headers.set('Accept', 'application/json');
@@ -41,7 +50,7 @@ export class ApiClient {
     }
     let response: Response;
     try {
-      response = await this.fetcher(path, { ...options, method, headers, credentials: 'same-origin', cache: 'no-store' });
+      response = await this.fetcher(url, { ...requestOptions, method, headers, credentials: 'same-origin', cache: 'no-store' });
     } catch { throw unavailable(); }
     if (response.status === 401) {
       this.clear();

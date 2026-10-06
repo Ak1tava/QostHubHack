@@ -11,15 +11,16 @@
 <!-- CURRENT_STATE:START -->
 ## Текущее состояние — читать первым
 
-- **Обновлено:** 2026-10-03. **Этап:** T01–T03 интегрированы в main; T03 через [PR №4](https://github.com/Ak1tava/QostHubHack/pull/4), merge `cf87f8d`; приёмка main пройдена. Календарные даты пяти рабочих дней не назначены.
+- **Обновлено:** 2026-10-06. **Этап:** T01–T03 интегрированы в main; T03 через [PR №4](https://github.com/Ak1tava/QostHubHack/pull/4), merge `cf87f8d`; приёмка main пройдена. T04/T05 реализованы; интеграция в main выполняется A / Codex в `codex/t04-t05-integration`. Календарные даты пяти рабочих дней не назначены.
 - **Готово:** T00 — документация; T01 — воспроизводимый каркас и контракты; T02 — миграции, серверные сессии/CSRF, права, справочники/смена и клиентский вход/выход; T03 — API нарядов, переходы, идемпотентность, история, интервалы и outbox.
 - **Реализовано в main:** инфраструктура, авторизация/права, каталоги/смена, production app, типизированный клиент и безопасный proxy; серверное ядро нарядов T03 и миграция 0002. HTTP отчёта/приёмки остаются в T05/T07, доставка outbox — T06.
-- **Следующие задачи:** назначить T04/T05/T06 по реестру; T03 больше не блокирует их старт. Дополнительная ручная проверка Т01 исключена из текущей приёмки по указанию пользователя.
-- **В работе / на проверке:** активных задач нет; T01–T03 DONE после интеграции и CI main. **Владельцы:** A — инициатор / Codex (интеграция/frontend), B — Богдан / Codex (сервер Т02), B / Codex — T03, C — будущий третий участник.
+- **Следующие задачи:** завершить CI/интеграцию T04/T05, выполнить ручные замеры на телефонах; затем интеграция T06 и T09 из отдельных веток. Дополнительная ручная проверка Т01 исключена из текущей приёмки по указанию пользователя.
+- **В работе / на проверке:** T04 REVIEW — A / Codex, `codex/t04-foreman-workflow`; T05 REVIEW — A + B / Codex, `codex/t05-execution-evidence` от T04 `f74c42a`; код и локальная приёмка в [docs/T05-verification.md](docs/T05-verification.md). T01–T03 DONE после интеграции и CI main. **Владельцы:** A — инициатор / Codex (интеграция/frontend), B — Богдан / Codex (сервер Т02), B / Codex — T03, C — будущий третий участник.
 - **Зафиксировано:** 3 человека / 5 дней; Telegram вместо FCM; действия по наряду в PWA; мастер принимает результат; синтетические данные для демо.
 - **Внешние зависимости:** API-ключ и бюджет модели, токен Telegram, адрес HTTPS-развёртывания и реальные данные ещё не подтверждены. Это не блокирует T01–T05, но блокирует проверку живых интеграций и сдачу T10.
 - **1С:** доступа и выгрузок нет; рабочая интеграция не входит в MVP.
 - **Свежая проверка:** [CI main — PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37139257953), `cf87f8d`: целевые T03/authz 108/108, полный pytest 1153/1153, Vitest 13/13, Playwright 9/9; PostgreSQL-конкуренция, миграции/check/roundtrip, контракты, typecheck/build, Compose, защита IP и recovery/persistence. Команды/результаты — `docs/T03-verification.md`; предыдущая приёмка — `docs/T01-T02-verification.md`.
+- **Локальная проверка T04:** pytest 1170, Vitest 29, production Playwright 13 — PASS; typecheck/build и дрейф контрактов — PASS. Фактические результаты и оставшаяся ручная приёмка — `docs/T04-verification.md`; новый CI/Compose не выполнен.
 <!-- CURRENT_STATE:END -->
 
 <a id="task-registry"></a>
@@ -33,8 +34,8 @@
 | T01 | Запуск каркаса и базовые контракты | DONE | A | T00 | A / Codex; main, [PR №2](https://github.com/Ak1tava/QostHubHack/pull/2), [CI main PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37133455089); критерий второго участника снят пользователем 2026-10-03; `docs/T01-T02-verification.md` |
 | T02 | Схема БД, вход и разграничение доступа | DONE | B + A | Общая основа T01 + C1; полная T01 не блокирует старт | Богдан / Codex — сервер `4ce5aca`; A / Codex — интеграция/клиент; main [8a8669a](https://github.com/Ak1tava/QostHubHack/commit/8a8669a1cbc94e495bda921cbf7c5add910fc543), [CI main PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37133455089), 67/13/9 тестов; `docs/T01-T02-verification.md` |
 | T03 | Жизненный цикл и журнал наряда | DONE | B | T02 | B / Codex; main `cf87f8d`, [PR №4 MERGED](https://github.com/Ak1tava/QostHubHack/pull/4), [CI main PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37139257953); pytest 1153, Vitest 13, Playwright 9; `docs/T03-verification.md` |
-| T04 | Создание наряда и панель мастера | TODO | A | T02, T03 | Не назначен |
-| T05 | Исполнение, фото и материалы | TODO | A + B | T03 | Не назначен |
+| T04 | Создание наряда и панель мастера | REVIEW | A | T02, T03 | A / Codex; `codex/t04-foreman-workflow`; pytest 1170 / Vitest 29 / Playwright 13 PASS; `docs/T04-verification.md`; ручные два телефона и интеграция ожидаются; интеграция IN_PROGRESS — A / Codex, `codex/t04-t05-integration`, [проверка](docs/T04-T05-integration.md) |
+| T05 | Исполнение, фото и материалы | REVIEW | A + B | T03 | A + B / Codex; `codex/t05-execution-evidence` от T04 `f74c42a`; приёмка API 126, Vitest 47, production Playwright 14, native photo restart PASS; [проверка](docs/T05-verification.md); интеграция IN_PROGRESS — A / Codex, `codex/t04-t05-integration`, [проверка](docs/T04-T05-integration.md) |
 | T06 | Telegram, сроки и эскалации | TODO | B | T03 | Не назначен |
 | T07 | ИИ-проверка и приёмка мастером | TODO | C + B | T03, T05, T06, T09 | Не назначен |
 | T08 | Отчёты, рейтинг и закономерности | TODO | C + A | T07, T09 | Не назначен |
@@ -110,6 +111,7 @@
 - `GET /work-orders` поддерживает area_id, equipment_id, assignee_id, priority, status и пагинацию. Отчёты принимают start_at/end_at и разрешённые фильтры участка, оборудования, исполнителя/бригады; интервалы `[start_at, end_at)`.
 - Для действий: `Idempotency-Key` плюс `expected_version`; первый запрос атомарно сохраняет изменение, событие и outbox. Повтор возвращает тот же результат; тот же ключ с другим телом — 409; устаревшая версия — 409. Ошибки: 401 без входа, 403 для запретного действия, 404 для недоступного чужого объекта, 422 для невалидного ввода.
 - WebSocket `/api/v1/events` авторизуется сессией и отдаёт только разрешённые события: `event_id`, `type`, `work_order_id`, `version`, `occurred_at`. После переподключения клиент перечитывает актуальные данные через API; события служат сигналом обновления.
+- T04: `GET /shift?area_id=<uuid>` совместимо добавляет optional-фильтр разрешённого участка (недоступный — 404); ответ `{items,as_of,timezone}` передаёт `APP_TIMEZONE`. Занятость учитывает всю нагрузку видимых работников, доступ к активной карточке проверяется отдельно. Без фильтра сохраняется прежний состав смены.
 - `WorkOrderView` содержит поля WorkOrder, is_overdue и allowed_actions; подробная карточка дополнительно содержит events и текущую submission. `PhotoView`: id, work_order_id, type, received_at, read_url (защищённый маршрут API). `SubmissionView`: поля Submission, id и missing_evidence. Эти схемы определяются в указанных в T02/T05 Pydantic-модулях; фронтенд не ведёт независимые копии типов.
 
 **Уточнение T03 для T04–T07:** создание возвращает 201, действие — 200; оба требуют `Idempotency-Key` (1–128 символов). Ключ уникален для пользователя среди команд нарядов; повтор тела/маршрута возвращает сохранённый ответ после проверки текущего доступа, иное тело/маршрут — 409. Неуспешная команда ключ не занимает. Список — `{items,total,offset,limit}`, offset=0, limit=50 (максимум 200), сортировка created_at DESC/id; фильтр assignee_id включает ответственного бригады. `WorkOrderView.queue_position` — позиция очереди исполнителя, постановка добавляет в конец; позиции могут иметь пропуски.
@@ -117,6 +119,10 @@
 HTTP `/actions` принимает только accept/queue/reject/reassign/start/pause/resume/restart/cancel/reprioritize. T05/T07 вызывают `work_orders.internal.apply_internal(db, order_id, command, actor=...)` внутри собственной транзакции: создают Submission/AIReview/MasterDecision, вызывают ядро, затем один commit либо rollback. Ядро делает только flush; служебный actor=None разрешён только для begin_review/request_rework, не для закрытия. `InternalActionCommand` требует expected_version, assignment_version и submission_id; решение мастера/результат ИИ передаются через decision_id/review_id и проверяются по сохранённым данным. На HTTP эта схема не публикуется. SubmissionView.fault_code_id соответствует существующему Submission.work_code_id; missing_evidence вычисляется сервером. `allowed_actions` пока содержит только подключённые публичные команды.
 
 Outbox T03: одна запись на event_id, тип `work_order.<action>`, payload `{event_id,type,work_order_id,version,assignment_version,occurred_at}`, published_at=null. Доставка/lease/retries — T06. Интервалы `active` (IN_PROGRESS), `pause` (PAUSED), `review` (SUBMITTED/AI_REVIEW) отдельны от DowntimeInterval.
+
+**Уточнение T05 для T07:** `POST /work-orders/{id}/submissions` возвращает 201 `SubmissionView`, требует `Idempotency-Key`, `expected_version`, `assignment_version` и поля C3. Материалы уникальны по material_id, количество decimal(14,4) > 0; список пуст только при no_materials_used=true. Новая revision принимает только свежие after-фото этого наряда от ответственного с submission_id=null; предыдущие связи и расход неизменяемы. Наряд/отчёт/расход/событие/outbox фиксируются атомарно через ядро T03. `allowed_actions` включает submit для ответственного IN_PROGRESS; HTTP `/actions` его не принимает. Для emergency без after-фото сохраняется missing_evidence=[after_photo]; T07 читает этот серверный результат, закрытие по-прежнему блокируется ядром.
+
+`POST /work-orders/{id}/photos`: multipart file, type=before|after, опциональный captured_at с часовым поясом; ответ 201 `PhotoView`. Добавлены captured_at, content_hash и perceptual_hash (64-bit dHash), read_url ведёт на защищённый GET `/photos/{id}`. Автор — только текущий ответственный worker, состояния ISSUED/ACCEPTED/QUEUED/IN_PROGRESS/PAUSED/REWORK; блокировка наряда сериализует загрузку с переназначением/подачей. Разрешены фактически декодируемые JPEG/PNG/WebP до 5 МиБ, 16 Мп и 8192 px по стороне; заявленный MIME должен совпадать. Метаданные изображения удаляются; хеши — сигналы повторного использования, не доказательство свежести. Миграция 0003 добавляет nullable captured_at/perceptual_hash для старых фото.
 
 #### C1.1. Python, БД и подключение модулей
 
@@ -280,22 +286,26 @@ Outbox T03: одна запись на event_id, тип `work_order.<action>`, p
 **Создать:** `apps/web/src/features/shift/{ShiftPage,WorkerList}.tsx`, `apps/web/src/features/work-orders/{CreateOrderPage,OrderBoard,OrderDetailsPage}.tsx`, `apps/web/src/lib/events.ts`, `apps/web/src/features/work-orders/CreateOrderPage.test.tsx`, `services/api/app/modules/work_orders/realtime.py`, `services/api/tests/test_realtime_authz.py`.
 **Потребляет:** endpoints T02/T03 и события C1. **Отдаёт:** маршруты `/shift`, `/orders/new`, `/orders/:id`; форма выдачи, канбан, фильтры и цвета занятости.
 
-- [ ] Проверить: смена участка сбрасывает несовместимое оборудование; пустое обязательное поле блокирует выдачу; выбранный исполнитель соответствует показанному статусу.
-- [ ] Реализовать форму с предзаполнением смены/мастера/типа/приоритета, сохранением введённого текста при сетевой ошибке; предупреждать о занятости и очереди. Аварийный приоритет виден явно.
-- [ ] Подключить обновления по WebSocket и перечитывание после reconnect; API и worker обмениваются сигналами через БД, если изменения исходят из разных процессов. Проверить фильтрацию событий по доступу.
+- [x] Проверить: смена участка сбрасывает несовместимое оборудование; пустое обязательное поле блокирует выдачу; выбранный исполнитель соответствует показанному статусу.
+- [x] Реализовать форму с предзаполнением смены/мастера/типа/приоритета, сохранением введённого текста при сетевой ошибке; предупреждать о занятости и очереди. Аварийный приоритет виден явно.
+- [x] Подключить обновления по WebSocket и перечитывание после reconnect; API и worker обмениваются сигналами через БД, если изменения исходят из разных процессов. Проверить фильтрацию событий по доступу.
 - [ ] Выполнить `npm --prefix apps/web run test -- --run` и `uv run pytest tests/test_realtime_authz.py -q`; вручную измерить создание ≤60 секунд и обновление панели ≤5 секунд на двух телефонах. Число нажатий считать по заранее записанному сценарию и не исключать неудобные действия задним числом.
-- [ ] Записать замеры и известные отклонения, создать коммит `feat: add foreman mobile workflow and shift board`.
+- [x] Записать автоматические замеры и известные отклонения, создать коммит `feat: add foreman mobile workflow and shift board`; ручные замеры остаются в предыдущем пункте.
+
+**Передача T04 — REVIEW (2026-10-04):** A / Codex, `codex/t04-foreman-workflow`, база `7bc2b3a`. Форма/смена/канбан/карточка, защищённый WebSocket и совместимые контракты реализованы. Полный pytest 1170, Vitest 29, production Playwright 13, typecheck/build и контракты PASS; команды и ограничения — [docs/T04-verification.md](docs/T04-verification.md). Не выполнены ручные замеры на двух телефонах и CI/Compose этой ветки; push/merge не выполнялись. T05/T06/T07 не запускались.
 
 ### T05. Исполнение и доказательства
 
 **Создать:** `apps/web/src/features/work-orders/{MyOrdersPage,ExecutionPage,SubmissionForm}.tsx`, `services/api/app/modules/work_orders/submissions.py`, `services/api/app/modules/photos/{router,service,storage}.py`, `services/api/tests/test_submissions.py`, `services/api/tests/test_photos.py`; **изменить:** модели/миграции и OpenAPI.
 **Потребляет:** C1–C3. **Отдаёт:** `/my-orders`, действия исполнителя, API подачи revision отчёта и защищённых фото; `store_photo(order_id, actor, upload) -> PhotoView`, `submit_order(order_id, actor, payload, key) -> SubmissionView`.
 
-- [ ] В тестах закрепить сохранение работ/шифра/материалов; пустые материалы допустимы только с no_materials_used; отрицательные количества отклоняются; фото другого наряда и подмена MIME запрещены.
-- [ ] Реализовать экран очереди и все действия C2; причины обязательны. Сжать фото на клиенте; сохранять в приватный volume через интерфейс storage, выдавать только после проверки прав.
-- [ ] Создавать отчёт и строки расхода один раз на revision; повтор запроса не удваивает материалы. Неполный отчёт допускается к проверке с missing_evidence, но не к CLOSED. Предыдущие revision не редактируются.
+- [x] В тестах закрепить сохранение работ/шифра/материалов; пустые материалы допустимы только с no_materials_used; отрицательные количества отклоняются; фото другого наряда и подмена MIME запрещены.
+- [x] Реализовать экран очереди и все действия C2; причины обязательны. Сжать фото на клиенте; сохранять в приватный volume через интерфейс storage, выдавать только после проверки прав.
+- [x] Создавать отчёт и строки расхода один раз на revision; повтор запроса не удваивает материалы. Неполный отчёт допускается к проверке с missing_evidence, но не к CLOSED. Предыдущие revision не редактируются.
 - [ ] Выполнить `uv run pytest tests/test_submissions.py tests/test_photos.py tests/test_authz.py -q`; проверить сохранность фото после перезапуска и загрузку ≤10 секунд на указанной сети/размере файла; не выдавать локальный Wi‑Fi за мобильную проверку.
-- [ ] Записать результат и создать коммит `feat: capture execution reports photos and materials`.
+- [x] Записать результат и создать коммит `feat: capture execution reports photos and materials`; локальный head и команды — в передаче ниже.
+
+**Передача T05 — REVIEW (2026-10-04):** A + B / Codex, `codex/t05-execution-evidence` от запушенной T04 `f74c42a`. Исполнитель/очередь/отчёт, private фото и миграция 0003, атомарные immutable revision/материалы и OpenAPI/TS реализованы. Финальная приёмка API 126, Vitest 47, production Playwright 14, build/контракты и native photo restart PASS; команды, ограничения и ссылка на код — [docs/T05-verification.md](docs/T05-verification.md). Локальный head определяется `git log -1 --format=%H`; push/merge не выполнялись. Остались ручные телефоны/мобильная сеть и CI/Compose; интеграция сначала T04, затем T05, с сохранением актуальных чужих статусов. Изменённый контракт — уточнение C1 для T07; ИИ/приёмка остаются T07.
 
 ### T06. Telegram и контроль времени
 
@@ -354,6 +364,10 @@ Outbox T03: одна запись на event_id, тип `work_order.<action>`, p
 
 <a id="decisions"></a>
 ## Журнал решений
+
+- **2026-10-04, T05, A + B / Codex:** реализация основана на запушенной T04 `f74c42a`, без слияния в main. Уточнение C1 выше сохраняет служебный submit вне `/actions`; новая revision использует новые after-фото и не перепривязывает предыдущие. Фото сохраняются через private filesystem storage, MIME проверяется Pillow, SHA-256 исходного файла и dHash очищенных пикселей доступны T07; обычные ошибки записи/БД компенсируются, аварийный выход процесса может оставить файл без строки БД.
+
+- **2026-10-04, T04, A / Codex:** согласованный пользователем аддитивный фильтр `/shift` и `timezone`; WebSocket читает committed версии событий через отдельные короткие Session в thread pool раз в секунду, без timestamp-курсора и изменения outbox T06. Клиент сверяет HTTP каждые 3 секунды и после reconnect/focus. Для метрики 6 действий учитываются открытия/выборы/фокус/переходы/отправка, символы клавиатуры отдельно; реальные два телефона проверяются вручную. Зависимые T05/T06/T07 пока не назначены, прежние HTTP-поля и семантика команд сохранены.
 
 | ID | Дата | Решение | Основание / статус |
 | --- | --- | --- | --- |
@@ -419,3 +433,5 @@ Outbox T03: одна запись на event_id, тип `work_order.<action>`, p
 - Context7 использован для `/obra/superpowers`, `/websites/developers_openai` и `/websites/fastapi_tiangolo`. Проверять документацию повторно при изменении технологии/API; при обычном продолжении задачи пользоваться зафиксированными решениями.
 
 **Передача B / T02 — REVIEW (2026-10-03):** Богдан / Codex, `feat/T02-data-auth`, база `8a26387`. Добавлены БД/модели/миграция, серверные csrf/login/logout/me, права, каталог и смена, локальная demo-команда. Проверка: PostgreSQL, `uv run --locked --with pytest --with httpx --with httpx2 pytest -q` → 50 PASS; миграции upgrade/check/downgrade PASS. Подробности и требования A — `docs/T02-integration.md`, подтверждение — `docs/T02-verification.md`. A подключает routers/обработчики/lifespan и проверяет LoginPage/OpenAPI/TS. Карточки/фото/WS — проверки при T03/T05/T04. Общие main/config/manifests/web и C1 не изменены; формы ответов catalog/shift предложены для согласования A. Push/merge не выполнялись.
+
+**Передача A / интеграция T04–T05 — IN_PROGRESS (2026-10-06):** `codex/t04-t05-integration` от T05 `ef16561`, включающей T04 `f74c42a`; база main `7bc2b3a`. Истории сохранены, CI дополнен настоящим protected-photo persistence после пересоздания контейнера. Локально Vitest 47, API без БД 1016 и guard 17 PASS; build PASS. Полная PostgreSQL/Compose/Playwright приёмка ожидает GitHub Actions; ручные телефоны не проверены. T04/T05 остаются REVIEW. Команды и ограничения — [docs/T04-T05-integration.md](docs/T04-T05-integration.md).
