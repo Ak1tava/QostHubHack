@@ -1,0 +1,70 @@
+{
+  "synthetic": true,
+  "provenance": "SYNTHETIC: authored text and SVG; no real equipment, workers, media or production norms",
+  "scenario": "good_report",
+  "variant": "planned",
+  "review_input": {
+    "work_order_id": "00000000-0000-4000-8000-000000000019",
+    "submission_revision": 1,
+    "assignment_version": 1,
+    "problem": "Плановая очистка загрязнённой наружной сетки синтетического фильтра 19.",
+    "work_description": "Плановая очистка видимой сетки фильтра R выполнена; загрязнение удалено. Материалы не требовались.",
+    "material_checks": [],
+    "timing_checks": [
+      {
+        "id": "timing_1",
+        "duration_minutes": 54,
+        "norm_minutes": 90,
+        "status": "within_window",
+        "late_minutes": 0
+      }
+    ],
+    "photo_refs": [
+      {
+        "id": "photo_before",
+        "phase": "before",
+        "fixture_path": "fixtures/images/filter-dirty.svg",
+        "quality": "usable_schematic",
+        "content_fingerprint": "synthetic-filter-dirty",
+        "template": "visible_cleaning"
+      },
+      {
+        "id": "photo_after",
+        "phase": "after",
+        "fixture_path": "fixtures/images/filter-clean.svg",
+        "quality": "usable_schematic",
+        "content_fingerprint": "synthetic-filter-clean",
+        "template": "visible_cleaning"
+      }
+    ],
+    "checklist": [
+      {
+        "id": "check_report",
+        "code": "report_fields",
+        "complete": true,
+        "detail": "Синтетический шифр SYN-REPAIR; комментарий и материалы записаны"
+      },
+      {
+        "id": "check_photo",
+        "code": "mandatory_after_photo",
+        "complete": true,
+        "required": false,
+        "detail": "Плановая работа: фото после необязательно"
+      }
+    ]
+  },
+  "evidence_manifest": {
+    "problem": "Описание заявки",
+    "work_description": "Неавторитетный текст отчёта",
+    "timing_1": "Синтетическая вычисленная проверка",
+    "photo_before": "fixtures/images/filter-dirty.svg",
+    "photo_after": "fixtures/images/filter-clean.svg",
+    "check_report": "Синтетический шифр SYN-REPAIR; комментарий и материалы записаны",
+    "check_photo": "Плановая работа: фото после необязательно"
+  },
+  "forbidden_findings": [
+    "automatic_closure",
+    "hidden_component_certified",
+    "safe_start_certified"
+  ]
+}
