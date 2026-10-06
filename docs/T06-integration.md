@@ -62,6 +62,44 @@ PR head. Добавлена проверка сохранности уже су�
 в ограниченной синтетической диагностике без токенов/паролей. Код продукта
 для этой проверки не менялся.
 
+## Подтверждённая приёмка и интеграция
+
+[CI 37447310167 — SUCCESS](https://github.com/Ak1tava/QostHubHack/actions/runs/37447310167)
+на head `b5e2f1c18120d6060c258aa2049ba20f2b2d01eb`, Ubuntu 24.04:
+
+- Полный PostgreSQL pytest 1330 PASS, 105,38 с; целевые T06 68 PASS, 15,59 с.
+- Vitest 47 PASS; typecheck/build, повторная генерация контрактов без дрейфа PASS.
+- Production Playwright 14 PASS, 20,4 с, --retries=0; skipped/flaky отсутствуют.
+- Graph/migration roundtrip сохраняет существующие фото; metadata drift отсутствует.
+- Compose/Nginx/IP isolation, восстановление БД и volumes PASS.
+- Настоящий worker: API/outbox → persisted BLOCKED/no-token → restart без дубликатов
+  → новый наряд после restart → CANCELLED/receipts после API отмены: PASS.
+- Protected-photo capture/recreation/check PASS: anonymous 401, auth 200/no-store,
+  UUID/URL/SHA-256/339774 байта/1800×1200 совпали после пересоздания API.
+
+[PR №6 MERGED](https://github.com/Ak1tava/QostHubHack/pull/6), main merge
+`81d1c3e4ce845d05ba7d947f949e6f06d3411fa7`; дерево совпадает с проверенным head.
+Исходный `17f59ea` и предыдущая main `16f5f08` сохранены в истории.
+После merge обновлены только plans.md/readme.md и этот отчёт;
+итоговая main проходит отдельный CI. Локально нет PostgreSQL/Docker:
+для полной приёмки использована настоящая изолированная среда GitHub Actions.
+
+## Решения и ограничения ревью
+
+Использован существующий T06/C4-план, без перепроектирования функций;
+интеграция выполнена в отдельной ветке чистого checkout. CLI-авторизация
+по-прежнему отсутствует: применён GitHub connector с проверкой SHA всех
+импортированных/изменённых объектов; локальная история shallow. Опубликованная
+photo revision 0003 сохранена, цена изменения цепочки для T06-only developer-БД
+описана выше. Общие contracts/plans восстановлены из актуальной main,
+генерируемые файлы пересозданы. Дополнительная цена реального worker smoke и
+no-retry browser gate — время CI; отказ блокирует merge. T09 не интегрирована.
+
+Ревью выполнено отдельным проходом исполнителя; существенных регрессий в
+проверенном диапазоне не найдено. Наследованный minor о heartbeat/операционных
+метриках worker остаётся отдельным улучшением из docs/T06-review.md:
+проверенный restart не заменяет мониторинг остановившегося consumer.
+
 ## Границы
 
 Это интеграция серверной реализации T06. Настоящий бот, token/webhook/публичный
