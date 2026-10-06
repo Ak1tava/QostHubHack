@@ -61,6 +61,15 @@ def test_empty_postgres_migration_roundtrip():
                     master_id=user_id, assignee_id=user_id,
                     due_at=datetime.now(timezone.utc),
                 ))
+            command.upgrade(config, "0003")
+            photo_id = uuid4()
+            captured_at = datetime.now(timezone.utc)
+            order_id = connection.scalar(select(models.WorkOrder.id).where(models.WorkOrder.number == "WO-000041"))
+            connection.execute(models.Photo.__table__.insert().values(
+                id=photo_id, work_order_id=order_id, uploaded_by=user_id, type="before",
+                storage_key=f"{photo_id}.png", mime_type="image/png", content_hash="a" * 64,
+                captured_at=captured_at, perceptual_hash="b" * 16,
+            ))
             command.upgrade(config, "head")
             assert (
                 connection.scalar(text("SELECT version_num FROM alembic_version"))
@@ -74,6 +83,14 @@ def test_empty_postgres_migration_roundtrip():
                 compare_metadata(MigrationContext.configure(connection), Base.metadata)
                 == []
             )
+            assert connection.execute(select(models.Photo.captured_at, models.Photo.perceptual_hash)
+                                      .where(models.Photo.id == photo_id)).one() == (captured_at, "b" * 16)
+            assert {"telegram_bindings", "telegram_link_tokens", "telegram_updates",
+                    "notifications", "notification_receipts"} <= set(inspect(connection).get_table_names())
+            command.downgrade(config, "0003")
+            assert connection.scalar(select(models.Photo.content_hash).where(models.Photo.id == photo_id)) == "a" * 64
+            assert "notifications" not in inspect(connection).get_table_names()
+            command.upgrade(config, "head")
             command.downgrade(config, "base")
             assert set(inspect(connection).get_table_names()) <= {"alembic_version"}
             assert "work_order_number_seq" not in inspect(connection).get_sequence_names()
