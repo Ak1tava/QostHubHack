@@ -8,6 +8,7 @@ from app.modules.catalog import (
     models as catalog_models,  # noqa: F401 — registers SQLAlchemy metadata
 )
 from app.modules.work_orders import models  # noqa: F401 — registers SQLAlchemy metadata
+from app.modules.telegram import models as telegram_models  # noqa: F401
 
 
 def run_migrations():

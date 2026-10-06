@@ -1,4 +1,4 @@
-name: T01-T05 integration acceptance
+name: T01-T06 integration acceptance
 
 on:
   push:
@@ -78,6 +78,9 @@ jobs:
       - name: All API behavior and empty-database migration roundtrip
         working-directory: services/api
         run: uv run --locked pytest -q
+      - name: Telegram linking, deadlines, recovery and integration acceptance
+        working-directory: services/api
+        run: uv run --locked pytest tests/test_telegram_linking.py tests/test_deadlines.py tests/test_telegram_recovery.py tests/test_telegram_review_fixes.py tests/test_telegram_client.py tests/test_t06_integration.py -q
       - name: Export OpenAPI without a database
         working-directory: services/api
         run: DATABASE_URL=invalid-url uv run --locked python -m app.export_openapi
@@ -102,6 +105,10 @@ jobs:
         run: python infra/verify_stack.py
       - name: Production browser auth and PWA acceptance
         run: npm --prefix apps/web run test:e2e
+      - name: Persisted notification worker and restart acceptance
+        env:
+          E2E_BASE_URL: http://localhost:5173
+        run: DATABASE_URL="$PHOTO_ACCEPTANCE_DATABASE_URL" services/api/.venv/bin/python infra/verify_notification_worker.py
       - name: Protected execution photo survives API container recreation
         env:
           E2E_BASE_URL: http://localhost:5173
