@@ -5,6 +5,8 @@ from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
+from app.modules.ai_review.schemas import ReviewResult
+
 WorkOrderPriority = Literal["emergency", "high", "normal", "planned"]
 
 WorkOrderStatus = Literal[
@@ -187,6 +189,45 @@ class SubmissionView(BaseModel):
 class WorkOrderDetail(WorkOrderView):
     events: list[WorkOrderEventView] = Field(default_factory=list)
     submission: SubmissionView | None = None
+    ai_review: "AIReviewView | None" = None
+    master_decision: "MasterDecisionView | None" = None
+    review_status: Literal["pending", "running", "blocked", "completed", "discarded"] | None = None
+    allowed_decisions: list[Literal["accept", "rework"]] = Field(default_factory=list)
+
+
+class MasterDecisionCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    decision: Literal["accept", "rework"]
+    submission_id: UUID
+    expected_version: int = Field(gt=0)
+    assignment_version: int = Field(gt=0)
+    score: int | None = Field(default=None, ge=1, le=5)
+    reason: str | None = Field(default=None, min_length=1, max_length=4000)
+
+
+class AIReviewView(BaseModel):
+    id: UUID
+    submission_id: UUID
+    verdict: Literal["accepted", "accepted_with_notes", "requires_rework", "human_review"]
+    result: "ReviewResult"
+    model: str
+    prompt_version: str
+    created_at: datetime
+    is_mock: bool
+
+
+class MasterDecisionView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    submission_id: UUID
+    decision: Literal["accept", "rework"]
+    score: int | None
+    reason: str | None
+    master_id: UUID
+    decided_at: datetime
+
+
+WorkOrderDetail.model_rebuild()
 
 
 class WorkOrderList(BaseModel):

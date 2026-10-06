@@ -6,6 +6,9 @@ import { useCommand } from '../../lib/useCommand';
 import { displayTime } from '../../lib/time';
 import { events } from '../../lib/events';
 import { availability, orderAction, priorities, statuses, useCatalogs, useShift, type OrderAction, type WorkOrderDetail } from './data';
+import { SavedSubmission } from './SavedSubmission';
+import { ReviewPanel } from './ReviewPanel';
+import { MasterDecisionForm } from './MasterDecisionForm';
 
 type MasterAction = 'reassign' | 'cancel' | 'reprioritize';
 const actionNames: Record<MasterAction, string> = { reassign: 'Переназначить', cancel: 'Отменить', reprioritize: 'Изменить приоритет' };
@@ -58,7 +61,7 @@ export function OrderDetailsPage({ api, user, orderId }: { api: ApiClient; user:
     {order && <>
       <div className="page-heading"><h2>Наряд {order.number}</h2><span className={`badge priority-${order.priority}`}>{priorities[order.priority]}</span></div>
       <p className="badge">{statuses[order.status]}{order.is_overdue ? ' · Просрочен' : ''}</p>
-      <p className="full-description">{order.description}</p>
+      <p id={`problem-${order.id}`} className="full-description">{order.description}</p>
       <dl className="order-info">
         <dt>Участок</dt><dd>{catalogs.data?.areas.find(area => area.id === order.area_id)?.name ?? 'Загружаем…'}</dd>
         <dt>Оборудование</dt><dd>{catalogs.data?.equipment.find(item => item.id === order.equipment_id)?.name ?? 'Загружаем…'}</dd>
@@ -93,7 +96,9 @@ export function OrderDetailsPage({ api, user, orderId }: { api: ApiClient; user:
         <span>{event.actor_id ? shift.data?.items.find(member => member.user.id === event.actor_id)?.user.display_name ?? 'Сотрудник' : 'Система'}</span>
         {event.reason && <p>{event.reason}</p>}
       </li>)}</ol></section>
-      {order.submission && <section><h3>Передано на приёмку · отчёт {order.submission.revision}</h3><p>{order.submission.work_description}</p></section>}
+      {order.submission && <div id={`submission-${order.submission.id}`}><SavedSubmission api={api} submission={order.submission} /></div>}
+      <ReviewPanel order={order} />
+      <MasterDecisionForm key={`${order.id}:${user.id}`} api={api} user={user} order={order} reload={detail.reload} onDecided={() => { detail.reload(); events.invalidate(); }} />
     </>}
   </section>;
 }

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic import SecretStr
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -25,7 +25,18 @@ class Settings(BaseSettings):
     telegram_bot_username: str | None = None
     telegram_webhook_secret: SecretStr | None = None
     openai_api_key: SecretStr | None = None
-    ai_model: str | None = None
+    ai_model: str = "gpt-6.1-sol"
+    ai_light_model: str = "gpt-6-luna"
+    ai_complex_model: str = "gpt-6-astra"
+    ai_reasoning_effort: str = "medium"
+    ai_light_reasoning_effort: str = "low"
+    ai_complex_reasoning_effort: str = "medium"
+    ai_request_timeout_seconds: float = Field(default=90, gt=0, le=120)
+    ai_max_output_tokens: int = Field(default=4096, ge=256, le=16384)
+    ai_complex_max_output_tokens: int = Field(default=8192, ge=256, le=16384)
+    ai_review_lease_seconds: int = Field(default=180, ge=150)
+    ai_review_snapshot_restarts: int = Field(default=2, ge=0, le=5)
+    ai_review_poll_seconds: float = Field(default=1, ge=0.1)
     photo_storage_path: Path = REPO_ROOT / "data" / "photos"
 
 

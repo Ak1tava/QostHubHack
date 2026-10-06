@@ -17,6 +17,7 @@ export type WorkCode = components['schemas']['WorkCodeView'];
 export type SubmissionCreate = components['schemas']['SubmissionCreate'];
 export type Submission = components['schemas']['SubmissionView'];
 export type Photo = components['schemas']['PhotoView'];
+export type MasterDecision = components['schemas']['MasterDecisionCommand'];
 type Catalog = components['schemas']['CatalogResponse'];
 type Kinds = { areas: Named; equipment: Equipment; brigades: Named; materials: Material; 'work-codes': WorkCode };
 
@@ -71,4 +72,8 @@ export function createOrder(api: ApiClient, body: CreateOrder, key: string) {
 
 export function orderAction(api: ApiClient, id: string, body: OrderAction, key: string) {
   return api.request<WorkOrder>('/api/v1/work-orders/{order_id}/actions', { params: { order_id: id }, method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key }, body: JSON.stringify(body) });
+}
+
+export function decideOrder(api: ApiClient, id: string, body: MasterDecision, key: string) {
+  return api.request<WorkOrder>('/api/v1/work-orders/{order_id}/decision', { params: { order_id: id }, method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key }, body: JSON.stringify(body) });
 }

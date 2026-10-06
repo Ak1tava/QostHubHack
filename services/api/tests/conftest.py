@@ -32,6 +32,7 @@ def database():
         models,  # noqa: F401 — registers SQLAlchemy metadata
     )
     from app.modules.telegram import models as telegram_models  # noqa: F401
+    from app.modules.ai_review import jobs_models as review_models  # noqa: F401
 
     engine = create_engine(url)
     Base.metadata.drop_all(engine)

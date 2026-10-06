@@ -91,9 +91,12 @@ def get_order(db, order_id, actor):
                        .order_by(Submission.revision.desc()).limit(1))
     history = db.scalars(select(WorkOrderEvent).where(WorkOrderEvent.work_order_id == order.id)
                          .order_by(WorkOrderEvent.version))
+    from app.modules.ai_review.views import review_detail
+    submission = report_view(db, order, report) if report else None
     return WorkOrderDetail(**view(db, order, actor).model_dump(),
                            events=[WorkOrderEventView.model_validate(e) for e in history],
-                           submission=report_view(db, order, report) if report else None)
+                           submission=submission,
+                           **review_detail(db, order, report, actor, submission))
 
 
 def list_orders(db, actor, *, offset=0, limit=50, **filters):

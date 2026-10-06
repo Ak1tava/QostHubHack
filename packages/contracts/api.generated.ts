@@ -243,6 +243,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/work-orders/{order_id}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decide Order */
+        post: operations["decide_order_api_v1_work_orders__order_id__decision_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/work-orders/{order_id}/notifications": {
         parameters: {
             query?: never;
@@ -332,6 +349,36 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AIReviewView */
+        AIReviewView: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Mock */
+            is_mock: boolean;
+            /** Model */
+            model: string;
+            /** Prompt Version */
+            prompt_version: string;
+            result: components["schemas"]["ReviewResult"];
+            /**
+             * Submission Id
+             * Format: uuid
+             */
+            submission_id: string;
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "accepted" | "accepted_with_notes" | "requires_rework" | "human_review";
+        };
         /** ActionCommand */
         ActionCommand: {
             /**
@@ -456,6 +503,20 @@ export interface components {
         ErrorResponse: {
             error: components["schemas"]["ErrorBody"];
         };
+        /** Finding */
+        Finding: {
+            /** Code */
+            code: string;
+            /** Evidence Refs */
+            evidence_refs: string[];
+            /** Message */
+            message: string;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "info" | "warning" | "error";
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -493,6 +554,59 @@ export interface components {
             login: string;
             /** Password */
             password: string;
+        };
+        /** MasterDecisionCommand */
+        MasterDecisionCommand: {
+            /** Assignment Version */
+            assignment_version: number;
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "accept" | "rework";
+            /** Expected Version */
+            expected_version: number;
+            /** Reason */
+            reason?: string | null;
+            /** Score */
+            score?: number | null;
+            /**
+             * Submission Id
+             * Format: uuid
+             */
+            submission_id: string;
+        };
+        /** MasterDecisionView */
+        MasterDecisionView: {
+            /**
+             * Decided At
+             * Format: date-time
+             */
+            decided_at: string;
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "accept" | "rework";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Master Id
+             * Format: uuid
+             */
+            master_id: string;
+            /** Reason */
+            reason: string | null;
+            /** Score */
+            score: number | null;
+            /**
+             * Submission Id
+             * Format: uuid
+             */
+            submission_id: string;
         };
         /** MaterialView */
         MaterialView: {
@@ -589,6 +703,22 @@ export interface components {
              * @constant
              */
             status: "ready";
+        };
+        /** ReviewResult */
+        ReviewResult: {
+            /** Findings */
+            findings: components["schemas"]["Finding"][];
+            /** Limitations */
+            limitations: string[];
+            /** Missing Evidence */
+            missing_evidence: string[];
+            /** Score */
+            score: number | null;
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "accepted" | "accepted_with_notes" | "requires_rework" | "human_review";
         };
         /** ShiftMemberView */
         ShiftMemberView: {
@@ -800,8 +930,11 @@ export interface components {
         };
         /** WorkOrderDetail */
         WorkOrderDetail: {
+            ai_review?: components["schemas"]["AIReviewView"] | null;
             /** Allowed Actions */
             allowed_actions?: string[];
+            /** Allowed Decisions */
+            allowed_decisions?: ("accept" | "rework")[];
             /**
              * Area Id
              * Format: uuid
@@ -839,6 +972,7 @@ export interface components {
             id: string;
             /** Is Overdue */
             is_overdue: boolean;
+            master_decision?: components["schemas"]["MasterDecisionView"] | null;
             /**
              * Master Id
              * Format: uuid
@@ -855,6 +989,8 @@ export interface components {
             queue_position?: number | null;
             /** Responsible Id */
             responsible_id: string | null;
+            /** Review Status */
+            review_status?: ("pending" | "running" | "blocked" | "completed" | "discarded") | null;
             /**
              * Status
              * @enum {string}
@@ -1902,6 +2038,79 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ActionCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkOrderView"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    decide_order_api_v1_work_orders__order_id__decision_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MasterDecisionCommand"];
             };
         };
         responses: {
