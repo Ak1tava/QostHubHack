@@ -104,7 +104,7 @@ jobs:
       - name: Real PostgreSQL, recovery and persistent data/photos
         run: python infra/verify_stack.py
       - name: Production browser auth and PWA acceptance
-        run: npm --prefix apps/web run test:e2e
+        run: npm --prefix apps/web run test:e2e -- --retries=0
       - name: Persisted notification worker and restart acceptance
         env:
           E2E_BASE_URL: http://localhost:5173

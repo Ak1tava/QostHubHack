@@ -26,8 +26,20 @@ async function demoPhoto(page: Page, type: 'до' | 'после') {
     return canvas.toDataURL('image/png').split(',')[1];
   });
   const section = page.getByRole('region', { name: `Фото ${type}`, exact: true });
-  await section.locator('input[type="file"]').setInputFiles({ name: 'camera.png', mimeType: 'image/png', buffer: Buffer.from(encoded, 'base64') });
-  await expect(section.getByAltText('Предпросмотр выбранного фото')).toBeVisible();
+  const input = section.locator('input[type="file"]');
+  // setInputFiles bypasses actionability; a user cannot select while the command locks the form.
+  await expect(input).toBeEnabled();
+  await input.setInputFiles({ name: 'camera.png', mimeType: 'image/png', buffer: Buffer.from(encoded, 'base64') });
+  try {
+    await expect(section.getByAltText('Предпросмотр выбранного фото')).toBeVisible();
+  } catch (error) {
+    console.error('Synthetic photo preparation state', await section.evaluate(element => ({
+      disabled: element.querySelector<HTMLInputElement>('input[type="file"]')?.disabled,
+      pending: !!element.querySelector('[role="status"]'),
+      error: element.querySelector('[role="alert"]')?.textContent ?? null,
+    })));
+    throw error;
+  }
   const uploaded = page.waitForResponse(response => response.url().endsWith('/photos') && response.request().method() === 'POST');
   await section.getByRole('button', { name: 'Загрузить фото', exact: true }).click();
   const response = await uploaded; expect(response.status()).toBe(201);
