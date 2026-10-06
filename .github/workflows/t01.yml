@@ -1,4 +1,4 @@
-name: T01-T02 integration acceptance
+name: T01-T05 integration acceptance
 
 on:
   push:
@@ -63,6 +63,9 @@ jobs:
                   print(f'::add-mask::{url}')
                   env.write(f'{key}={url}\n')
               env.write(f'E2E_LOGIN=e2e-worker\nE2E_PASSWORD={pin}\n')
+              photo_url = f'postgresql+psycopg://qosthub:{password}@127.0.0.1:5432/qosthub_demo'
+              print(f'::add-mask::{photo_url}')
+              env.write(f'PHOTO_ACCEPTANCE_DATABASE_URL={photo_url}\n')
       - name: Create isolated test databases before pytest
         run: |
           docker compose config --quiet
@@ -99,6 +102,13 @@ jobs:
         run: python infra/verify_stack.py
       - name: Production browser auth and PWA acceptance
         run: npm --prefix apps/web run test:e2e
+      - name: Protected execution photo survives API container recreation
+        env:
+          E2E_BASE_URL: http://localhost:5173
+        run: |
+          DATABASE_URL="$PHOTO_ACCEPTANCE_DATABASE_URL" services/api/.venv/bin/python infra/verify_photo_persistence.py capture --state .tooling/photo-persistence.json
+          docker compose up -d --force-recreate --wait --wait-timeout 120 api
+          DATABASE_URL="$PHOTO_ACCEPTANCE_DATABASE_URL" services/api/.venv/bin/python infra/verify_photo_persistence.py check --state .tooling/photo-persistence.json
       - name: Collect sanitized diagnostics
         if: failure()
         run: python infra/collect_diagnostics.py

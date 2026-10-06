@@ -13,6 +13,23 @@ from PIL import Image
 import psycopg
 
 
+def validate_target(database: str, base: str) -> None:
+    db_url, http_url = urlsplit(database), urlsplit(base)
+    if (
+        os.environ.get("CI") != "true"
+        or db_url.scheme != "postgresql"
+        or db_url.hostname not in ("localhost", "127.0.0.1", "::1")
+        or db_url.path not in {"/qosthub_demo", "/qosthub_demo_t05"}
+        or db_url.query or db_url.fragment
+        or any(os.environ.get(key) for key in ("PGHOSTADDR", "PGSERVICE", "PGSERVICEFILE", "PGOPTIONS"))
+        or http_url.scheme != "http"
+        or http_url.hostname not in ("localhost", "127.0.0.1", "::1")
+        or http_url.username or http_url.password
+        or http_url.path not in ("", "/") or http_url.query or http_url.fragment
+    ):
+        raise SystemExit("CI=true, disposable local qosthub_demo/qosthub_demo_t05 and loopback HTTP required")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("mode", choices=("capture", "check"))
@@ -20,16 +37,7 @@ def main() -> None:
     args = parser.parse_args()
     database = os.environ["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://", 1)
     base = os.environ["E2E_BASE_URL"].rstrip("/")
-    db_url, http_url = urlsplit(database), urlsplit(base)
-    if (
-        os.environ.get("CI") != "true"
-        or db_url.scheme != "postgresql"
-        or db_url.hostname not in ("localhost", "127.0.0.1", "::1")
-        or db_url.path != "/qosthub_demo_t05"
-        or http_url.scheme != "http"
-        or http_url.hostname not in ("localhost", "127.0.0.1", "::1")
-    ):
-        raise SystemExit("CI=true, local qosthub_demo_t05 and loopback HTTP required")
+    validate_target(database, base)
     login = os.environ["E2E_LOGIN"] + "-t05-execution"
     if args.mode == "capture":
         with psycopg.connect(database, connect_timeout=5) as conn:
