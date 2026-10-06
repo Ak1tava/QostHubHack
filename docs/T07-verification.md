@@ -57,6 +57,13 @@ replace и продолжение dev с сохранением результа
 начинается до сохранения резерва и не повторяется из-за сбоя записи. Holdout-resume
 запрещён. Изменения IO/recovery независимо просмотрены без блокирующих замечаний.
 
+Свежая [CI 37504054292 — SUCCESS](https://github.com/Ak1tava/QostHubHack/actions/runs/37504054292),
+head `332f5fe`: **1485 PostgreSQL pytest PASS** (163.51s), **54 Vitest PASS**,
+**15 production Playwright PASS** без retries (27.3s). Контракты/typecheck/build,
+миграции/Alembic check, Compose/Nginx/recovery, restart/redelivery/cancel
+AI worker и сохранность фото при пересоздании API — PASS. После этого head
+меняется только Markdown-запись результатов CI.
+
 ## Живой прогон после ключа
 
 2026-10-06: 20 dev + один проход 12 holdout, общий расход по консервативным тарифам

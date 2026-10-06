@@ -28,6 +28,9 @@ Responses API. Общий расход по usage и консервативны�
 точная причина нарушения refs/формулировок по сохранённому финальному результату
 не подтверждена. Guard-проверки не ослаблялись, prompt не изменялся.
 
+IO/recovery исправление проверено в [CI 332f5fe — SUCCESS](https://github.com/Ak1tava/QostHubHack/actions/runs/37504054292):
+1485 PostgreSQL pytest, 54 Vitest, 15 Playwright и Compose/worker recovery PASS.
+
 Подробный отчёт со всеми кейсами, usage/latency/cost каждого вызова и frozen config:
 [reports/T07-live-2026-10-06.json](reports/T07-live-2026-10-06.json).
 Luna в этом живом наборе не вызывалась; её маршрутизация проверена unit-тестами.
