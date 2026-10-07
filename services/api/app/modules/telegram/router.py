@@ -157,10 +157,12 @@ def notifications(
     if order is None:
         raise AuthError(404, "not_found", "Объект не найден")
     require_order_access(db, actor, order)
+    query = select(Notification).where(Notification.work_order_id == order_id)
+    if actor.role == "worker":
+        query = query.where(Notification.recipient_id == actor.id)
     return list(
         db.scalars(
-            select(Notification)
-            .where(Notification.work_order_id == order_id)
+            query
             .order_by(Notification.due_at, Notification.id)
         )
     )
