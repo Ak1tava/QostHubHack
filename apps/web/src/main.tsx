@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router';
 import { App } from './App';
 import './styles.css';
+import './design.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

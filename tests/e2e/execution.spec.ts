@@ -8,7 +8,7 @@ async function login(page: Page, master: boolean) {
   await page.getByLabel('Логин', { exact: true }).fill(`${process.env.E2E_LOGIN!}-${master ? 'master-' : ''}${scenario}`);
   await page.getByLabel('Пароль или ПИН').fill(process.env.E2E_PASSWORD!);
   await page.getByRole('button', { name: 'Войти', exact: true }).click();
-  await expect(page.getByRole('heading', { name: master ? 'Панель смены' : 'Вы вошли', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: master ? 'Панель смены' : 'Мои наряды', exact: true })).toBeVisible();
 }
 async function action(page: Page, label: string, reason?: string) {
   await page.getByRole('button', { name: label, exact: true }).click();

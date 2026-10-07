@@ -8,7 +8,7 @@ async function login(page: Page, master: boolean, name = scenario) {
   await page.getByLabel('Логин', { exact: true }).fill(`${process.env.E2E_LOGIN!}-${master ? 'master-' : ''}${name}`);
   await page.getByLabel('Пароль или ПИН').fill(process.env.E2E_PASSWORD!);
   await page.getByRole('button', { name: 'Войти', exact: true }).click();
-  await expect(page.getByRole('heading', { name: master ? 'Панель смены' : 'Вы вошли', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: master ? 'Панель смены' : 'Мои наряды', exact: true })).toBeVisible();
 }
 async function action(page: Page, label: string, reason?: string) {
   await page.getByRole('button', { name: label, exact: true }).click();
@@ -89,7 +89,7 @@ test('real two-session lifecycle preserves master photos and produces authoritat
     await page.goto(`/reports/shift?assignee_id=${own}`);
     const report = await (await response).json();
     expect(report.counts).toMatchObject({ issued: baseline.counts.issued + 1, performed: baseline.counts.performed + 1, closed: baseline.counts.closed + 1 });
-    const shown = page.locator('dl[aria-label="Показатели отчёта"] dd');
+    const shown = page.locator('dl[aria-label="Показатели отчёта"] dd strong');
     await expect(shown).toHaveCount(5);
     for (const [index, key] of ['issued', 'performed', 'closed', 'overdue', 'rejected'].entries()) {
       await expect(shown.nth(index)).toHaveText(new Intl.NumberFormat('ru-RU').format(report.counts[key]));

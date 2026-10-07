@@ -7,7 +7,7 @@ async function login(page: Page, scenario: string, master = true) {
   await page.getByLabel('Логин', { exact: true }).fill(loginName(scenario, master));
   await page.getByLabel('Пароль или ПИН').fill(process.env.E2E_PASSWORD!);
   await page.getByRole('button', { name: 'Войти', exact: true }).click();
-  await expect(page.getByRole('heading', { name: master ? 'Панель смены' : 'Вы вошли', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: master ? 'Панель смены' : 'Мои наряды', exact: true })).toBeVisible();
 }
 async function prepare(page: Page, scenario: string, description: string) {
   const card = page.locator('.worker-card').filter({ hasText: `Исполнитель ${scenario}` });

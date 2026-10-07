@@ -17,7 +17,7 @@ async function signIn(page: Page, scenario: string) {
   await expect(page.getByRole('heading', { name: 'Вход', exact: true })).toBeVisible();
   await fill(page, account(scenario));
   await page.getByRole('button', { name: 'Войти', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Вы вошли', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Мои наряды', exact: true })).toBeVisible();
 }
 
 test('real PIN login, HttpOnly cookie, reload, logout and server 401', async ({ page, context }) => {
@@ -30,7 +30,7 @@ test('real PIN login, HttpOnly cookie, reload, logout and server 401', async ({ 
   expect(me.status()).toBe(200);
   expect(me.headers()['cache-control']).toBe('no-store');
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Вы вошли', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Мои наряды', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Выйти', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Вход', exact: true })).toBeVisible();
   const loggedOut = await page.request.get('/api/v1/auth/me');
@@ -61,7 +61,7 @@ test('invalid credentials and CSRF error allow a fresh successful login; server 
   expect(invalid.body).not.toContain('secret-value');
   await fill(page, account('credentials'));
   await page.getByRole('button', { name: 'Войти', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Вы вошли', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Мои наряды', exact: true })).toBeVisible();
 });
 
 test('expired server session clears auth and permits login again', async ({ page }) => {
@@ -79,7 +79,8 @@ from app.core.db import get_engine
 from app.modules.auth.demo import validate_demo_target
 from app.modules.auth.models import AuthSession, User
 validate_demo_target(settings.database_url.get_secret_value())
-assert make_url(settings.database_url.get_secret_value()).database in {'qosthub_demo', 'qosthub_demo_t04', 'qosthub_demo_t05'}
+target_database = make_url(settings.database_url.get_secret_value()).database or ''
+assert target_database in {'qosthub_demo', 'qosthub_demo_t04', 'qosthub_demo_t05'} or target_database.startswith('qosthub_test_t14_')
 assert sys.argv[1].startswith('e2e-worker-')
 with Session(get_engine()) as db:
     db.execute(update(AuthSession).where(AuthSession.user_id.in_(select(User.id).where(User.login == sys.argv[1]))).values(expires_at=datetime.now(timezone.utc)-timedelta(seconds=1)))
@@ -90,7 +91,7 @@ with Session(get_engine()) as db:
   await expect(page.getByRole('heading', { name: 'Вход', exact: true })).toBeVisible();
   await fill(page, account('expiry'));
   await page.getByRole('button', { name: 'Войти', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Вы вошли', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Мои наряды', exact: true })).toBeVisible();
 });
 
 test('429 observes Retry-After before another attempt', async ({ page }) => {
@@ -126,7 +127,7 @@ test('offline shell never restores cached private auth or serves HTML for API', 
   await signIn(page, 'offline');
   await page.evaluate(() => navigator.serviceWorker.ready.then(() => true));
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Вы вошли', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Мои наряды', exact: true })).toBeVisible();
   const paths = await page.evaluate(async () => {
     const paths: string[] = [];
     for (const name of await caches.keys()) {

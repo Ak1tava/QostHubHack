@@ -258,7 +258,7 @@ def shift_report(data):
                    for v in spans.values() for a, b in v)
     summary = (f"Выдано {counts['issued']}, исполнено {counts['performed']}, закрыто {counts['closed']}. "
                f"Просроченных за период: {counts['overdue']}; отклонённых: {counts['rejected']}. "
-               f"Простой оборудования: {seconds / 3600:.2f} ч.")
+               + (f"Простой оборудования: {seconds / 3600:.2f} ч." if has_data else "Нет данных о простое оборудования."))
     limitations = list(data.limitations)
     if not has_data:
         limitations.append("Нет зарегистрированных интервалов простоя за период; это не подтверждает отсутствие простоя.")

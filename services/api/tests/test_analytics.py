@@ -125,6 +125,7 @@ def test_midnight_distinct_revision_counts_and_clipped_intervals(client, databas
     assert result["counts"] == dict(issued=1, performed=1, closed=1, overdue=1, rejected=1)
     assert result["workload"] == dict(active_seconds=3600, pause_seconds=3600, review_seconds=3600)
     assert result["downtime"] == dict(seconds=21600, has_data=True)
+    assert "Простой оборудования: 6.00 ч." in result["summary"]
 
 
 def test_historical_overdue_survives_closed_status_and_due_extension(client, database):
@@ -222,6 +223,8 @@ def test_empty_data_and_authentication(client):
     result = report(client)
     assert result["counts"] == dict(issued=0, performed=0, closed=0, overdue=0, rejected=0)
     assert result["downtime"] == dict(seconds=0, has_data=False)
+    assert "Нет данных о простое оборудования." in result["summary"]
+    assert "Простой оборудования: 0.00" not in result["summary"]
 
 
 def test_anomalies_use_history_before_period_and_exact_norm(client, database):

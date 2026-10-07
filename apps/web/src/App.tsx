@@ -14,6 +14,7 @@ import { RatingPage } from './features/reports/RatingPage';
 import { AnomaliesPage } from './features/reports/AnomaliesPage';
 import { TelegramPage } from './features/telegram/TelegramPage';
 import type { UserView } from './lib/api';
+import { AppNavigation, Brand, roleNames } from './components/AppNavigation';
 
 function OrderRoute({ user }: { user: UserView }) {
   const { id } = useParams();
@@ -34,18 +35,14 @@ export function App() {
     events.start(() => { void authStore.restore(); });
     return () => events.stop();
   }, [user?.id]);
-  return <main>
-    <header className="app-header"><div><h1>НарядAI</h1><p>Система ремонтных нарядов</p></div>{user && <div className="account"><span>{user.display_name}</span><button onClick={() => void authStore.logout()} disabled={busy}>{busy ? 'Выходим…' : 'Выйти'}</button></div>}</header>
-    {user && <nav className="app-nav choices" aria-label="Разделы приложения">
-      {user.role === 'worker' ? <Link className="button" to="/my-orders">Мои наряды</Link> : <Link className="button" to="/shift">Панель смены</Link>}
-      <Link className="button" to="/reports/shift">Отчёт смены</Link>
-      <Link className="button" to="/reports/rating">Рейтинг</Link>
-      {user.role !== 'worker' && <Link className="button" to="/analytics/anomalies">Закономерности</Link>}
-      <Link className="button" to="/telegram">Telegram</Link>
-    </nav>}
+  return <div className={user ? 'app-shell' : 'login-shell'}>
+    <a className="skip-link" href="#content">Перейти к содержимому</a>
+    {user && <AppNavigation user={user} />}
+    <div className="app-body"><header className="app-header"><div className="header-brand"><Brand /></div><span className="header-caption">Рабочее пространство</span>{user && <div className="account"><div className="account-person"><strong>{user.display_name}</strong><small>{roleNames[user.role]}</small></div><button onClick={() => void authStore.logout()} disabled={busy}>{busy ? 'Выходим…' : 'Выйти'}</button></div>}</header>
+    <main className="app-content" id="content">
     {error && user && <p role="alert">{error.message}</p>}
     {loading ? <p role="status">Проверяем вход…</p> : user ? <Routes>
-      <Route path="/" element={user.role === 'master' ? <Navigate to="/shift" replace /> : <section className="auth-card"><h2>Вы вошли</h2><p>{user.display_name}</p>{user.role === 'worker' ? <Link className="button primary" to="/my-orders">Мои наряды</Link> : <Link to="/shift">Панель смены</Link>}</section>} />
+      <Route path="/" element={<Navigate to={user.role === 'worker' ? '/my-orders' : '/shift'} replace />} />
       <Route path="/my-orders" element={<MyOrdersPage key={user.id} api={authStore.api} user={user} />} />
       <Route path="/shift" element={user.role !== 'worker' ? <ShiftPage api={authStore.api} user={user} /> : <p role="alert">Панель доступна мастеру.</p>} />
       <Route path="/orders/new" element={<CreateOrderPage api={authStore.api} user={user} />} />
@@ -57,6 +54,6 @@ export function App() {
       <Route path="/telegram" element={<TelegramPage key={user.id} api={authStore.api} />} />
       <Route path="*" element={<p>Страница не найдена. <Link to="/">На главную</Link></p>} />
     </Routes> : <LoginPage busy={busy} error={error} onLogin={payload => authStore.login(payload)} />}
-    <PwaUpdatePrompt />
-  </main>;
+    </main><PwaUpdatePrompt /></div>
+  </div>;
 }

@@ -128,9 +128,44 @@ it('preserves common filters across report navigation and scopes shift selection
   await mount(ShiftReportPage, client(shift), master, '/?start=2026-09-01T00:00&end=2026-10-01T00:00&area_id=area-1&equipment_id=equipment-1&assignee_id=own-worker&brigade_id=brigade-1&shift_id=shift-1');
   const links = [...container.querySelectorAll<HTMLAnchorElement>('nav a')];
   const ratingLink = new URL(links.find(link => link.textContent === 'Рейтинг')!.href);
-  expect(Object.fromEntries(ratingLink.searchParams)).toEqual({ start: '2026-09-01T00:00', end: '2026-10-01T00:00', area_id: 'area-1', equipment_id: 'equipment-1', assignee_id: 'own-worker', brigade_id: 'brigade-1' });
-  const reportLink = new URL(links.find(link => link.textContent === 'Отчёт')!.href);
+  expect(Object.fromEntries(ratingLink.searchParams)).toEqual({ start_at: period.start_at, end_at: period.end_at, area_id: 'area-1', equipment_id: 'equipment-1', assignee_id: 'own-worker', brigade_id: 'brigade-1' });
+  const reportLink = new URL(links.find(link => link.textContent === 'Обзор')!.href);
   expect(reportLink.searchParams.get('shift_id')).toBe('shift-1');
+});
+
+it('carries the exact effective API period when navigating from a selected shift', async () => {
+  const overnight = { ...period, start_at: '2026-10-06T15:00:00Z', end_at: '2026-10-07T03:00:13Z' };
+  await mount(ShiftReportPage, client({ ...shift, period: overnight }), master, '/?shift_id=shift-1&start=2026-09-01T00:00&end=2026-10-01T00:00&area_id=area-1');
+  const link = [...container.querySelectorAll<HTMLAnchorElement>('nav a')].find(item => item.textContent === 'Рейтинг')!;
+  const params = new URL(link.href).searchParams;
+  expect(params.get('start_at')).toBe(overnight.start_at); expect(params.get('end_at')).toBe(overnight.end_at);
+  expect(params.has('shift_id')).toBe(false); expect(params.has('start')).toBe(false); expect(params.get('area_id')).toBe('area-1');
+});
+
+it('keeps exact UTC bounds from report navigation while displaying enterprise time', async () => {
+  const requests: URL[] = [];
+  await mount(RatingPage, client(rating, requests), master, '/?start_at=2026-10-06T15:00:00Z&end_at=2026-10-07T03:00:13Z');
+  const request = requests.find(url => url.pathname === '/api/v1/reports/rating')!;
+  expect(request.searchParams.get('end_at')).toBe('2026-10-07T03:00:13Z');
+  expect(container.querySelector<HTMLInputElement>('input[name="end"]')!.value).toBe('2026-10-07T08:00');
+});
+
+it('shows missing rating components without meters and explains their effective weights', async () => {
+  await mount(RatingPage, client(rating));
+  expect(container.querySelectorAll('meter')).toHaveLength(3);
+  expect(container.textContent).toContain('66,67%'); expect(container.textContent).toContain('33,33%');
+});
+
+it('uses server time for quick periods and preserves the permitted area filter', async () => {
+  const requests: URL[] = [];
+  await mount(ShiftReportPage, client(shift, requests), master, '/?area_id=area-1&shift_id=shift-1');
+  const week = [...container.querySelectorAll('button')].find(button => button.textContent === '7 дней')!;
+  expect(week).toBeDefined();
+  await act(async () => week.click());
+  const request = requests.filter(url => url.pathname === '/api/v1/reports/shift').at(-1)!;
+  expect(request.searchParams.get('start_at')).toBe('2026-09-30T20:00:00.000Z');
+  expect(request.searchParams.get('end_at')).toBe(period.as_of);
+  expect(request.searchParams.has('shift_id')).toBe(false); expect(request.searchParams.get('area_id')).toBe('area-1');
 });
 
 it.each(['/', '/?start=2026-09-01T00:00'])('keeps a delayed report and server-derived default end stable across shift refreshes at %s', async path => {
