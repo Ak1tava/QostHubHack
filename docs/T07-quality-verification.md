@@ -16,13 +16,17 @@
 
 ## Фактические проверки до CI
 
-- services/api: `.venv/bin/python -m pytest tests/test_ai_quality.py tests/test_ai_quality_eval.py tests/test_ai_review.py tests/test_ai_provider.py tests/test_ai_eval_runner.py tests/test_ai_eval_recovery.py -q -p no:cacheprovider --tb=short`: **83 PASS**.
+- services/api: `.venv/bin/python -m pytest tests/test_ai_quality.py tests/test_ai_quality_eval.py tests/test_ai_review.py tests/test_ai_provider.py tests/test_ai_eval_runner.py tests/test_ai_eval_recovery.py -q -p no:cacheprovider --tb=short`: **85 PASS**.
 - `python -m app.export_openapi`, `npm --prefix apps/web run generate:api`, `git diff --exit-code -- packages/contracts`: PASS, публичные файлы не изменились.
 - Node 24.19.0: `npm --prefix apps/web run test -- --run`: **54 PASS**; `npm --prefix apps/web run build`: typecheck/production/PWA PASS.
-- Полный локальный pytest: **1166 PASS, 330 setup errors, 2 FAIL**. Все 332 ограничения — отсутствующие TEST_DATABASE_URL/MIGRATION_TEST_DATABASE_URL/PostgreSQL; два failure: test_upgrade_rejects_legacy_score_without_reinterpreting_history и test_empty_postgres_migration_roundtrip. Это не полная успешная приёмка; PostgreSQL/worker/PWA проверяются CI.
+- Первый полный локальный pytest до финальных регрессий: **1166 PASS, 330 setup errors, 2 FAIL**. Все 332 ограничения — отсутствующие TEST_DATABASE_URL/MIGRATION_TEST_DATABASE_URL/PostgreSQL; два failure: test_upgrade_rejects_legacy_score_without_reinterpreting_history и test_empty_postgres_migration_roundtrip. Это не полная успешная приёмка; PostgreSQL/worker/PWA проверяются CI.
 - Воспроизведения RED→GREEN сохранены для отрицания перерасхода, неизвестных кодов, следа до guard, общего бюджета/резерва, prompt freeze, неизвестного usage, связи доказательств и утечки контрольных фото.
 
 ## Живые результаты до контроля
+
+Первый промпт t07-v2 использовал условные id; второй t07-v3 уточняет выбор
+настоящих photo:<UUID> по phase. Лимит двух версий соблюдается. Результаты
+v3 будут записаны после окончания прогона.
 
 Sol: good **3/4** положительных, bad **0/2** принятых, ambiguous **2/2** human_review.
 Семь платных вызовов; $0.1847010 по консервативным тарифам. Один good передан мастеру

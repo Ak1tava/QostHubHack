@@ -167,3 +167,23 @@ def test_media_filename_cannot_hide_holdout_photo_in_development_group(tmp_path)
     (tmp_path / "cases.jsonl").write_text("".join(json.dumps(c) + "\n" for c in cases))
     with pytest.raises(ValueError):
         load_cases(tmp_path)
+
+
+def test_photo_eval_uses_real_worker_reference_format_instead_of_example_ids(tmp_path):
+    from PIL import Image
+    from uuid import UUID
+    from app.modules.ai_review.quality_eval import load_photo_case
+
+    Image.new("RGB", (200, 200), "gray").save(tmp_path / "unit-after.jpg")
+    case = {
+        "case_id": "real-reference",
+        "problem": "Очистить корпус",
+        "work_description": "Корпус очищен",
+        "photos": {"after": "unit-after.jpg"},
+    }
+    value, images = load_photo_case(case, tmp_path)
+    ref = value.photo_refs[0]["id"]
+    assert ref.startswith("photo:")
+    UUID(ref.removeprefix("photo:"))
+    assert "photo_after" not in value.evidence_ids()
+    assert set(images) == {ref}

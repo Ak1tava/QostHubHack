@@ -135,7 +135,7 @@ def load_photo_case(case: dict, media=STATE / "media"):
             if decoded.format != "JPEG" or max(decoded.size) > 1024:
                 raise ValueError("Expected normalized local JPEG")
             decoded.verify()
-        ref = "photo_" + phase
+        ref = "photo:" + str(uuid5(NAMESPACE_URL, case["case_id"] + ":" + phase))
         images[ref] = ImageEvidence(media_type="image/jpeg", data=data)
         photos.append(
             {

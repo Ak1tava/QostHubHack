@@ -73,7 +73,7 @@ class StagePlan(StrictModel):
     stage: Literal["primary", "escalation"]
     model: str
     reasoning: Literal["low", "medium"]
-    prompt_version: str = "t07-v2"
+    prompt_version: str = "t07-v3"
 
 
 class ImageEvidence(StrictModel):
