@@ -245,13 +245,14 @@ def shift_report(data):
         counts["overdue"] += int(overdue)
     spans = defaultdict(list)
     for interval in data.downtime:
+        if data.actor.role != "worker" and not (data.filters.assignee_id or data.filters.brigade_id):
+            spans[interval.equipment_id].append((interval.start_at, interval.end_at))
+            continue
         order = data.orders.get(interval.work_order_id)
         if order is not None:
             for a, b, state in data.segments(order):
                 if data.matches(state):
                     spans[interval.equipment_id].append((max(interval.start_at, a), min(interval.end_at or stop, b)))
-        elif data.actor.role != "worker" and not (data.filters.assignee_id or data.filters.brigade_id):
-            spans[interval.equipment_id].append((interval.start_at, interval.end_at))
     seconds = sum(merged_seconds(v, start, stop) for v in spans.values())
     has_data = any(a < stop and (b is None or b > start) and (b is None or b > a)
                    for v in spans.values() for a, b in v)

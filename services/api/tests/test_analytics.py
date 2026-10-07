@@ -302,6 +302,47 @@ def test_foreign_and_unlinked_downtime_do_not_leak_to_worker(client, database):
     assert report(client, "worker")["downtime"] == dict(seconds=0, has_data=False)
 
 
+@pytest.mark.parametrize("role", ["master", "manager", "admin"])
+@pytest.mark.parametrize("order_hour", [1, 3])
+def test_leadership_downtime_before_issuance_has_linked_unlinked_parity(client, database, role, order_hour):
+    database["master"].role = role
+    row = order(database, at=START + timedelta(hours=order_hour))
+    interval = DowntimeInterval(equipment_id=row.equipment_id, work_order_id=row.id,
+                                start_at=START, end_at=START + timedelta(hours=2), reason="Остановка до оформления")
+    db = database["session"]
+    db.add(interval)
+    db.commit()
+    linked = report(client)["downtime"]
+    assert linked == dict(seconds=7200, has_data=True)
+    interval.work_order_id = None
+    db.commit()
+    assert report(client)["downtime"] == linked
+
+
+def test_downtime_assignment_filters_preserve_worker_and_brigade_privacy(client, database):
+    own = order(database, at=START + timedelta(hours=1))
+    own.assignee_id = None
+    own.brigade_id = database["brigade"].id
+    own.responsible_id = database["worker"].id
+    event(database, own, own.created_at, "reassign", "ISSUED")
+    teammate = order(database, at=START + timedelta(hours=3), worker=database["outsider"])
+    teammate.assignee_id = None
+    teammate.brigade_id = database["brigade"].id
+    teammate.responsible_id = database["outsider"].id
+    event(database, teammate, teammate.created_at, "reassign", "ISSUED")
+    db = database["session"]
+    for row, begin, finish in [(own, 0, 2), (None, 2, 3), (teammate, 3, 6)]:
+        db.add(DowntimeInterval(equipment_id=database["equipment"].id, work_order_id=row.id if row else None,
+                                start_at=START + timedelta(hours=begin), end_at=START + timedelta(hours=finish),
+                                reason="Синтетический простой"))
+    db.commit()
+    assert report(client)["downtime"] == dict(seconds=21600, has_data=True)
+    assert report(client, params={**PARAMS, "assignee_id": str(database["worker"].id)})["downtime"] == dict(seconds=3600, has_data=True)
+    assert report(client, params={**PARAMS, "brigade_id": str(database["brigade"].id)})["downtime"] == dict(seconds=14400, has_data=True)
+    assert report(client, "worker")["downtime"] == dict(seconds=3600, has_data=True)
+    assert report(client, "worker", params={**PARAMS, "brigade_id": str(database["brigade"].id)})["downtime"] == dict(seconds=3600, has_data=True)
+
+
 def test_real_t09_patterns_are_detected_without_runtime_expected_file(client, database, tmp_path, monkeypatch):
     from app.seed_demo import build_dataset, load_dataset
     from app.modules.auth.models import UserArea
