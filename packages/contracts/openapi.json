@@ -155,6 +155,98 @@
         "title": "ActionCommand",
         "type": "object"
       },
+      "AnomaliesResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Anomaly"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "period": {
+            "$ref": "#/components/schemas/ReportPeriod"
+          }
+        },
+        "required": [
+          "period",
+          "items",
+          "limitations"
+        ],
+        "title": "AnomaliesResponse",
+        "type": "object"
+      },
+      "Anomaly": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "equipment_id": {
+            "format": "uuid",
+            "title": "Equipment Id",
+            "type": "string"
+          },
+          "evidence_order_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Evidence Order Ids",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "metrics": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Metrics",
+            "type": "object"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "repeat_fault",
+              "after_planned",
+              "material_overuse"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "title",
+          "description",
+          "equipment_id",
+          "metrics",
+          "evidence_order_ids",
+          "limitations"
+        ],
+        "title": "Anomaly",
+        "type": "object"
+      },
       "AuthResponse": {
         "properties": {
           "csrf_token": {
@@ -174,6 +266,18 @@
       },
       "Body_upload_photo_api_v1_work_orders__order_id__photos_post": {
         "properties": {
+          "assignment_version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assignment Version"
+          },
           "captured_at": {
             "anyOf": [
               {
@@ -185,6 +289,18 @@
               }
             ],
             "title": "Captured At"
+          },
+          "expected_version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Version"
           },
           "file": {
             "contentMediaType": "application/octet-stream",
@@ -838,6 +954,155 @@
         "title": "PhotoView",
         "type": "object"
       },
+      "RatingComponent": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "sample_size": {
+            "title": "Sample Size",
+            "type": "integer"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "value",
+          "sample_size",
+          "reason"
+        ],
+        "title": "RatingComponent",
+        "type": "object"
+      },
+      "RatingComponents": {
+        "properties": {
+          "Q": {
+            "$ref": "#/components/schemas/RatingComponent"
+          },
+          "R": {
+            "$ref": "#/components/schemas/RatingComponent"
+          },
+          "T": {
+            "$ref": "#/components/schemas/RatingComponent"
+          },
+          "V": {
+            "$ref": "#/components/schemas/RatingComponent"
+          }
+        },
+        "required": [
+          "Q",
+          "T",
+          "R",
+          "V"
+        ],
+        "title": "RatingComponents",
+        "type": "object"
+      },
+      "RatingResponse": {
+        "properties": {
+          "formula_version": {
+            "const": "c6-v1-available",
+            "default": "c6-v1-available",
+            "title": "Formula Version",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RatingRow"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "period": {
+            "$ref": "#/components/schemas/ReportPeriod"
+          }
+        },
+        "required": [
+          "period",
+          "items",
+          "limitations"
+        ],
+        "title": "RatingResponse",
+        "type": "object"
+      },
+      "RatingRow": {
+        "properties": {
+          "closed_count": {
+            "title": "Closed Count",
+            "type": "integer"
+          },
+          "components": {
+            "$ref": "#/components/schemas/RatingComponents"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "specialty": {
+            "title": "Specialty",
+            "type": "string"
+          },
+          "work_type": {
+            "enum": [
+              "planned",
+              "emergency"
+            ],
+            "title": "Work Type",
+            "type": "string"
+          },
+          "worker_id": {
+            "format": "uuid",
+            "title": "Worker Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "worker_id",
+          "display_name",
+          "specialty",
+          "work_type",
+          "closed_count",
+          "score",
+          "components"
+        ],
+        "title": "RatingRow",
+        "type": "object"
+      },
       "ReadyResponse": {
         "properties": {
           "status": {
@@ -848,6 +1113,111 @@
           }
         },
         "title": "ReadyResponse",
+        "type": "object"
+      },
+      "ReportCounts": {
+        "properties": {
+          "closed": {
+            "title": "Closed",
+            "type": "integer"
+          },
+          "issued": {
+            "title": "Issued",
+            "type": "integer"
+          },
+          "overdue": {
+            "title": "Overdue",
+            "type": "integer"
+          },
+          "performed": {
+            "title": "Performed",
+            "type": "integer"
+          },
+          "rejected": {
+            "title": "Rejected",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "issued",
+          "performed",
+          "closed",
+          "overdue",
+          "rejected"
+        ],
+        "title": "ReportCounts",
+        "type": "object"
+      },
+      "ReportDowntime": {
+        "properties": {
+          "has_data": {
+            "title": "Has Data",
+            "type": "boolean"
+          },
+          "seconds": {
+            "title": "Seconds",
+            "type": "number"
+          }
+        },
+        "required": [
+          "seconds",
+          "has_data"
+        ],
+        "title": "ReportDowntime",
+        "type": "object"
+      },
+      "ReportPeriod": {
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "end_at": {
+            "format": "date-time",
+            "title": "End At",
+            "type": "string"
+          },
+          "start_at": {
+            "format": "date-time",
+            "title": "Start At",
+            "type": "string"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start_at",
+          "end_at",
+          "as_of",
+          "timezone"
+        ],
+        "title": "ReportPeriod",
+        "type": "object"
+      },
+      "ReportWorkload": {
+        "properties": {
+          "active_seconds": {
+            "title": "Active Seconds",
+            "type": "number"
+          },
+          "pause_seconds": {
+            "title": "Pause Seconds",
+            "type": "number"
+          },
+          "review_seconds": {
+            "title": "Review Seconds",
+            "type": "number"
+          }
+        },
+        "required": [
+          "active_seconds",
+          "pause_seconds",
+          "review_seconds"
+        ],
+        "title": "ReportWorkload",
         "type": "object"
       },
       "ReviewResult": {
@@ -973,6 +1343,43 @@
           "active_work_order_id"
         ],
         "title": "ShiftMemberView",
+        "type": "object"
+      },
+      "ShiftReportResponse": {
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/ReportCounts"
+          },
+          "downtime": {
+            "$ref": "#/components/schemas/ReportDowntime"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "period": {
+            "$ref": "#/components/schemas/ReportPeriod"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "workload": {
+            "$ref": "#/components/schemas/ReportWorkload"
+          }
+        },
+        "required": [
+          "period",
+          "counts",
+          "workload",
+          "downtime",
+          "summary",
+          "limitations"
+        ],
+        "title": "ShiftReportResponse",
         "type": "object"
       },
       "ShiftResponse": {
@@ -1556,6 +1963,13 @@
             "title": "Is Overdue",
             "type": "boolean"
           },
+          "issuance_photos": {
+            "items": {
+              "$ref": "#/components/schemas/PhotoView"
+            },
+            "title": "Issuance Photos",
+            "type": "array"
+          },
           "master_decision": {
             "anyOf": [
               {
@@ -1963,6 +2377,157 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/analytics/anomalies": {
+      "get": {
+        "operationId": "repair_anomalies_api_v1_analytics_anomalies_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "area_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Area Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "equipment_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Equipment Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "assignee_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Assignee Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "brigade_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Brigade Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start_at",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "Start At",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end_at",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "End At",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnomaliesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Repair Anomalies",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
     "/api/v1/auth/csrf": {
       "get": {
         "operationId": "csrf_api_v1_auth_csrf_get",
@@ -2328,6 +2893,339 @@
         "summary": "Download Photo",
         "tags": [
           "photos"
+        ]
+      }
+    },
+    "/api/v1/reports/rating": {
+      "get": {
+        "operationId": "worker_rating_api_v1_reports_rating_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "area_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Area Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "equipment_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Equipment Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "assignee_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Assignee Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "brigade_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Brigade Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start_at",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "Start At",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end_at",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "End At",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RatingResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Worker Rating",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/reports/shift": {
+      "get": {
+        "operationId": "shift_report_api_v1_reports_shift_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "area_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Area Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "equipment_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Equipment Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "assignee_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Assignee Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "brigade_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Brigade Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start At"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End At"
+            }
+          },
+          {
+            "in": "query",
+            "name": "shift_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Shift Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShiftReportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Shift Report",
+        "tags": [
+          "analytics"
         ]
       }
     },

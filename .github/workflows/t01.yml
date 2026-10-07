@@ -1,4 +1,4 @@
-name: T01-T07 integration acceptance
+name: T01-T10 integration acceptance
 
 on:
   push:
@@ -78,6 +78,9 @@ jobs:
       - name: All API behavior and empty-database migration roundtrip
         working-directory: services/api
         run: uv run --locked pytest -q
+      - name: T08 reporting and T10 issuance, privacy and bounded worker acceptance
+        working-directory: services/api
+        run: uv run --locked pytest tests/test_analytics.py tests/test_rating.py tests/test_issuance_photos.py tests/test_telegram_delivery_visibility.py tests/test_budgeted_worker.py -q
       - name: Telegram linking, deadlines, recovery and integration acceptance
         working-directory: services/api
         run: uv run --locked pytest tests/test_telegram_linking.py tests/test_deadlines.py tests/test_telegram_recovery.py tests/test_telegram_review_fixes.py tests/test_telegram_client.py tests/test_t06_integration.py -q
@@ -97,6 +100,13 @@ jobs:
           docker compose config --quiet
           docker compose up --build -d --wait --wait-timeout 120
           docker compose exec -T api .venv/bin/alembic check
+      - name: Validate opt-in tunnel and isolated restore Compose configuration
+        env:
+          TUNNEL_HOSTNAME: check.trycloudflare.com
+          DEMO_AS_OF: '2026-10-08'
+        run: |
+          DEMO_PASSWORD="$E2E_PASSWORD" docker compose -f compose.yaml -f compose.tunnel.yaml config --quiet
+          docker compose -f compose.yaml -f compose.restore.yaml config --quiet
       - name: Seed synthetic browser accounts
         run: services/api/.venv/bin/python infra/seed_acceptance.py
       - name: Nginx IP isolation and spoof rejection

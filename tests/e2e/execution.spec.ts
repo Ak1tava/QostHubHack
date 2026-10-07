@@ -65,7 +65,7 @@ test('worker executes, compresses protected photos and retries an immutable repo
   let completed = false;
   try {
     await login(worker, false);
-    await worker.getByRole('link', { name: 'Мои наряды', exact: true }).click();
+    await worker.getByRole('navigation', { name: 'Разделы приложения', exact: true }).getByRole('link', { name: 'Мои наряды', exact: true }).click();
     await worker.locator('.order-card').filter({ hasText: description }).click();
     await expect(worker).toHaveURL(new RegExp(`/orders/${id}/execute$`));
     await action(worker, 'В очередь'); await expect(worker.getByText('Очередь', { exact: true })).toBeVisible();

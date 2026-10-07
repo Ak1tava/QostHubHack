@@ -4,7 +4,7 @@ import { Link } from 'react-router';
 import { number, useReport, useReportContext, type Anomalies } from './data';
 import { Limitations, ReportFilters, ReportPeriodDetails, ReportStatus } from './ReportFilters';
 
-const metricNames: Record<string, string> = { order_count: 'Количество нарядов', hours_between: 'Интервал, ч', hours_after_acceptance: 'После приёмки ППР, ч', actual: 'Фактический расход', norm: 'Норма расхода', ratio: 'Отношение к норме' };
+const metricNames: Record<string, string> = { order_count: 'Количество нарядов', hours_between: 'Интервал, ч', hours_after_acceptance: 'После приёмки плановой работы, ч', actual: 'Фактический расход', norm: 'Норма расхода', ratio: 'Отношение к норме' };
 
 export function AnomaliesPage({ api, user }: { api: ApiClient; user: UserView }) {
   if (user.role === 'worker') return <p role="alert">Анализ оборудования недоступен исполнителю.</p>;

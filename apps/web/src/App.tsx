@@ -9,6 +9,10 @@ import { CreateOrderPage } from './features/work-orders/CreateOrderPage';
 import { OrderDetailsPage } from './features/work-orders/OrderDetailsPage';
 import { ExecutionPage } from './features/work-orders/ExecutionPage';
 import { MyOrdersPage } from './features/work-orders/MyOrdersPage';
+import { ShiftReportPage } from './features/reports/ShiftReportPage';
+import { RatingPage } from './features/reports/RatingPage';
+import { AnomaliesPage } from './features/reports/AnomaliesPage';
+import { TelegramPage } from './features/telegram/TelegramPage';
 import type { UserView } from './lib/api';
 
 function OrderRoute({ user }: { user: UserView }) {
@@ -32,6 +36,13 @@ export function App() {
   }, [user?.id]);
   return <main>
     <header className="app-header"><div><h1>НарядAI</h1><p>Система ремонтных нарядов</p></div>{user && <div className="account"><span>{user.display_name}</span><button onClick={() => void authStore.logout()} disabled={busy}>{busy ? 'Выходим…' : 'Выйти'}</button></div>}</header>
+    {user && <nav className="app-nav choices" aria-label="Разделы приложения">
+      {user.role === 'worker' ? <Link className="button" to="/my-orders">Мои наряды</Link> : <Link className="button" to="/shift">Панель смены</Link>}
+      <Link className="button" to="/reports/shift">Отчёт смены</Link>
+      <Link className="button" to="/reports/rating">Рейтинг</Link>
+      {user.role !== 'worker' && <Link className="button" to="/analytics/anomalies">Закономерности</Link>}
+      <Link className="button" to="/telegram">Telegram</Link>
+    </nav>}
     {error && user && <p role="alert">{error.message}</p>}
     {loading ? <p role="status">Проверяем вход…</p> : user ? <Routes>
       <Route path="/" element={user.role === 'master' ? <Navigate to="/shift" replace /> : <section className="auth-card"><h2>Вы вошли</h2><p>{user.display_name}</p>{user.role === 'worker' ? <Link className="button primary" to="/my-orders">Мои наряды</Link> : <Link to="/shift">Панель смены</Link>}</section>} />
@@ -40,6 +51,10 @@ export function App() {
       <Route path="/orders/new" element={<CreateOrderPage api={authStore.api} user={user} />} />
       <Route path="/orders/:id" element={<OrderRoute user={user} />} />
       <Route path="/orders/:id/execute" element={<ExecutionRoute user={user} />} />
+      <Route path="/reports/shift" element={<ShiftReportPage key={user.id} api={authStore.api} user={user} />} />
+      <Route path="/reports/rating" element={<RatingPage key={user.id} api={authStore.api} user={user} />} />
+      <Route path="/analytics/anomalies" element={<AnomaliesPage key={user.id} api={authStore.api} user={user} />} />
+      <Route path="/telegram" element={<TelegramPage key={user.id} api={authStore.api} />} />
       <Route path="*" element={<p>Страница не найдена. <Link to="/">На главную</Link></p>} />
     </Routes> : <LoginPage busy={busy} error={error} onLogin={payload => authStore.login(payload)} />}
     <PwaUpdatePrompt />

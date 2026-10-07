@@ -41,7 +41,7 @@ class QualityBudgetLedger(BudgetLedger):
         if phase not in {"dev", "comparison", "holdout"}:
             raise ValueError("Unknown evaluation phase")
         self.path, self.phase, self.limit = path, phase, Decimal("8")
-        saved = json.loads(path.read_text()) if path.exists() else None
+        saved = json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
         if saved is not None and saved.get("limit_usd") != "8":
             raise ValueError("Quality evaluation requires its own authorized $8 ledger")
         self.records = saved["calls"] if saved else []
@@ -82,7 +82,7 @@ def register_development(directory: Path, prompt_hash: str):
     ).exists():
         raise ValueError("Development/comparison is closed after freeze")
     path = directory / "prompt_versions.json"
-    versions = json.loads(path.read_text()) if path.exists() else []
+    versions = json.loads(path.read_text(encoding="utf-8")) if path.exists() else []
     if prompt_hash not in versions:
         if len(versions) >= 2:
             raise ValueError("At most two development prompt versions are authorized")
@@ -102,7 +102,7 @@ def pending_comparison(cases, ledger):
 def load_cases(pack=PACK):
     cases = [
         json.loads(line)
-        for line in (pack / "cases.jsonl").read_text().splitlines()
+        for line in (pack / "cases.jsonl").read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
     if len({c["case_id"] for c in cases}) != len(cases):

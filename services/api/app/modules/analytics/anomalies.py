@@ -36,7 +36,7 @@ def find_anomalies(data):
                 emergency = min(candidates, key=lambda emergency: (emergency.created_at, str(emergency.id)))
                 if data.in_period(emergency.created_at):
                     items.append(Anomaly(id=f"after_planned:{order.id}:{emergency.id}", type="after_planned",
-                                         title="Аварийный ремонт вскоре после ППР",
+                                         title="Аварийный ремонт вскоре после плановой работы",
                                          description="Ближайшая аварийная работа началась в пределах 48 часов после приёмки плановой.",
                                          equipment_id=order.equipment_id,
                                          metrics=dict(hours_after_acceptance=(emergency.created_at - decision.decided_at).total_seconds() / 3600),

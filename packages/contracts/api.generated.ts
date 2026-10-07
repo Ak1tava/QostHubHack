@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/api/v1/analytics/anomalies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Repair Anomalies */
+        get: operations["repair_anomalies_api_v1_analytics_anomalies_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/csrf": {
         parameters: {
             query?: never;
@@ -98,6 +115,40 @@ export interface paths {
         };
         /** Download Photo */
         get: operations["download_photo_api_v1_photos__photo_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/rating": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Worker Rating */
+        get: operations["worker_rating_api_v1_reports_rating_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/shift": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Shift Report */
+        get: operations["shift_report_api_v1_reports_shift_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -399,6 +450,41 @@ export interface components {
             /** Responsible Id */
             responsible_id?: string | null;
         };
+        /** AnomaliesResponse */
+        AnomaliesResponse: {
+            /** Items */
+            items: components["schemas"]["Anomaly"][];
+            /** Limitations */
+            limitations: string[];
+            period: components["schemas"]["ReportPeriod"];
+        };
+        /** Anomaly */
+        Anomaly: {
+            /** Description */
+            description: string;
+            /**
+             * Equipment Id
+             * Format: uuid
+             */
+            equipment_id: string;
+            /** Evidence Order Ids */
+            evidence_order_ids: string[];
+            /** Id */
+            id: string;
+            /** Limitations */
+            limitations: string[];
+            /** Metrics */
+            metrics: {
+                [key: string]: number;
+            };
+            /** Title */
+            title: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "repeat_fault" | "after_planned" | "material_overuse";
+        };
         /** AuthResponse */
         AuthResponse: {
             /** Csrf Token */
@@ -407,8 +493,12 @@ export interface components {
         };
         /** Body_upload_photo_api_v1_work_orders__order_id__photos_post */
         Body_upload_photo_api_v1_work_orders__order_id__photos_post: {
+            /** Assignment Version */
+            assignment_version?: number | null;
             /** Captured At */
             captured_at?: string | null;
+            /** Expected Version */
+            expected_version?: number | null;
             /** File */
             file: string;
             /**
@@ -695,6 +785,58 @@ export interface components {
              */
             work_order_id: string;
         };
+        /** RatingComponent */
+        RatingComponent: {
+            /** Reason */
+            reason: string | null;
+            /** Sample Size */
+            sample_size: number;
+            /** Value */
+            value: number | null;
+        };
+        /** RatingComponents */
+        RatingComponents: {
+            Q: components["schemas"]["RatingComponent"];
+            R: components["schemas"]["RatingComponent"];
+            T: components["schemas"]["RatingComponent"];
+            V: components["schemas"]["RatingComponent"];
+        };
+        /** RatingResponse */
+        RatingResponse: {
+            /**
+             * Formula Version
+             * @default c6-v1-available
+             * @constant
+             */
+            formula_version: "c6-v1-available";
+            /** Items */
+            items: components["schemas"]["RatingRow"][];
+            /** Limitations */
+            limitations: string[];
+            period: components["schemas"]["ReportPeriod"];
+        };
+        /** RatingRow */
+        RatingRow: {
+            /** Closed Count */
+            closed_count: number;
+            components: components["schemas"]["RatingComponents"];
+            /** Display Name */
+            display_name: string;
+            /** Score */
+            score: number | null;
+            /** Specialty */
+            specialty: string;
+            /**
+             * Work Type
+             * @enum {string}
+             */
+            work_type: "planned" | "emergency";
+            /**
+             * Worker Id
+             * Format: uuid
+             */
+            worker_id: string;
+        };
         /** ReadyResponse */
         ReadyResponse: {
             /**
@@ -703,6 +845,55 @@ export interface components {
              * @constant
              */
             status: "ready";
+        };
+        /** ReportCounts */
+        ReportCounts: {
+            /** Closed */
+            closed: number;
+            /** Issued */
+            issued: number;
+            /** Overdue */
+            overdue: number;
+            /** Performed */
+            performed: number;
+            /** Rejected */
+            rejected: number;
+        };
+        /** ReportDowntime */
+        ReportDowntime: {
+            /** Has Data */
+            has_data: boolean;
+            /** Seconds */
+            seconds: number;
+        };
+        /** ReportPeriod */
+        ReportPeriod: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * End At
+             * Format: date-time
+             */
+            end_at: string;
+            /**
+             * Start At
+             * Format: date-time
+             */
+            start_at: string;
+            /** Timezone */
+            timezone: string;
+        };
+        /** ReportWorkload */
+        ReportWorkload: {
+            /** Active Seconds */
+            active_seconds: number;
+            /** Pause Seconds */
+            pause_seconds: number;
+            /** Review Seconds */
+            review_seconds: number;
         };
         /** ReviewResult */
         ReviewResult: {
@@ -736,6 +927,17 @@ export interface components {
             /** Start At */
             start_at: string | null;
             user: components["schemas"]["UserView"];
+        };
+        /** ShiftReportResponse */
+        ShiftReportResponse: {
+            counts: components["schemas"]["ReportCounts"];
+            downtime: components["schemas"]["ReportDowntime"];
+            /** Limitations */
+            limitations: string[];
+            period: components["schemas"]["ReportPeriod"];
+            /** Summary */
+            summary: string;
+            workload: components["schemas"]["ReportWorkload"];
         };
         /** ShiftResponse */
         ShiftResponse: {
@@ -972,6 +1174,8 @@ export interface components {
             id: string;
             /** Is Overdue */
             is_overdue: boolean;
+            /** Issuance Photos */
+            issuance_photos?: components["schemas"]["PhotoView"][];
             master_decision?: components["schemas"]["MasterDecisionView"] | null;
             /**
              * Master Id
@@ -1125,6 +1329,69 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    repair_anomalies_api_v1_analytics_anomalies_get: {
+        parameters: {
+            query: {
+                area_id?: string | null;
+                equipment_id?: string | null;
+                assignee_id?: string | null;
+                brigade_id?: string | null;
+                start_at: string;
+                end_at: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnomaliesResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     csrf_api_v1_auth_csrf_get: {
         parameters: {
             query?: never;
@@ -1423,6 +1690,133 @@ export interface operations {
             };
             /** @description Service Unavailable */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    worker_rating_api_v1_reports_rating_get: {
+        parameters: {
+            query: {
+                area_id?: string | null;
+                equipment_id?: string | null;
+                assignee_id?: string | null;
+                brigade_id?: string | null;
+                start_at: string;
+                end_at: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RatingResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    shift_report_api_v1_reports_shift_get: {
+        parameters: {
+            query?: {
+                area_id?: string | null;
+                equipment_id?: string | null;
+                assignee_id?: string | null;
+                brigade_id?: string | null;
+                start_at?: string | null;
+                end_at?: string | null;
+                shift_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShiftReportResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

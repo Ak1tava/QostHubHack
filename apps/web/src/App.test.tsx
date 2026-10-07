@@ -21,3 +21,18 @@ it('opens the shift dashboard after a foreman signs in', async () => {
   await act(async () => root.unmount());
   container.remove();
 });
+
+it('lets a signed-in foreman reach reports and Telegram settings', async () => {
+  (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+  const container = document.createElement('div');
+  document.body.append(container);
+  const root = createRoot(container);
+  await act(async () => root.render(<MemoryRouter initialEntries={['/shift']}><App /></MemoryRouter>));
+  const destinations = Array.from(container.querySelectorAll('nav a'), link => link.getAttribute('href'));
+  expect(destinations).toContain('/reports/shift');
+  expect(destinations).toContain('/reports/rating');
+  expect(destinations).toContain('/analytics/anomalies');
+  expect(destinations).toContain('/telegram');
+  await act(async () => root.unmount());
+  container.remove();
+});
