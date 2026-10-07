@@ -115,7 +115,7 @@ def load_history(db, actor, filters, as_of, *, insights=False):
     if insights and actor.role == "worker":
         raise AuthError(403, "forbidden", "Закономерности оборудования доступны руководителям")
     if actor.role == "worker" and filters.assignee_id not in (None, actor.id):
-        raise AuthError(403, "forbidden", "Доступны только собственные показатели")
+        raise AuthError(404, "not_found", "Объект не найден")
     if actor.role == "worker" and filters.brigade_id not in (None, actor.brigade_id):
         former_assignment = db.scalar(select(WorkOrderEvent.id).where(
             WorkOrderEvent.occurred_at <= as_of,

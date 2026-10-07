@@ -180,10 +180,41 @@ def test_scope_precedes_counts_and_worker_brigade_cannot_leak(client, database):
     sign_in(client, "worker")
     for route in ("/reports/shift", "/reports/rating"):
         response = client.get("/api/v1" + route, params={**PARAMS, "assignee_id": str(database["outsider"].id)})
-        assert response.status_code == 403
+        assert response.status_code == 404
     assert client.get("/api/v1/analytics/anomalies", params=PARAMS).status_code == 403
     sign_in(client, "master")
     assert client.get("/api/v1/reports/shift", params={**PARAMS, "area_id": str(database["other_area"].id)}).status_code == 404
+
+
+@pytest.mark.parametrize("route", ["/reports/shift", "/reports/rating"])
+def test_worker_foreign_assignee_404_does_not_reveal_same_brigade_peer(client, database, route):
+    from app.modules.auth.models import User, UserArea
+    peer = User(login="analytics-peer", display_name="Коллега по бригаде", role="worker",
+                password_hash=database["worker"].password_hash, brigade_id=database["brigade"].id,
+                shift_id=database["shift"].id, specialty="Слесарь")
+    db = database["session"]
+    db.add(peer)
+    db.flush()
+    db.add(UserArea(user_id=peer.id, area_id=database["area"].id))
+    own = order(database)
+    submission(database, own)
+    other = order(database, worker=peer)
+    submission(database, other, worker=peer)
+    db.commit()
+    sign_in(client, "worker")
+    own_response = client.get("/api/v1" + route, params={**PARAMS, "assignee_id": str(database["worker"].id)})
+    assert own_response.status_code == 200, own_response.text
+    errors = []
+    for foreign_id in (peer.id, uuid4()):
+        response = client.get("/api/v1" + route, params={**PARAMS, "assignee_id": str(foreign_id)})
+        assert response.status_code == 404
+        assert response.headers["cache-control"] == "no-store"
+        assert response.json()["error"]["code"] == "not_found"
+        assert "Коллега" not in response.text
+        errors.append(response.json())
+    assert errors[0] == errors[1]
+    forbidden = client.get("/api/v1" + route, params={**PARAMS, "brigade_id": str(uuid4())})
+    assert forbidden.status_code == 403
 
 
 def test_empty_data_and_authentication(client):
