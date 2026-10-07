@@ -463,6 +463,115 @@
         "title": "DeliveryStatus",
         "type": "object"
       },
+      "EquipmentDetail": {
+        "properties": {
+          "area": {
+            "$ref": "#/components/schemas/NamedView"
+          },
+          "area_id": {
+            "format": "uuid",
+            "title": "Area Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "public_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Public Url"
+          },
+          "recent_work_orders": {
+            "items": {
+              "$ref": "#/components/schemas/EquipmentOrderView"
+            },
+            "maxItems": 10,
+            "title": "Recent Work Orders",
+            "type": "array"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "area_id",
+          "area",
+          "public_url",
+          "timezone",
+          "recent_work_orders"
+        ],
+        "title": "EquipmentDetail",
+        "type": "object"
+      },
+      "EquipmentOrderView": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "maxLength": 240,
+            "title": "Description",
+            "type": "string"
+          },
+          "detail_url": {
+            "title": "Detail Url",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ISSUED",
+              "ACCEPTED",
+              "QUEUED",
+              "REJECTED",
+              "IN_PROGRESS",
+              "PAUSED",
+              "SUBMITTED",
+              "AI_REVIEW",
+              "REWORK",
+              "CLOSED",
+              "CANCELLED"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "created_at",
+          "description",
+          "status",
+          "detail_url"
+        ],
+        "title": "EquipmentOrderView",
+        "type": "object"
+      },
       "EquipmentView": {
         "properties": {
           "area_id": {
@@ -2807,6 +2916,69 @@
         "summary": "Catalog",
         "tags": [
           "catalog"
+        ]
+      }
+    },
+    "/api/v1/equipment/{equipment_id}": {
+      "get": {
+        "operationId": "equipment_detail_api_v1_equipment__equipment_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "equipment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Equipment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EquipmentDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Equipment Detail",
+        "tags": [
+          "equipment"
         ]
       }
     },

@@ -31,7 +31,7 @@ beforeEach(() => {
 });
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); });
 
-async function render() {
+async function render(query = `area_id=${area}&assignee_id=${workerId}`) {
   const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input), 'http://localhost');
     if (url.pathname.endsWith('/csrf')) return json({ csrf_token: 'test-csrf' });
@@ -45,12 +45,30 @@ async function render() {
     return json({ items, total: items.length, offset: 0, limit: 200 });
   });
   const api = new ApiClient(fetcher);
-  await act(async () => root.render(<MemoryRouter initialEntries={[`/orders/new?area_id=${area}&assignee_id=${workerId}`]}><Routes>
+  await act(async () => root.render(<MemoryRouter initialEntries={[`/orders/new?${query}`]}><Routes>
     <Route path="/orders/new" element={<CreateOrderPage api={api} user={master} />} />
     <Route path="/orders/:id" element={<p>Наряд создан</p>} />
   </Routes></MemoryRouter>));
 }
 function button(text: string) { return [...container.querySelectorAll<HTMLButtonElement>('button')].find(b => b.textContent === text)!; }
+
+it('prefills equipment and its actual area from the QR link and sends the existing create command', async () => {
+  secondArea = true;
+  await render(`equipment_id=${equipment}&area_id=${otherArea}&assignee_id=${workerId}`);
+  expect(button('Первый участок').getAttribute('aria-pressed')).toBe('true');
+  expect(button('Насос').getAttribute('aria-pressed')).toBe('true');
+  await describeWork();
+  await act(async () => container.querySelector<HTMLButtonElement>('button[type="submit"]')!.click());
+  expect(JSON.parse(commands[0].body)).toMatchObject({ equipment_id: equipment, area_id: area });
+  expect(commands[0].key).toBeTruthy();
+});
+
+it('does not select inaccessible equipment from an untrusted QR query', async () => {
+  await render(`equipment_id=foreign&area_id=${area}&assignee_id=${workerId}`);
+  await describeWork();
+  expect(button('Насос').getAttribute('aria-pressed')).toBe('false');
+  expect(container.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(true);
+});
 async function choose(text: string) { await act(async () => button(text).click()); }
 async function describeWork() {
   const input = container.querySelector<HTMLTextAreaElement>('textarea[name="description"]')!;

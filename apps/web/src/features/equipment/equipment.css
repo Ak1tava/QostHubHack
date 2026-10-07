@@ -1,0 +1,30 @@
+.equipment-layout { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: 24px; align-items: start; }
+.equipment-qr, .equipment-history { min-width: 0; border: 1px solid var(--border, #dde5e2); border-radius: 16px; padding: 20px; background: #fff; }
+.equipment-label { text-align: center; color: #111; background: #fff; overflow-wrap: anywhere; }
+.equipment-label h3 { margin-top: 0; }
+.equipment-label img { display: block; width: 100%; max-width: 256px; height: auto; margin: 8px auto; }
+.equipment-id, .equipment-url { font-size: 12px; overflow-wrap: anywhere; }
+.equipment-orders { padding: 0; list-style: none; }
+.equipment-orders li + li { border-top: 1px solid #dde5e2; }
+.equipment-orders a { display: block; padding: 16px 0; text-decoration: none; color: inherit; overflow-wrap: anywhere; }
+.equipment-orders .badge { margin-left: 10px; }
+.equipment-orders p { margin: 10px 0; }
+.equipment-orders time { font-size: 13px; color: #526760; }
+.equipment-page .page-heading { overflow-wrap: anywhere; }
+@media (max-width: 700px) {
+  .equipment-layout { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .equipment-qr, .equipment-history { padding: 16px; }
+  .equipment-page .page-heading { flex-wrap: wrap; }
+}
+@media print {
+  body:has(.equipment-page) { background: white; }
+  body:has(.equipment-page) .app-sidebar, body:has(.equipment-page) .app-header,
+  body:has(.equipment-page) .skip-link, body:has(.equipment-page) .update-notice,
+  .equipment-page > :not(.equipment-layout), .equipment-history,
+  .equipment-qr > :not(.equipment-label) { display: none !important; }
+  body:has(.equipment-page) .app-shell, body:has(.equipment-page) .app-body,
+  body:has(.equipment-page) .app-content, .equipment-page, .equipment-layout { display: block; margin: 0; padding: 0; width: auto; min-height: 0; }
+  .equipment-qr { border: 0; padding: 0; }
+  .equipment-label { width: 80mm; border: 1px solid #111; padding: 5mm; break-inside: avoid; }
+  .equipment-label img { width: 60mm; max-width: none; }
+}
