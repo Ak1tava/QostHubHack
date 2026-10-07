@@ -1,0 +1,54 @@
+{
+  "rezitech": {
+    "split": "dev",
+    "page": "https://rezitech.com.au/case-studies/water-wastewater/split-case-pump-repair-and-coat/",
+    "files": {
+      "rezitech-before.jpg": "https://rezitech.com.au/wp-content/uploads/2026/01/Corroded-split-case-pump-casing.jpg",
+      "rezitech-after.jpg": "https://rezitech.com.au/wp-content/uploads/2026/01/Split-case-pump-casing-coated-with-second-coat-of-Belzona-1341.jpg"
+    },
+    "rights": "No redistribution license confirmed; media stored locally under .tooling, never in Git.",
+    "retrieved_at": "2026-10-07",
+    "raw_sha256": {
+      "rezitech-before.jpg": "bbe0b1f495083a67715b4e09b3067aca017eb823e1ae73dedacd67e25629b02b",
+      "rezitech-after.jpg": "8d12605bcd339d307453ef260a42934e4c79606496304b797a1334946862151e"
+    }
+  },
+  "acca": {
+    "split": "dev",
+    "page": "https://accapumps.com/rechroming/",
+    "files": {
+      "acca-before.avif": "https://accapumps.com/wp-content/uploads/2018/02/Rotor-rechroming-1024x768.avif",
+      "acca-after.avif": "https://accapumps.com/wp-content/uploads/2018/02/Rotor-refurbishment-933x1024.avif"
+    },
+    "rights": "No redistribution license confirmed; media stored locally under .tooling, never in Git.",
+    "retrieved_at": "2026-10-07",
+    "raw_sha256": {
+      "acca-before.avif": "d007df4ba8ac87b908e2dcfcffedf35aabad4541bd6d6939233ac2593e627305",
+      "acca-after.avif": "f65ffefa06c95638fc163645e0c360b56fe7985a5f008c5b880b3deb97ca60eb"
+    }
+  },
+  "corrocoat": {
+    "split": "holdout",
+    "page": "https://www.corrocoat.com/wp-content/uploads/2024/01/Refurbishment-and-Protection-of-Raw-Water-Pump.pdf",
+    "files": {
+      "corrocoat.pdf": "https://www.corrocoat.com/wp-content/uploads/2024/01/Refurbishment-and-Protection-of-Raw-Water-Pump.pdf"
+    },
+    "rights": "No redistribution license confirmed; media stored locally under .tooling, never in Git.",
+    "retrieved_at": "2026-10-07",
+    "raw_sha256": {
+      "corrocoat.pdf": "22addf1eaa8f7017fb88eade45485109ae84841114da9f3c56aa8d24326689ec"
+    }
+  },
+  "westin": {
+    "split": "holdout",
+    "page": "https://www.westinpumps.co.uk/post/full-refurbishment-of-a-garbarino-vertical-suspended-centrifugal-pump",
+    "files": {
+      "westin.jpg": "https://static.wixstatic.com/media/cf0867_a377bb6f80bc4eb3bdbd206f0187d7a1~mv2.jpg"
+    },
+    "rights": "No redistribution license confirmed; media stored locally under .tooling, never in Git.",
+    "retrieved_at": "2026-10-07",
+    "raw_sha256": {
+      "westin.jpg": "d70cdcc6b807d6c36306c1b702f98748cbfebbd1057077584462652f65ad5b23"
+    }
+  }
+}

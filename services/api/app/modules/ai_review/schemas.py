@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class StrictModel(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
 
 class ReviewInput(StrictModel):
@@ -21,35 +21,48 @@ class ReviewInput(StrictModel):
     photo_refs: list[dict[str, Any]]
     checklist: list[dict[str, Any]]
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def unique_evidence(self):
-        ids = ['problem', 'work_description']
-        for collection in (self.material_checks, self.timing_checks, self.photo_refs, self.checklist):
+        ids = ["problem", "work_description"]
+        for collection in (
+            self.material_checks,
+            self.timing_checks,
+            self.photo_refs,
+            self.checklist,
+        ):
             for item in collection:
-                value = item.get('id')
+                value = item.get("id")
                 if not isinstance(value, str) or not value.strip():
-                    raise ValueError('Server evidence requires a nonempty id')
+                    raise ValueError("Server evidence requires a nonempty id")
                 ids.append(value)
         if len(ids) != len(set(ids)):
-            raise ValueError('Evidence ids must be unique, including reserved ids')
+            raise ValueError("Evidence ids must be unique, including reserved ids")
         return self
 
     def evidence_ids(self) -> set[str]:
-        return {'problem', 'work_description'} | {
-            item['id'] for collection in (self.material_checks, self.timing_checks, self.photo_refs, self.checklist)
+        return {"problem", "work_description"} | {
+            item["id"]
+            for collection in (
+                self.material_checks,
+                self.timing_checks,
+                self.photo_refs,
+                self.checklist,
+            )
             for item in collection
         }
 
 
 class Finding(StrictModel):
     code: str
-    severity: Literal['info', 'warning', 'error']
+    severity: Literal["info", "warning", "error"]
     message: str
     evidence_refs: list[str]
 
 
 class ReviewResult(StrictModel):
-    verdict: Literal['accepted', 'accepted_with_notes', 'requires_rework', 'human_review']
+    verdict: Literal[
+        "accepted", "accepted_with_notes", "requires_rework", "human_review"
+    ]
     score: int | None = Field(ge=1, le=5, strict=True)
     findings: list[Finding]
     missing_evidence: list[str]
@@ -57,14 +70,14 @@ class ReviewResult(StrictModel):
 
 
 class StagePlan(StrictModel):
-    stage: Literal['primary', 'escalation']
+    stage: Literal["primary", "escalation"]
     model: str
-    reasoning: Literal['low', 'medium']
-    prompt_version: str = 't07-v1'
+    reasoning: Literal["low", "medium"]
+    prompt_version: str = "t07-v2"
 
 
 class ImageEvidence(StrictModel):
-    media_type: Literal['image/png', 'image/jpeg', 'image/webp']
+    media_type: Literal["image/png", "image/jpeg", "image/webp"]
     data: bytes
 
 
@@ -82,8 +95,29 @@ class ProviderOutcome(StrictModel):
     retry_after_seconds: float | None = None
 
 
+# Private provider schema; public C5 Finding/ReviewResult stay unchanged.
+class ProviderFinding(Finding):
+    code: Literal[
+        "work_matches_problem",
+        "work_problem_mismatch",
+        "visible_leak_comparison",
+        "visible_cleaning_comparison",
+        "visible_cover_present",
+        "visible_surface_change",
+        "evidence_conflict",
+        "unusable_images",
+        "photo_subject_mismatch",
+        "comparison_unavailable",
+        "untrusted_instruction_ignored",
+    ]
+
+
+class ProviderResult(ReviewResult):
+    findings: list[ProviderFinding]
+
+
 class StageResponse(StrictModel):
-    result: ReviewResult
+    result: ProviderResult
     unresolved_conflict: bool
     conflict_refs: list[str]
     legible_refs: list[str]
