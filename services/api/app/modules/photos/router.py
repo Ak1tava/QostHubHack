@@ -22,9 +22,12 @@ ERRORS = {code: {"model": ErrorResponse} for code in (401, 403, 404, 409, 422, 5
 def upload_photo(order_id: UUID, response: Response,
                  file: Annotated[UploadFile, File()], type: Annotated[PhotoType, Form()],
                  captured_at: Annotated[AwareDatetime | None, Form()] = None,
+                 expected_version: Annotated[int | None, Form(ge=1)] = None,
+                 assignment_version: Annotated[int | None, Form(ge=1)] = None,
                  actor: User = Depends(get_current_user), db: Session = Depends(get_db)):
     response.headers["Cache-Control"] = "no-store"
-    return PhotoService(db).store_photo(order_id, actor, PhotoUpload(file, type, captured_at))
+    return PhotoService(db).store_photo(order_id, actor, PhotoUpload(file, type, captured_at,
+                                                                   expected_version, assignment_version))
 
 
 @router.get("/photos/{photo_id}", response_class=FileResponse, responses=ERRORS)

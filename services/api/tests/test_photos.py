@@ -81,7 +81,7 @@ def test_upload_stores_normalized_private_image(photo_client, database, tmp_path
     assert body["work_order_id"] == order["id"] and body["type"] == "after"
     assert body["read_url"] == f"/api/v1/photos/{photo.id}"
     assert photo.uploaded_by == database["worker"].id
-    assert photo.content_hash == sha256(original).hexdigest()
+    assert photo.content_hash == sha256((tmp_path / photo.storage_key).read_bytes()).hexdigest()
     assert photo.perceptual_hash and len(photo.perceptual_hash) == 16
     assert photo.captured_at == datetime(2026, 10, 4, 5, tzinfo=timezone.utc)
     assert Path(photo.storage_key).name == photo.storage_key

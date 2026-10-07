@@ -10,6 +10,7 @@ from pathlib import Path
 from uuid import UUID, uuid4
 
 from PIL import Image, ImageOps, UnidentifiedImageError
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from starlette.datastructures import UploadFile
 
@@ -36,6 +37,8 @@ class PhotoUpload:
     file: UploadFile
     type: PhotoType
     captured_at: datetime | None = None
+    expected_version: int | None = None
+    assignment_version: int | None = None
 
 
 def _invalid_image() -> AuthError:
@@ -79,7 +82,7 @@ def _normalize(upload: UploadFile) -> tuple[bytes, str, str, str, str]:
             Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
         raise _invalid_image() from exc
     mime, suffix = FORMATS[fmt]
-    return normalized, mime, suffix, hashlib.sha256(content).hexdigest(), f"{bits:016x}"
+    return normalized, mime, suffix, hashlib.sha256(normalized).hexdigest(), f"{bits:016x}"
 
 
 def photo_view(photo: Photo) -> PhotoView:
@@ -102,14 +105,35 @@ class PhotoService:
             order = lock_order(self.db, order_id)
             if not can_access_order(self.db, actor, order):
                 raise AuthError(404, "not_found", "Объект не найден")
-            if actor.role != "worker" or not is_responsible(order, actor):
+            issuing_master = actor.role == "master"
+            if issuing_master:
+                if actor.id != order.master_id or upload.type != "before":
+                    raise AuthError(403, "forbidden", "Мастер добавляет только исходные фото своего наряда")
+                if upload.expected_version is None or upload.assignment_version is None:
+                    raise AuthError(422, "version_required", "Для исходных фото требуются актуальные версии наряда и назначения")
+            elif actor.role != "worker" or not is_responsible(order, actor):
                 raise AuthError(403, "forbidden", "Фото добавляет ответственный исполнитель")
-            if order.status not in EDITABLE_STATUSES:
+            if ((issuing_master and order.status != "ISSUED") or
+                    (not issuing_master and order.status not in EDITABLE_STATUSES)):
                 raise AuthError(409, "evidence_frozen", "Для этого состояния фото недоступны")
+            if ((upload.expected_version is not None and upload.expected_version != order.version) or
+                    (upload.assignment_version is not None and upload.assignment_version != order.assignment_version)):
+                raise AuthError(409, "version_conflict", "Наряд или назначение изменились; обновите карточку")
             if upload.type not in {"before", "after"} or (upload.captured_at is not None and
                     (upload.captured_at.tzinfo is None or upload.captured_at.utcoffset() is None)):
                 raise AuthError(422, "invalid_photo", "Проверьте тип фото и время с часовым поясом")
             content, mime, suffix, content_hash, perceptual_hash = _normalize(upload.file)
+            if issuing_master:
+                evidence = select(Photo).where(Photo.work_order_id == order.id,
+                                              Photo.uploaded_by == actor.id, Photo.type == "before")
+                previous = self.db.scalar(evidence.where(Photo.content_hash == content_hash))
+                if previous is not None:
+                    result = photo_view(previous)
+                    self.db.commit()
+                    return result
+                count = self.db.scalar(select(func.count()).select_from(evidence.subquery()))
+                if count >= 5:
+                    raise AuthError(422, "issuance_photo_limit", "При выдаче можно добавить не более пяти фото")
             key = uuid4().hex + suffix
             try:
                 self.storage.save(key, content)

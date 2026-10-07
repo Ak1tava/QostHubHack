@@ -92,9 +92,14 @@ def get_order(db, order_id, actor):
     history = db.scalars(select(WorkOrderEvent).where(WorkOrderEvent.work_order_id == order.id)
                          .order_by(WorkOrderEvent.version))
     from app.modules.ai_review.views import review_detail
+    from app.modules.photos.service import photo_view
+    issuance = db.scalars(select(Photo).where(Photo.work_order_id == order.id,
+                                             Photo.type == "before", Photo.uploaded_by == order.master_id)
+                          .order_by(Photo.received_at, Photo.id))
     submission = report_view(db, order, report) if report else None
     return WorkOrderDetail(**view(db, order, actor).model_dump(),
                            events=[WorkOrderEventView.model_validate(e) for e in history],
+                           issuance_photos=[photo_view(photo) for photo in issuance],
                            submission=submission,
                            **review_detail(db, order, report, actor, submission))
 

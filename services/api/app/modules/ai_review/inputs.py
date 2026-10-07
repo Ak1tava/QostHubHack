@@ -8,7 +8,7 @@ from sqlalchemy import or_, select
 from app.modules.ai_review.schemas import ReviewInput
 from app.modules.catalog.models import Material, MaterialNorm, WorkCode
 from app.modules.photos.storage import FileSystemPhotoStorage
-from app.modules.work_orders.models import MaterialUsage, Photo, WorkOrderInterval
+from app.modules.work_orders.models import MaterialUsage, Photo, WorkOrder, WorkOrderInterval
 from app.modules.work_orders.queries import report_view
 
 
@@ -27,10 +27,10 @@ def build_input(db, order, report):
                               quantity=float(usage.quantity), norm_quantity=float(norm.quantity) if norm else None,
                               status=('above_norm' if usage.quantity > norm.quantity else 'within_norm') if norm else 'no_norm'))
     photos = []
-    # Submitted after photos and earlier before photos from the same assigned worker only.
+    # Immutable report photos and earlier before evidence from its worker or issuing master.
     query = select(Photo).where(Photo.work_order_id == order.id, or_(
         Photo.submission_id == report.id,
-        (Photo.type == 'before') & (Photo.uploaded_by == report.worker_id)
+        (Photo.type == 'before') & (Photo.uploaded_by.in_([report.worker_id, order.master_id]))
         & (Photo.received_at <= report.submitted_at),
     )).order_by(Photo.id)
     for photo in db.scalars(query):
@@ -67,13 +67,15 @@ def read_images(db, report, review_input, root):
     from app.modules.ai_review.provider import ImageEvidence
     storage = FileSystemPhotoStorage(root)
     images, refs = {}, []
+    order = db.get(WorkOrder, report.work_order_id)
     for source in review_input.photo_refs:
         ref = dict(source)
         from uuid import UUID
         photo = db.get(Photo, UUID(ref['id'].removeprefix('photo:')))
         associated = photo and photo.work_order_id == report.work_order_id and (
             photo.submission_id == report.id or (photo.type == 'before'
-                and photo.uploaded_by == report.worker_id and photo.received_at <= report.submitted_at))
+                and photo.uploaded_by in {report.worker_id, order.master_id if order else None}
+                and photo.received_at <= report.submitted_at))
         try:
             if not associated:
                 raise ValueError('invalid_photo_association')

@@ -6,6 +6,7 @@ from uuid import UUID
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
 from app.modules.ai_review.schemas import ReviewResult
+from app.modules.photos.schemas import PhotoView
 
 WorkOrderPriority = Literal["emergency", "high", "normal", "planned"]
 
@@ -188,6 +189,7 @@ class SubmissionView(BaseModel):
 
 class WorkOrderDetail(WorkOrderView):
     events: list[WorkOrderEventView] = Field(default_factory=list)
+    issuance_photos: list[PhotoView] = Field(default_factory=list)
     submission: SubmissionView | None = None
     ai_review: "AIReviewView | None" = None
     master_decision: "MasterDecisionView | None" = None
