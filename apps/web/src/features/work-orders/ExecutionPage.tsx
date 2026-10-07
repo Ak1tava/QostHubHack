@@ -7,6 +7,8 @@ import { events } from '../../lib/events';
 import { displayTime } from '../../lib/time';
 import { orderAction, priorities, statuses, useShift, type OrderAction, type WorkOrderDetail } from './data';
 import { PhotoUpload } from './PhotoUpload';
+import { IssuancePhotos } from './IssuancePhotos';
+import { NotificationDeliveryPanel } from '../telegram/NotificationDeliveryPanel';
 import { SubmissionForm } from './SubmissionForm';
 import { SavedSubmission } from './SavedSubmission';
 import { ReviewPanel } from './ReviewPanel';
@@ -54,6 +56,8 @@ export function ExecutionPage({ api, user, orderId }: { api: ApiClient; user: Us
       {responsible && photoStatuses.has(order.status) && <PhotoUpload api={api} orderId={order.id} type="before" disabled={command.busy || command.pending || submissionLocked} onUploaded={() => {}} />}
       {responsible && <SubmissionForm api={api} order={order} disabled={command.busy || command.pending} reload={detail.reload} onSubmitted={changed} onLockChange={setSubmissionLocked} />}
       {order.submission && <div id={`submission-${order.submission.id}`}><SavedSubmission api={api} submission={order.submission} /></div>}
+      <IssuancePhotos photos={order.issuance_photos} />
+      <NotificationDeliveryPanel api={api} user={user} orderId={order.id} />
       <ReviewPanel order={order} />
       <section aria-label="История наряда"><h3>История</h3><ol className="history">{order.events?.map(item => <li key={item.id}><strong>{names[item.action as WorkerAction] ?? item.action}</strong><time dateTime={item.occurred_at}>{displayTime(item.occurred_at, timezone)}</time>{item.reason && <p>{item.reason}</p>}</li>)}</ol></section>
     </>}

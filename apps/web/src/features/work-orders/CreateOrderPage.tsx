@@ -3,7 +3,8 @@ import { Link, useNavigate, useSearchParams } from 'react-router';
 import { ApiClient, type UserView } from '../../lib/api';
 import { useCommand } from '../../lib/useCommand';
 import { localDateTime, utcDateTime } from '../../lib/time';
-import { availability, createOrder, priorities, useCatalogs, useShift, type CreateOrder } from './data';
+import { compressPhoto } from '../../lib/compressPhoto';
+import { availability, createOrder, priorities, uploadPhoto, useCatalogs, useShift, type CreateOrder, type Photo, type WorkOrder } from './data';
 
 export function CreateOrderPage({ api, user }: { api: ApiClient; user: UserView }) {
   const [query] = useSearchParams();
@@ -21,6 +22,13 @@ export function CreateOrderPage({ api, user }: { api: ApiClient; user: UserView 
   const [deadline, setDeadline] = useState('');
   const deadlineInitialized = useRef(false);
   const [validation, setValidation] = useState('');
+  const [beforePhotos, setBeforePhotos] = useState<File[]>([]);
+  const [uploadedPhotos, setUploadedPhotos] = useState<Photo[]>([]);
+  const [createdOrder, setCreatedOrder] = useState<WorkOrder | null>(null);
+  const createdRef = useRef<WorkOrder | null>(null);
+  const uploadedCount = useRef(0);
+  const photoRunning = useRef(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const baseShift = useShift(api);
   const shift = useShift(api, areaId);
   const timezone = baseShift.data?.timezone ?? shift.data?.timezone;
@@ -43,7 +51,7 @@ export function CreateOrderPage({ api, user }: { api: ApiClient; user: UserView 
     setDeadline(localDateTime(initial, baseShift.data.timezone));
   }, [baseShift.data, user.id]);
   useEffect(() => {
-    if (!shift.data || command.pending || command.busy) return;
+    if (!shift.data || command.pending || command.busy || createdRef.current) return;
     const available = shift.data.items.filter(member => member.user.role === 'worker');
     if (assigneeId && !available.some(member => member.user.id === assigneeId)) setAssigneeId('');
     if (responsibleId && !available.some(member => member.user.id === responsibleId && member.user.brigade_id === brigadeId)) setResponsibleId('');
@@ -57,19 +65,39 @@ export function CreateOrderPage({ api, user }: { api: ApiClient; user: UserView 
 
   const assigned = mode === 'worker' ? workers.some(member => member.user.id === assigneeId) : brigadeId && eligible.some(member => member.user.id === responsibleId);
   const valid = !!(user.role === 'master' && catalogs.data && timezone && areaId && equipmentId && description.trim() && deadline && assigned);
+  async function preparePhotos(files: File[]) {
+    if (!files.length || photoRunning.current || createdRef.current) return;
+    if (beforePhotos.length + files.length > 5) { setValidation('При выдаче можно добавить не более пяти фото.'); return; }
+    photoRunning.current = true; setPhotoBusy(true); setValidation('');
+    try { const prepared = await Promise.all(files.map(compressPhoto)); setBeforePhotos(previous => [...previous, ...prepared]); }
+    catch (error) { setValidation(error instanceof Error ? error.message : 'Не удалось подготовить фото.'); }
+    finally { photoRunning.current = false; setPhotoBusy(false); }
+  }
   async function submit(event: FormEvent) {
     event.preventDefault(); setValidation('');
+    if (photoRunning.current) return;
+    photoRunning.current = true; setPhotoBusy(true);
     try {
       let body: CreateOrder | undefined;
-      if (!command.pending) {
+      if (!createdRef.current && !command.pending) {
         if (!valid || !timezone) return;
         body = { work_type: workType, description: description.trim(), area_id: areaId, equipment_id: equipmentId, priority,
           due_at: utcDateTime(deadline, timezone), assignee_id: mode === 'worker' ? assigneeId : null,
           brigade_id: mode === 'brigade' ? brigadeId : null, responsible_id: mode === 'brigade' ? responsibleId : null };
       }
-      const created = await command.run(body);
-      if (created) navigate(`/orders/${created.id}`, { replace: true });
+      const created = createdRef.current ?? await command.run(body);
+      if (created) {
+        createdRef.current = created; setCreatedOrder(created);
+        for (let index = uploadedCount.current; index < beforePhotos.length; index++) {
+          const photo = await uploadPhoto(api, created.id, beforePhotos[index], 'before',
+            { expected_version: created.version, assignment_version: created.assignment_version });
+          uploadedCount.current = index + 1;
+          setUploadedPhotos(previous => previous.some(saved => saved.id === photo.id) ? previous : [...previous, photo]);
+        }
+        navigate(`/orders/${created.id}`, { replace: true });
+      }
     } catch (error) { setValidation(error instanceof Error ? error.message : 'Проверьте поля'); }
+    finally { photoRunning.current = false; setPhotoBusy(false); }
   }
 
   if (user.role !== 'master') return <p role="alert">Выдавать наряды может только мастер.</p>;
@@ -79,7 +107,7 @@ export function CreateOrderPage({ api, user }: { api: ApiClient; user: UserView 
     <p className="muted">Мастер: {user.display_name}</p>
     {[catalogs.error, shift.error, baseShift.error].filter(Boolean).map((error, index) => <p role="alert" key={index}>{error!.message} <button type="button" onClick={() => { catalogs.reload(); shift.reload(); baseShift.reload(); }}>Обновить</button></p>)}
     <form onSubmit={submit}>
-      <fieldset disabled={command.busy || command.pending || !catalogs.data} className="form-fields">
+      <fieldset disabled={command.busy || command.pending || photoBusy || !!createdOrder || !catalogs.data} className="form-fields">
         <fieldset className="choice-group"><legend>Участок</legend><div className="choices">
           {catalogs.data?.areas.map(area => <button type="button" key={area.id} aria-pressed={areaId === area.id} onClick={() => changeArea(area.id)}>{area.name}</button>)}
         </div></fieldset>
@@ -111,10 +139,14 @@ export function CreateOrderPage({ api, user }: { api: ApiClient; user: UserView 
         </div>
         {priority === 'emergency' && <p className="badge priority-emergency">Аварийный приоритет</p>}
         <label>Срок {timezone && <small>({timezone})</small>}<input type="datetime-local" value={deadline} onChange={event => setDeadline(event.target.value)} required /></label>
+        <label>Фото при выдаче · до 5<input type="file" accept="image/*" multiple capture="environment" onChange={event => { const files = Array.from(event.target.files ?? []); event.target.value = ''; void preparePhotos(files); }} /></label>
+        {beforePhotos.length > 0 && <ul>{beforePhotos.map((file, index) => <li key={index}>{file.name} · {Math.ceil(file.size / 1024)} КБ</li>)}</ul>}
       </fieldset>
+      {createdOrder && <p role="status">Наряд уже выдан. Загружено фото: {uploadedCount.current} из {beforePhotos.length}. <Link to={`/orders/${createdOrder.id}`}>Открыть наряд</Link></p>}
+      {uploadedPhotos.map(photo => <figure key={photo.id}><img src={photo.read_url} alt="Загруженное фото при выдаче" /><figcaption>Загружено</figcaption></figure>)}
       {(validation || command.error) && <p role="alert">{validation || command.error!.message}</p>}
       {command.pending && <p role="status">Результат выдачи неизвестен. Повтор подтвердит ту же выдачу.</p>}
-      <div className="form-submit"><button className="primary" type="submit" disabled={command.busy || (!command.pending && !valid)}>{command.busy ? 'Выдаём…' : command.pending ? 'Повторить выдачу' : 'Выдать наряд'}</button></div>
+      <div className="form-submit"><button className="primary" type="submit" disabled={photoBusy || command.busy || (!createdOrder && !command.pending && !valid)}>{command.busy ? 'Выдаём…' : photoBusy ? 'Подготавливаем и загружаем фото…' : createdOrder ? 'Повторить загрузку фото' : command.pending ? 'Повторить выдачу' : 'Выдать наряд'}</button></div>
     </form>
   </section>;
 }

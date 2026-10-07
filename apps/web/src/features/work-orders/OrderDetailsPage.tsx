@@ -9,6 +9,8 @@ import { availability, orderAction, priorities, statuses, useCatalogs, useShift,
 import { SavedSubmission } from './SavedSubmission';
 import { ReviewPanel } from './ReviewPanel';
 import { MasterDecisionForm } from './MasterDecisionForm';
+import { IssuancePhotos } from './IssuancePhotos';
+import { NotificationDeliveryPanel } from '../telegram/NotificationDeliveryPanel';
 
 type MasterAction = 'reassign' | 'cancel' | 'reprioritize';
 const actionNames: Record<MasterAction, string> = { reassign: 'Переназначить', cancel: 'Отменить', reprioritize: 'Изменить приоритет' };
@@ -97,6 +99,8 @@ export function OrderDetailsPage({ api, user, orderId }: { api: ApiClient; user:
         {event.reason && <p>{event.reason}</p>}
       </li>)}</ol></section>
       {order.submission && <div id={`submission-${order.submission.id}`}><SavedSubmission api={api} submission={order.submission} /></div>}
+      <IssuancePhotos photos={order.issuance_photos} />
+      <NotificationDeliveryPanel api={api} user={user} orderId={order.id} />
       <ReviewPanel order={order} />
       <MasterDecisionForm key={`${order.id}:${user.id}`} api={api} user={user} order={order} reload={detail.reload} onDecided={() => { detail.reload(); events.invalidate(); }} />
     </>}

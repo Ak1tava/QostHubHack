@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ApiClient, type UserView } from '../../lib/api';
 import { CreateOrderPage } from './CreateOrderPage';
+vi.mock('../../lib/compressPhoto', () => ({ compressPhoto: async (file: File) => file }));
 
 const area = '11111111-1111-4111-8111-111111111111';
 const otherArea = '22222222-2222-4222-8222-222222222222';
@@ -17,11 +18,15 @@ let root: Root, container: HTMLDivElement;
 let commands: { body: string; key: string }[];
 let result: () => Promise<Response>;
 let secondArea: boolean;
+let photoAttempts: FormData[];
+let photoResult: () => Promise<Response>;
 
 beforeEach(() => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   container = document.createElement('div'); document.body.append(container); root = createRoot(container);
   commands = []; secondArea = false;
+  photoAttempts = [];
+  photoResult = async () => json({ id: `photo-${photoAttempts.length}`, read_url: `/api/v1/photos/${photoAttempts.length}` }, 201);
   result = async () => json({ id: 'created' }, 201);
 });
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); });
@@ -30,6 +35,7 @@ async function render() {
   const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input), 'http://localhost');
     if (url.pathname.endsWith('/csrf')) return json({ csrf_token: 'test-csrf' });
+    if (url.pathname.endsWith('/photos')) { photoAttempts.push(init!.body as FormData); return photoResult(); }
     if (init?.method === 'POST') {
       commands.push({ body: String(init.body), key: new Headers(init.headers).get('Idempotency-Key')! });
       return result();
@@ -113,4 +119,25 @@ it('leaves a manually cleared deadline empty instead of silently restoring the i
   });
   expect(field.value).toBe('');
   expect(container.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(true);
+});
+
+it('retains the issued order and successful photos when a later upload fails and retries only remaining photos', async () => {
+  await render(); await choose('Насос'); await describeWork();
+  const input = container.querySelector<HTMLInputElement>('input[type="file"]');
+  expect(input).not.toBeNull();
+  Object.defineProperty(input!, 'files', { value: [new File(['first'], 'first.jpg', { type: 'image/jpeg' }), new File(['second'], 'second.jpg', { type: 'image/jpeg' })] });
+  await act(async () => input!.dispatchEvent(new Event('change', { bubbles: true })));
+  result = async () => json({ id: 'created', version: 1, assignment_version: 1 }, 201);
+  photoResult = async () => { if (photoAttempts.length === 2) throw new TypeError('offline'); return json({ id: 'photo-1', read_url: '/api/v1/photos/one' }, 201); };
+  await act(async () => container.querySelector<HTMLButtonElement>('button[type="submit"]')!.click());
+  expect(commands).toHaveLength(1); expect(photoAttempts).toHaveLength(2);
+  expect(container.textContent).toContain('Загружено фото: 1 из 2');
+  expect(container.querySelector('img')!.getAttribute('src')).toBe('/api/v1/photos/one');
+  photoResult = async () => json({ id: 'photo-2', read_url: '/api/v1/photos/two' }, 201);
+  await act(async () => button('Повторить загрузку фото').click());
+  expect(commands).toHaveLength(1); expect(photoAttempts).toHaveLength(3);
+  expect((photoAttempts[2].get('file') as File).name).toBe('second.jpg');
+  expect(photoAttempts[2].get('expected_version')).toBe('1');
+  expect(photoAttempts[2].get('assignment_version')).toBe('1');
+  expect(container.textContent).toContain('Наряд создан');
 });

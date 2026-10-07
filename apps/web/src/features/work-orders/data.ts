@@ -61,8 +61,9 @@ export function submitOrder(api: ApiClient, id: string, body: SubmissionCreate, 
   return api.request<Submission>('/api/v1/work-orders/{order_id}/submissions', { params: { order_id: id }, method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key }, body: JSON.stringify(body) });
 }
 
-export function uploadPhoto(api: ApiClient, id: string, file: File, type: 'before' | 'after') {
+export function uploadPhoto(api: ApiClient, id: string, file: File, type: 'before' | 'after', versions?: { expected_version: number; assignment_version: number }) {
   const body = new FormData(); body.append('file', file); body.append('type', type);
+  if (versions) { body.append('expected_version', String(versions.expected_version)); body.append('assignment_version', String(versions.assignment_version)); }
   return api.request<Photo>('/api/v1/work-orders/{order_id}/photos', { params: { order_id: id }, method: 'POST', body });
 }
 

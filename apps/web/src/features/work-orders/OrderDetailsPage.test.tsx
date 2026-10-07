@@ -15,6 +15,7 @@ it('refreshes a conflict and requires a new explicit command with the current ve
   const api = new ApiClient(async (input, init) => {
     const path = String(input);
     if (path.endsWith('/csrf')) return json({ csrf_token: 'test' });
+    if (path.endsWith('/notifications')) return json([]);
     if (init?.method === 'POST') {
       commands.push(JSON.parse(String(init.body))); version++;
       return json({ error: { code: 'version_conflict', message: 'Наряд изменён', details: [] } }, 409);

@@ -10,7 +10,7 @@ import { MyOrdersPage } from './MyOrdersPage';
 const user: UserView = { id: 'worker', display_name: 'Слесарь', role: 'worker', brigade_id: 'brigade', grade: null, specialty: null, shift_id: null };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 let root: Root, container: HTMLDivElement, version: number, allowed: string[], timezone: string, requests: { body: string; key: string }[], outcome: () => Promise<Response>;
-const order = () => ({ id: 'order', number: 'N-5', description: 'Насос', status: 'IN_PROGRESS', version, assignment_version: 2, assignee_id: null, brigade_id: 'brigade', responsible_id: user.id, priority: 'normal', due_at: '2026-10-04T12:00:00Z', created_at: '2026-10-04T10:00:00Z', is_overdue: false, allowed_actions: allowed, events: [], submission: null });
+const order = () => ({ id: 'order', number: 'N-5', description: 'Насос', status: 'IN_PROGRESS', version, assignment_version: 2, assignee_id: null, brigade_id: 'brigade', responsible_id: user.id, priority: 'normal', due_at: '2026-10-04T12:00:00Z', created_at: '2026-10-04T10:00:00Z', is_overdue: false, allowed_actions: allowed, events: [], submission: null, issuance_photos: [{ id: 'initial-photo', read_url: '/api/v1/photos/initial-photo' }] });
 beforeEach(() => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   container = document.createElement('div'); document.body.append(container); root = createRoot(container);
@@ -21,6 +21,7 @@ function api() {
   return new ApiClient(async (input, init) => {
     const url = new URL(String(input), 'http://localhost');
     if (url.pathname.endsWith('/csrf')) return json({ csrf_token: 'csrf' });
+    if (url.pathname.endsWith('/notifications')) return json([]);
     if (url.pathname.endsWith('/shift')) return json({ timezone, items: [], as_of: '2026-10-04T10:00:00Z' });
     if (init?.method === 'POST') { requests.push({ body: String(init.body), key: new Headers(init.headers).get('Idempotency-Key')! }); return outcome(); }
     if (url.pathname.endsWith('/work-codes')) return json({ items: [{ id: 'code', code: '01', name: 'Течь' }], total: 1 });
@@ -42,6 +43,11 @@ it('shows only allowed worker actions and requires a pause reason', async () => 
   expect(button('Применить').disabled).toBe(true);
   await fill('reason', 'Ждём материал'); await act(async () => button('Применить').click());
   expect(JSON.parse(requests[0].body)).toEqual({ action: 'pause', expected_version: 3, reason: 'Ждём материал' });
+});
+
+it('shows the actual protected issuance photo to its assigned worker', async () => {
+  await render();
+  expect(container.querySelector('img[alt="Фото мастера при выдаче"]')?.getAttribute('src')).toBe('/api/v1/photos/initial-photo');
 });
 it('shows deadlines in the server-configured enterprise timezone', async () => {
   timezone = 'UTC'; await render(); expect(container.textContent).toContain('04.10, 12:00 (UTC)');
