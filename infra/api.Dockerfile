@@ -8,7 +8,8 @@ COPY services/api/app ./app
 COPY services/api/migrations ./migrations
 COPY services/api/alembic.ini ./alembic.ini
 RUN groupadd --gid 10001 app && useradd --uid 10001 --gid app --no-create-home app \
-    && mkdir -p /workspace/data/photos && chown -R app:app /workspace/data/photos
+    && mkdir -p /workspace/data/photos /workspace/data/live-budget \
+    && chown -R app:app /workspace/data/photos /workspace/data/live-budget
 USER app
 EXPOSE 8000
 CMD ["/workspace/services/api/.venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers"]

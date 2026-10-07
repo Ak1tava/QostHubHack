@@ -1,4 +1,4 @@
-# Запуск и проверка Т01–Т02
+# Запуск и проверка
 
 Нужны Python 3.12, uv и Node.js 24 с npm 12. Lock-файлы уже созданы: `services/api/uv.lock`, `apps/web/package-lock.json`. Проверенная среда: Windows, Python 3.12.14, uv 0.12.22, Node 24.19.0, npm 12.2.0. Команды ниже выполняются из корня репозитория, если не указан другой каталог.
 
@@ -182,3 +182,94 @@ git switch -c feat/T02-data-auth origin/chore/parallel-foundation
 Сначала убедитесь, что рабочее дерево своего клона чистое, или сохраните свои изменения. Оба проверяют совпадение базового SHA (`git rev-parse origin/chore/parallel-foundation`). Общие изменения A переносить согласованным коммитом, не переписывая ветку B. В `main` основу можно интегрировать позже отдельным review; сейчас merge не требуется.
 
 Справка по выбранным интерфейсам: [SQLAlchemy psycopg](https://docs.sqlalchemy.org/en/20/dialects/postgresql.html#module-sqlalchemy.dialects.postgresql.psycopg), [Vite: требования среды](https://vite.dev/guide/), [установка uv](https://docs.astral.sh/uv/getting-started/installation/).
+## T10: HTTPS-стенд и Telegram
+
+Для контейнерного стенда пользователь устанавливает и запускает Docker Desktop с Linux containers; агент не устанавливает GUI. Проверьте `docker version` и `docker compose version`. `compose.restore.yaml` требует Compose ≥2.24.4: поддержка `!override` описана в [Docker Docs](https://docs.docker.com/reference/compose-file/merge/).
+
+Секреты задаются пользователем в ignored `.env`: `POSTGRES_PASSWORD`, `DATABASE_URL`, `SESSION_SECRET`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, `TELEGRAM_WEBHOOK_SECRET`, `OPENAI_API_KEY`. Не выводите `.env` или полный `docker compose config` с подставленными секретами в публичный лог. Аккаунты/пароли передаются отдельно. Начальный локальный запуск без внешних consumers:
+
+```sh
+docker compose up -d --build --wait db migrate api web
+```
+
+Portable cloudflared для Windows x64: загрузите официальный исполняемый файл в ignored `.tooling`; установка службы не требуется. [Quick Tunnel](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/) выдаёт временный URL и прекращает работу вместе с процессом.
+
+```powershell
+New-Item -ItemType Directory -Path .tooling -Force | Out-Null
+Invoke-WebRequest https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe -OutFile .tooling/cloudflared.exe
+& ./.tooling/cloudflared.exe tunnel --url http://127.0.0.1:5173
+```
+
+Сохраните только hostname выданного URL в `TUNNEL_HOSTNAME` без scheme/порта/пути; `PUBLIC_BASE_URL` в `.env` — точный `https://<hostname>`, `SESSION_COOKIE_SECURE=true`. Задайте `DEMO_AS_OF` календарным днём демонстрации. `--allowed-mail` не применять: интерактивная email-проверка не подходит Telegram webhook. Приложение сохраняет собственные сессии, CSRF/Origin и проверку webhook secret.
+
+```sh
+docker compose stop ai-worker worker
+docker compose -f compose.yaml -f compose.tunnel.yaml up -d --build --force-recreate --wait api web
+docker compose -f compose.yaml -f compose.tunnel.yaml run --rm seed-demo
+```
+
+Seed спрашивает пароль или берёт локальный `DEMO_PASSWORD` (не менее восьми символов). В контейнер монтируется `data/demo:ro`; приватные фото пишутся в реальный `photo_data`, тот же volume читает API/ИИ. Runtime аналитики не читает `expected_anomalies.json`. При смене `DEMO_AS_OF` используйте новую отдельную демо-БД: повтор с изменённой датой не является обновлением прежних 500 нарядов.
+
+После readiness и разрешения живой приёмки:
+
+```sh
+docker compose -f compose.yaml -f compose.tunnel.yaml up -d --force-recreate --wait worker
+docker compose -f compose.yaml -f compose.tunnel.yaml exec api .venv/bin/python -m app.modules.telegram.manage set-webhook
+docker compose -f compose.yaml -f compose.tunnel.yaml exec api .venv/bin/python -m app.modules.telegram.manage info
+```
+
+При каждом новом URL пересоздайте API, web, notification worker и используемый AI consumer, затем повторите `set-webhook`. Tunnel overlay заменяет лишь `${TUNNEL_HOSTNAME}` через [NGINX_ENVSUBST_FILTER](https://github.com/nginx/docker-nginx/blob/master/mainline/alpine-slim/20-envsubst-on-templates.sh); `$uri`/`$remote_addr` сохраняются. Чужой Host получает 421, healthcheck использует правильный Host. `X-Forwarded-Proto=https` фиксирован только в overlay; `X-Forwarded-For`/`X-Real-IP` берутся из `$remote_addr`, `Forwarded`/`CF-Connecting-IP`/`True-Client-IP` удаляются. API доверяет только Nginx `172.30.42.10`.
+
+Два iPhone через один host tunnel могут иметь общий серверный IP и общую квоту входа/CSRF. Не подменяйте заголовки и не отключайте rate limit; при 429 дождитесь указанного `Retry-After`. Первую живую приёмку выполнить на двух iPhone; Android остаётся отдельным обязательным замером.
+
+## T10: live AI worker с суммарным лимитом $2
+
+Обычный `ai-worker` должен быть остановлен, включая нативные процессы вне Compose. В tunnel overlay он исключён из обычного `up` профилем `unbudgeted-ai`; этот профиль на живой бюджетной приёмке не включать. `--ordinary-worker-stopped` подтверждает проверку оператором, но не останавливает сторонний процесс автоматически. После проверки readiness и оплаты запускается только один foreground consumer:
+
+```sh
+docker compose stop ai-worker
+docker compose -f compose.yaml -f compose.tunnel.yaml build ai-demo-worker
+docker compose -f compose.yaml -f compose.tunnel.yaml run --rm --no-deps ai-demo-worker
+```
+
+Лимит всего запуска и его перезапусков — $2; ledger/frozen config/OS lock хранятся в `live_budget`. Дополнительно берётся PostgreSQL advisory lock. До каждого paid I/O сохраняется полный консервативный резерв; output caps совпадают с существующим provider. Неизвестный расход после ошибки/crash остаётся зарезервированным; повторный старт с неразрешённой записью требует аудита и отказывается от новых вызовов. Ошибка provider, неизвестная цена или недостаточный резерв останавливают consumer; автоматического перехода к обычному worker нет. Ledger не удалять, volume не пересоздавать ради нового лимита, лимит на restart не увеличивать. Цены берутся из существующей таблицы T07 с зафиксированной датой, неизвестная модель запрещена. Мастер принимает работу независимо от доступности ИИ.
+
+Нативный эквивалент (правильные env и PRIVATE photo path настраивает оператор):
+
+```sh
+cd services/api
+uv run python -m app.workers.budgeted_reviews --live --ordinary-worker-stopped --ledger ../../.tooling/t10-live/budget.json --budget-usd 2 --max-seconds 600
+```
+
+PhotoService хеширует сохранённые санитизированные байты. Старые загрузки, где хеш относился к исходнику до удаления EXIF/пережатия, могут потребовать повторной загрузки; проверка целостности не обходится автоматически.
+
+## T10: резервная копия и восстановление отдельно
+
+На время согласованной копии остановите все consumers и API, чтобы БД, фото и бюджет представляли один снимок. Резервная копия внутренняя: DB содержит данные сессий/привязок, её не публикуют и не коммитят. Используйте ignored `artifacts/backup/`.
+
+```sh
+docker compose stop api worker ai-worker
+docker compose exec db pg_dump -U qosthub -Fc -f /tmp/qosthub.dump qosthub_demo
+docker compose cp db:/tmp/qosthub.dump artifacts/backup/qosthub.dump
+docker compose run --no-deps --name qosthub-photo-backup --entrypoint tar api -C /workspace/data/photos -czf /tmp/photos.tgz .
+docker cp qosthub-photo-backup:/tmp/photos.tgz artifacts/backup/photos.tgz
+docker rm qosthub-photo-backup
+docker compose -f compose.yaml -f compose.tunnel.yaml run --no-deps --name qosthub-budget-backup --entrypoint tar ai-demo-worker -C /workspace/data/live-budget -czf /tmp/live-budget.tgz .
+docker cp qosthub-budget-backup:/tmp/live-budget.tgz artifacts/backup/live-budget.tgz
+docker rm qosthub-budget-backup
+```
+
+Создайте папку копии заранее. Foreground budgeted worker остановите до снимка и убедитесь, что он завершился; `.env` в архивы не включается. Затем верните API/notification worker с актуальным tunnel overlay; обычный AI consumer остаётся выключен.
+
+Для пробного восстановления используйте проект `qosthub-restore`, `compose.restore.yaml` и локальную `.env.restore` с отдельным стендом. Его порты 55433/8001/5174, подсеть `172.30.43.0/24`, volumes отдельные; consumers отключены, чтобы не повторять Telegram/paid calls. Не подключайте к нему volumes рабочего проекта.
+
+```sh
+docker compose -p qosthub-restore --env-file .env.restore -f compose.yaml -f compose.restore.yaml up -d db
+docker compose -p qosthub-restore --env-file .env.restore -f compose.yaml -f compose.restore.yaml cp artifacts/backup/qosthub.dump db:/tmp/qosthub.dump
+docker compose -p qosthub-restore --env-file .env.restore -f compose.yaml -f compose.restore.yaml exec db pg_restore -U qosthub --exit-on-error -d qosthub_demo /tmp/qosthub.dump
+docker compose -p qosthub-restore --env-file .env.restore -f compose.yaml -f compose.restore.yaml build api web
+docker compose -p qosthub-restore --env-file .env.restore -f compose.yaml -f compose.restore.yaml run --rm --no-deps --volume ./artifacts/backup:/backup:ro --entrypoint tar api -C /workspace/data/photos -xzf /backup/photos.tgz
+docker compose -p qosthub-restore --env-file .env.restore -f compose.yaml -f compose.restore.yaml up -d --wait api web
+```
+
+Архив монтируется read-only в restore-контейнер; `/tmp` другого контейнера не разделяется автоматически. Сверьте число нарядов/решений, открытие сохранённых приватных фото, компонент рейтинга и новую загрузку. Запуск `migrate` использует актуальный код и сохранённый alembic head; восстановленный ledger хранится отдельно для аудита, его копию не превращают во второй платный запуск. Запишите SHA/среду/фактический результат в `docs/verification.md`. Документация этих команд сама по себе не подтверждает восстановление.

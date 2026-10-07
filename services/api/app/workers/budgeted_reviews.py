@@ -30,7 +30,7 @@ def open_ledger(path: Path, limit='2') -> BudgetLedger:
                     or charged < 0 or record['call_id'] in ids):
                 raise ValueError('Invalid persisted budget: audit required')
             ids.add(record['call_id'])
-            if record['state'] != 'settled':
+            if record['state'] != 'settled' or record.get('metadata', {}).get('error_code'):
                 raise RuntimeError('Unresolved paid call: audit required; reservation remains charged')
     ledger = BudgetLedger(path, str(limit))
     if ledger.spent > limit:

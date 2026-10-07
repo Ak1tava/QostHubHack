@@ -1,0 +1,65 @@
+# Opt-in Quick Tunnel: cloudflared on the host forwards to 127.0.0.1:5173.
+services:
+  api:
+    environment:
+      PUBLIC_BASE_URL: https://${TUNNEL_HOSTNAME:?Set TUNNEL_HOSTNAME without scheme or path}
+      SESSION_COOKIE_SECURE: "true"
+  worker:
+    environment:
+      PUBLIC_BASE_URL: https://${TUNNEL_HOSTNAME}
+      SESSION_COOKIE_SECURE: "true"
+  ai-worker:
+    profiles: ["unbudgeted-ai"]
+    environment:
+      PUBLIC_BASE_URL: https://${TUNNEL_HOSTNAME}
+      SESSION_COOKIE_SECURE: "true"
+  web:
+    environment:
+      TUNNEL_HOSTNAME: ${TUNNEL_HOSTNAME}
+      NGINX_ENVSUBST_FILTER: "^TUNNEL_HOSTNAME$"
+    volumes:
+      - ./infra/nginx.tunnel.conf.template:/etc/nginx/templates/default.conf.template:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "--header=Host: ${TUNNEL_HOSTNAME}", "http://127.0.0.1/"]
+  ai-demo-worker:
+    profiles: ["live-ai"]
+    build:
+      context: .
+      dockerfile: infra/api.Dockerfile
+    restart: "no"
+    env_file: .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL with host db}
+      PHOTO_STORAGE_PATH: /workspace/data/photos
+      PUBLIC_BASE_URL: https://${TUNNEL_HOSTNAME}
+      SESSION_COOKIE_SECURE: "true"
+    command: ["/workspace/services/api/.venv/bin/python", "-m", "app.workers.budgeted_reviews", "--live", "--ordinary-worker-stopped", "--ledger", "/workspace/data/live-budget/budget.json", "--budget-usd", "2", "--max-seconds", "600"]
+    volumes:
+      - photo_data:/workspace/data/photos:ro
+      - live_budget:/workspace/data/live-budget
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+  seed-demo:
+    profiles: ["seed"]
+    build:
+      context: .
+      dockerfile: infra/api.Dockerfile
+    env_file: .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL with host db}
+      PHOTO_STORAGE_PATH: /workspace/data/photos
+    command: ["/workspace/services/api/.venv/bin/python", "-m", "app.seed_demo", "--seed", "42", "--as-of", "${DEMO_AS_OF:?Set DEMO_AS_OF to the demonstration day}"]
+    volumes:
+      - ./data/demo:/workspace/data/demo:ro
+      - photo_data:/workspace/data/photos
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  live_budget:

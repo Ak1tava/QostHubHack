@@ -1,0 +1,24 @@
+# Isolated local acceptance stack. Requires Compose >=2.24.4 for !override.
+services:
+  db:
+    ports: !override ["127.0.0.1:55433:5432"]
+  api:
+    ports: !override ["127.0.0.1:8001:8000"]
+    environment:
+      PUBLIC_BASE_URL: http://localhost:5174
+      SESSION_COOKIE_SECURE: "false"
+      FORWARDED_ALLOW_IPS: 172.30.43.10
+  web:
+    ports: !override ["127.0.0.1:5174:80"]
+    networks:
+      default:
+        ipv4_address: 172.30.43.10
+  worker:
+    profiles: ["restore-workers-disabled"]
+  ai-worker:
+    profiles: ["restore-workers-disabled"]
+networks:
+  default:
+    ipam:
+      config: !override
+        - subnet: 172.30.43.0/24

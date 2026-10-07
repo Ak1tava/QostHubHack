@@ -1,5 +1,10 @@
 """The live demo worker cannot restart, race or retry past its persisted budget."""
 import json
+import os
+import signal
+import subprocess
+import sys
+import time
 from decimal import Decimal
 
 import pytest
@@ -108,3 +113,49 @@ def test_cli_requires_live_and_stopped_ordinary_worker_before_any_setup():
         main([])
     with pytest.raises(SystemExit):
         main(['--live'])
+
+
+def test_worker_loop_stops_after_first_provider_error(tmp_path, monkeypatch):
+    from app.workers import reviews
+    from app.workers.budgeted_reviews import DemoBudgetedProvider, open_ledger, run
+    fake = FakeProvider(error='api_error')
+    provider = DemoBudgetedProvider(fake, open_ledger(tmp_path / 'budget.json'))
+    def stage(*args, **kwargs):
+        call(kwargs['provider'])
+        return True
+    monkeypatch.setattr(reviews, 'process_once', stage)
+    assert run(None, provider, max_stages=5, poll_seconds=0) == 2
+    assert fake.calls == 1
+
+
+def test_restart_after_provider_error_requires_audit_instead_of_paid_retry(tmp_path):
+    from app.workers.budgeted_reviews import DemoBudgetedProvider, open_ledger
+    path = tmp_path / 'budget.json'
+    call(DemoBudgetedProvider(FakeProvider(error='api_error'), open_ledger(path)))
+    with pytest.raises(RuntimeError, match='audit'):
+        open_ledger(path)
+
+
+def test_process_crash_releases_lock_without_deleting_persistent_marker(tmp_path):
+    from app.workers.budgeted_reviews import exclusive_worker
+    path, ready = tmp_path / 'worker.lock', tmp_path / 'ready'
+    code = "from pathlib import Path\nimport sys,time,os\nfrom app.workers.budgeted_reviews import exclusive_worker\nwith exclusive_worker(Path(sys.argv[1])):\n Path(sys.argv[2]).write_text(str(os.getpid()))\n time.sleep(60)\n"
+    process = subprocess.Popen([sys.executable, '-c', code, str(path), str(ready)],
+                               stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+    try:
+        deadline = time.monotonic() + 8
+        while not ready.exists() and process.poll() is None and time.monotonic() < deadline:
+            time.sleep(.05)
+        assert ready.exists(), 'Child worker did not obtain its lock'
+        with pytest.raises(RuntimeError, match='already running'):
+            with exclusive_worker(path):
+                pytest.fail('Parallel worker obtained the lock')
+        # Windows venv's python.exe may be a launcher; kill the actual lock owner.
+        os.kill(int(ready.read_text()), signal.SIGTERM)
+        process.wait(timeout=5)
+        with exclusive_worker(path):
+            assert path.exists()
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.wait(timeout=5)
