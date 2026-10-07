@@ -35,6 +35,7 @@ def main() -> None:
     parser.add_argument("mode", choices=("capture", "check"))
     parser.add_argument("--state", type=Path, required=True)
     args = parser.parse_args()
+    session_path = args.state.with_suffix(args.state.suffix + ".session")
     database = os.environ["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://", 1)
     base = os.environ["E2E_BASE_URL"].rstrip("/")
     validate_target(database, base)
@@ -57,14 +58,28 @@ def main() -> None:
         anonymous = client.get(url)
         if anonymous.status_code != 401:
             raise SystemExit(f"Anonymous photo GET returned {anonymous.status_code}, expected 401")
-        csrf = client.get(f"{base}/api/v1/auth/csrf")
-        csrf.raise_for_status()
-        auth = client.post(
-            f"{base}/api/v1/auth/login",
-            json={"login": login, "password": os.environ["E2E_PASSWORD"]},
-            headers={"Origin": base, "X-CSRF-Token": csrf.json()["csrf_token"]},
-        )
-        auth.raise_for_status()
+        if args.mode == "capture":
+            csrf = client.get(f"{base}/api/v1/auth/csrf")
+            csrf.raise_for_status()
+            auth = client.post(
+                f"{base}/api/v1/auth/login",
+                json={"login": login, "password": os.environ["E2E_PASSWORD"]},
+                headers={"Origin": base, "X-CSRF-Token": csrf.json()["csrf_token"]},
+            )
+            auth.raise_for_status()
+            session = {
+                "origin": base, "user_id": auth.json()["user"]["id"],
+                "cookie": client.cookies["qosthub_session"],
+            }
+        else:
+            session = json.loads(session_path.read_text(encoding="utf-8"))
+            if session["origin"] != base:
+                raise SystemExit("Session origin differs from capture")
+            client.cookies.set("qosthub_session", session["cookie"])
+            auth = client.get(f"{base}/api/v1/auth/me")
+            auth.raise_for_status()
+            if auth.json()["user"]["id"] != session["user_id"]:
+                raise SystemExit("Session user changed after restart")
         started = time.perf_counter()
         photo = client.get(url)
         elapsed_ms = round((time.perf_counter() - started) * 1000, 2)
@@ -84,8 +99,13 @@ def main() -> None:
         if args.mode == "capture":
             args.state.parent.mkdir(parents=True, exist_ok=True)
             args.state.write_text(json.dumps(actual, indent=2) + "\n", encoding="utf-8")
+            # Private companion stays outside printed metadata and CI artifacts.
+            with os.fdopen(os.open(session_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), "w", encoding="utf-8") as private:
+                json.dump(session, private)
         elif actual != expected:
             raise SystemExit("Photo ID, URL, bytes, hash or dimensions changed after restart")
+        else:
+            session_path.unlink()
     print(json.dumps({"result": "PASS", "mode": args.mode, **actual, "get_ms": elapsed_ms}))
 
 

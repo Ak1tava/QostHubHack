@@ -144,4 +144,6 @@ jobs:
           retention-days: 7
       - name: Remove disposable CI containers and volumes
         if: always() && steps.prepare_env.outcome == 'success'
-        run: docker compose down --volumes --remove-orphans
+        run: |
+          rm -f .tooling/photo-persistence.json.session
+          docker compose down --volumes --remove-orphans
