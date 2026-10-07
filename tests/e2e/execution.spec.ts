@@ -90,7 +90,12 @@ test('worker executes, compresses protected photos and retries an immutable repo
     const sent: { body: string; key: string }[] = [];
     await worker.route(`**/api/v1/work-orders/${id}/submissions`, async route => {
       sent.push({ body: route.request().postData()!, key: route.request().headers()['idempotency-key'] });
-      if (sent.length === 1) { const result = await route.fetch(); expect(result.status()).toBe(201); await route.abort('failed'); }
+      if (sent.length === 1) {
+        const result = await route.fetch(); expect(result.status()).toBe(201);
+        // Make the real consumer win the race before replaying the lost response.
+        await expect.poll(async () => (await (await worker.request.get(`/api/v1/work-orders/${id}`)).json()).review_status, { timeout: 20_000 }).toBe('blocked');
+        await route.abort('failed');
+      }
       else await route.continue();
     });
     await worker.getByRole('button', { name: 'Передать на проверку', exact: true }).click();
@@ -99,7 +104,8 @@ test('worker executes, compresses protected photos and retries an immutable repo
     await expect(worker.getByRole('region', { name: 'Предыдущий отчёт', exact: true })).toContainText('Устранена течь, проверены соединения');
     expect(sent).toHaveLength(2); expect(sent[1]).toEqual(sent[0]);
     expect(JSON.parse(sent[0].body)).toMatchObject({ after_photo_ids: [afterId], materials: [{ quantity: '1.25' }], no_materials_used: false });
-    await expect(worker.getByText('На приёмке', { exact: true })).toBeVisible();
+    await expect(worker.getByText('Проверка', { exact: true })).toBeVisible();
+    expect((await (await worker.request.get(`/api/v1/work-orders/${id}`)).json()).status).toBe('AI_REVIEW');
     await expect(worker.getByRole('button', { name: 'Передать на проверку', exact: true })).toBeDisabled();
     expect(await worker.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await worker.goto(`/orders/${id}`); await expect(worker.getByText(description, { exact: true })).toBeVisible();
