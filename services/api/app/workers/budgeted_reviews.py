@@ -11,11 +11,82 @@ from sqlalchemy import text
 
 from app.modules.ai_review.eval_runner import (
     BudgetExceeded, BudgetLedger, BudgetedProvider, PRICE_DATE, PRICES,
-    freeze_configuration,
+    freeze_configuration, write_json,
 )
+
+LOCK_KEY = 71007010
+
+
+class DatabaseLockLost(RuntimeError):
+    pass
+
+
+class DatabaseConsumerGuard:
+    def __init__(self, connection):
+        self.connection = connection
+        # Pin the actual driver, not a SQLAlchemy proxy that could reconnect.
+        self.driver = connection.connection.driver_connection
+        self.backend_pid = self.driver.info.backend_pid
+        self.lost = False
+        self.ledger = None
+
+    def _lose(self):
+        self.lost = True
+        if self.ledger is not None:
+            write_json(self.ledger.path.with_suffix('.halt.json'),
+                       {'reason': 'database_lock_lost', 'backend_pid': self.backend_pid,
+                        'audit_required': True})
+        if not self.connection.closed and not self.connection.invalidated:
+            self.connection.invalidate()
+        raise DatabaseLockLost('Original database lock session lost: audit required') from None
+
+    def check(self):
+        if self.lost:
+            raise DatabaseLockLost('Original database lock session lost: audit required')
+        if (self.connection.closed or self.connection.invalidated
+                or self.driver.closed or self.driver.broken):
+            self._lose()
+        try:
+            with self.driver.cursor() as cursor:
+                cursor.execute("SELECT pg_backend_pid(), EXISTS (SELECT 1 FROM pg_locks "
+                               "WHERE locktype='advisory' AND pid=pg_backend_pid() "
+                               "AND classid=0 AND objid=%s AND objsubid=1 "
+                               "AND mode='ExclusiveLock' AND granted)", (LOCK_KEY,))
+                pid, owned = cursor.fetchone()
+        except Exception:
+            self._lose()
+        if pid != self.backend_pid or not owned:
+            self._lose()
+
+    def release(self):
+        if self.lost:
+            return
+        self.check()
+        try:
+            with self.driver.cursor() as cursor:
+                cursor.execute('SELECT pg_advisory_unlock(%s)', (LOCK_KEY,))
+        except Exception:
+            self._lose()
+
+
+class OwnershipCheckedProvider:
+    def __init__(self, provider, check):
+        self.provider, self.check = provider, check
+
+    @property
+    def last_diagnostics(self):
+        return getattr(self.provider, 'last_diagnostics', None)
+
+    def review(self, *args, **kwargs):
+        # BudgetedProvider invokes this only AFTER durable reservation, directly
+        # before the underlying provider can start billed I/O.
+        self.check()
+        return self.provider.review(*args, **kwargs)
 
 
 def open_ledger(path: Path, limit='2') -> BudgetLedger:
+    if path.with_suffix('.halt.json').exists():
+        raise RuntimeError('Persisted database ownership halt: audit required')
     limit = Decimal(limit)
     if not limit.is_finite() or not Decimal('0') < limit <= Decimal('2'):
         raise ValueError('Live worker budget limit must be >0 and <=2 USD')
@@ -68,7 +139,18 @@ def exclusive_worker(path: Path):
 
 
 class DemoBudgetedProvider(BudgetedProvider):
-    stop_reason = None
+    def __init__(self, provider, ledger, *args, lock_guard=None, **kwargs):
+        self.lock_guard, self.stop_reason = lock_guard, None
+        super().__init__(OwnershipCheckedProvider(provider, self.check_ownership), ledger, *args, **kwargs)
+
+    def check_ownership(self):
+        if self.lock_guard is not None:
+            self.lock_guard.ledger = self.ledger
+            try:
+                self.lock_guard.check()
+            except DatabaseLockLost:
+                self.stop_reason = 'database_lock_lost'
+                raise
 
     def review(self, *args, **kwargs):
         if self.stop_reason:
@@ -82,20 +164,26 @@ class DemoBudgetedProvider(BudgetedProvider):
 @contextmanager
 def single_database_consumer(engine):
     # Different ledger paths still cannot run two budgeted consumers against one DB.
-    with engine.connect() as connection:
-        if not connection.scalar(text('SELECT pg_try_advisory_lock(71007010)')):
+    with engine.connect().execution_options(isolation_level='AUTOCOMMIT') as connection:
+        if not connection.scalar(text('SELECT pg_try_advisory_lock(:key)'), {'key': LOCK_KEY}):
             raise RuntimeError('Budgeted worker is already running for this database')
+        connection.commit()
+        guard = DatabaseConsumerGuard(connection)
         try:
-            yield
+            yield guard
         finally:
-            connection.execute(text('SELECT pg_advisory_unlock(71007010)'))
+            guard.release()
 
 
 def run(engine, provider, *, max_stages=100, max_seconds=600, poll_seconds=1):
     from app.workers.reviews import process_once
     processed, deadline = 0, time.monotonic() + max_seconds
     while processed < max_stages and time.monotonic() < deadline:
-        processed += bool(process_once(engine, provider=provider))
+        try:
+            provider.check_ownership()
+            processed += bool(process_once(engine, provider=provider))
+        except DatabaseLockLost:
+            return 2
         if provider.stop_reason:
             return 2
         if provider.ledger.spent >= provider.ledger.limit:
@@ -134,11 +222,12 @@ def main(argv=None):
             ledger.save()
             freeze_configuration(args.ledger.parent, config)
             engine = get_engine()
-            with single_database_consumer(engine):
+            with single_database_consumer(engine) as guard:
                 provider = DemoBudgetedProvider(OpenAIReviewProvider(
                     settings.openai_api_key.get_secret_value(), timeout=settings.ai_request_timeout_seconds,
                     max_output_tokens=settings.ai_max_output_tokens,
                     complex_max_output_tokens=settings.ai_complex_max_output_tokens), ledger,
+                    lock_guard=guard,
                     max_output_tokens=settings.ai_max_output_tokens,
                     complex_max_output_tokens=settings.ai_complex_max_output_tokens)
                 result = run(engine, provider, max_stages=args.max_stages, max_seconds=args.max_seconds,
