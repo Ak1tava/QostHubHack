@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
 import { afterEach, expect, it } from 'vitest';
 import { ApiClient, type UserView } from '../../lib/api';
+import { events } from '../../lib/events';
 import { ShiftReportPage } from './ShiftReportPage';
 import { RatingPage } from './RatingPage';
 import { AnomaliesPage } from './AnomaliesPage';
@@ -130,4 +131,66 @@ it('preserves common filters across report navigation and scopes shift selection
   expect(Object.fromEntries(ratingLink.searchParams)).toEqual({ start: '2026-09-01T00:00', end: '2026-10-01T00:00', area_id: 'area-1', equipment_id: 'equipment-1', assignee_id: 'own-worker', brigade_id: 'brigade-1' });
   const reportLink = new URL(links.find(link => link.textContent === 'Отчёт')!.href);
   expect(reportLink.searchParams.get('shift_id')).toBe('shift-1');
+});
+
+it.each(['/', '/?start=2026-09-01T00:00'])('keeps a delayed report and server-derived default end stable across shift refreshes at %s', async path => {
+  let shiftRequests = 0;
+  const reports: { url: URL; signal: AbortSignal; finish: (value: Response) => void }[] = [];
+  const api = new ApiClient(async (input, init) => {
+    const url = new URL(String(input), 'https://test.local');
+    if (url.pathname === '/api/v1/shift') {
+      const as_of = new Date(Date.parse(period.as_of) + shiftRequests++ * 3000).toISOString();
+      return json({ as_of, timezone: period.timezone, items: [] });
+    }
+    if (url.pathname.includes('/catalog/')) return json({ items: [], total: 0 });
+    return new Promise<Response>(finish => reports.push({ url, signal: init!.signal as AbortSignal, finish }));
+  });
+  await mount(ShiftReportPage, api, master, path);
+  const firstStart = container.querySelector<HTMLInputElement>('input[name="start"]')!.value;
+  const firstEnd = container.querySelector<HTMLInputElement>('input[name="end"]')!.value;
+  await act(async () => events.invalidate());
+  await act(async () => events.invalidate());
+  expect(shiftRequests).toBe(3);
+  expect(reports).toHaveLength(1);
+  expect(reports[0].signal.aborted).toBe(false);
+  expect(reports[0].url.searchParams.get('end_at')).toBe('2026-10-07T20:00:00.000Z');
+  expect(container.querySelector<HTMLInputElement>('input[name="start"]')!.value).toBe(firstStart);
+  expect(container.querySelector<HTMLInputElement>('input[name="end"]')!.value).toBe(firstEnd);
+  await act(async () => reports[0].finish(json({ ...shift, summary: 'Медленный отчёт завершён' })));
+  expect(container.textContent).toContain('Медленный отчёт завершён');
+  expect(container.querySelector('[role="status"]')).toBeNull();
+});
+
+it('recomputes the server-derived period if the enterprise timezone changes', async () => {
+  let shiftRequests = 0;
+  const reports: URL[] = [];
+  const api = new ApiClient(async input => {
+    const url = new URL(String(input), 'https://test.local');
+    if (url.pathname === '/api/v1/shift') return json({ as_of: period.as_of, timezone: shiftRequests++ === 0 ? period.timezone : 'Asia/Tokyo', items: [] });
+    if (url.pathname.includes('/catalog/')) return json({ items: [], total: 0 });
+    reports.push(url); return json(shift);
+  });
+  await mount(ShiftReportPage, api);
+  await act(async () => events.invalidate());
+  expect(reports).toHaveLength(2);
+  expect(reports[0].searchParams.get('start_at')).toBe('2026-07-07T19:00:00.000Z');
+  expect(reports[1].searchParams.get('start_at')).toBe('2026-07-07T15:00:00.000Z');
+  expect(container.querySelector<HTMLInputElement>('input[name="end"]')!.value).toBe('2026-10-08T05:00');
+});
+
+it('starts a new server-derived snapshot when the report user changes', async () => {
+  let shiftRequests = 0;
+  const reports: URL[] = [];
+  const api = new ApiClient(async input => {
+    const url = new URL(String(input), 'https://test.local');
+    if (url.pathname === '/api/v1/shift') return json({ as_of: new Date(Date.parse(period.as_of) + shiftRequests++ * 3000).toISOString(), timezone: period.timezone, items: [] });
+    if (url.pathname.includes('/catalog/')) return json({ items: [], total: 0 });
+    reports.push(url); return json(shift);
+  });
+  await mount(ShiftReportPage, api);
+  await act(async () => events.invalidate());
+  await act(async () => root.render(<MemoryRouter><ShiftReportPage api={api} user={worker} /></MemoryRouter>));
+  expect(reports).toHaveLength(2);
+  expect(reports[1].searchParams.get('assignee_id')).toBe('own-worker');
+  expect(reports[1].searchParams.get('end_at')).toBe('2026-10-07T20:00:03.000Z');
 });

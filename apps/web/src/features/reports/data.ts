@@ -1,6 +1,6 @@
 import type { components } from '../../../../../packages/contracts/api.generated';
 import type { paths } from '../../../../../packages/contracts/api.generated';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router';
 import type { ApiClient, UserView } from '../../lib/api';
 import { localDateTime, utcDateTime } from '../../lib/time';
@@ -26,7 +26,13 @@ export function useReportContext(api: ApiClient, user: UserView, allowShift = fa
   const catalogs = useCatalogs(api);
   const shift = useShift(api, areaId);
   const timezone = shift.data?.timezone;
-  const defaults = useMemo(() => shift.data ? defaultPeriod(shift.data.as_of, shift.data.timezone) : { start: '', end: '' }, [shift.data?.as_of, timezone]);
+  const bootstrap = useRef<{ api: ApiClient; userId: string; timezone: string; asOf: string; defaults: ReturnType<typeof defaultPeriod> } | null>(null);
+  if (bootstrap.current && (bootstrap.current.api !== api || bootstrap.current.userId !== user.id)) bootstrap.current = null;
+  // Live composition updates advance as_of; keep the report's initial server-derived period stable.
+  if (shift.data && (!bootstrap.current || bootstrap.current.timezone !== timezone)) {
+    bootstrap.current = { api, userId: user.id, timezone: shift.data.timezone, asOf: shift.data.as_of, defaults: defaultPeriod(shift.data.as_of, shift.data.timezone) };
+  }
+  const defaults = bootstrap.current?.defaults ?? { start: '', end: '' };
   const start = params.get('start') ?? defaults.start;
   const end = params.get('end') ?? defaults.end;
   const shiftId = allowShift ? params.get('shift_id') ?? '' : '';
@@ -35,7 +41,7 @@ export function useReportContext(api: ApiClient, user: UserView, allowShift = fa
   if (timezone && shift.data) {
     try {
       const period = shiftId ? { shift_id: shiftId } : {
-        start_at: utcDateTime(start, timezone), end_at: params.has('end') ? utcDateTime(end, timezone) : shift.data.as_of,
+        start_at: utcDateTime(start, timezone), end_at: params.has('end') ? utcDateTime(end, timezone) : bootstrap.current!.asOf,
       };
       if (!shiftId && Date.parse(period.start_at!) >= Date.parse(period.end_at!)) throw new Error('Начало периода должно быть раньше окончания');
       query = { ...period, area_id: areaId || undefined, equipment_id: params.get('equipment_id') || undefined,
