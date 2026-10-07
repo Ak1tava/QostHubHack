@@ -86,3 +86,14 @@ usage двух API errors удерживает резерв **$3.5194500**. В �
 
 T07 — **REVIEW**, [draft PR №8](https://github.com/Ak1tava/QostHubHack/pull/8).
 Main не изменялась; интеграция и живая приёмка полного продукта остаются отдельно.
+
+## Интеграция в main — 2026-10-07
+
+[PR №8 MERGED](https://github.com/Ak1tava/QostHubHack/pull/8), merge `2a83c4ef7e9a42c6c8577c3cfd45c698854e0a05`.
+[CI последнего head a832552 — SUCCESS](https://github.com/Ak1tava/QostHubHack/actions/runs/37608069734); application code сохранён.
+Команды: `git fetch`, `git merge --ff-only origin/main`, проверка включения `a832552`
+и равенства дерева merge/head — PASS. История T09/T07 сохранена merge-методом.
+T09 DONE, T07 REVIEW до оставшейся живой приёмки. Бюджет/freeze/holdout marker
+и приватные медиа скопированы в ignored .tooling/t07-quality основного checkout,
+чтобы переход в main не сбрасывал расходы или запрет повторного контроля.
+Итоговая main проходит свой CI; новых модельных запросов не выполнялось.
