@@ -1,4 +1,4 @@
-name: T01-T06 integration acceptance
+name: T01-T07 integration acceptance
 
 on:
   push:
@@ -109,6 +109,10 @@ jobs:
         env:
           E2E_BASE_URL: http://localhost:5173
         run: DATABASE_URL="$PHOTO_ACCEPTANCE_DATABASE_URL" services/api/.venv/bin/python infra/verify_notification_worker.py
+      - name: Persisted AI worker, redelivery and restart acceptance
+        env:
+          E2E_BASE_URL: http://localhost:5173
+        run: DATABASE_URL="$PHOTO_ACCEPTANCE_DATABASE_URL" services/api/.venv/bin/python infra/verify_review_worker.py
       - name: Protected execution photo survives API container recreation
         env:
           E2E_BASE_URL: http://localhost:5173

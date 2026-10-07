@@ -1,6 +1,62 @@
 {
   "components": {
     "schemas": {
+      "AIReviewView": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_mock": {
+            "title": "Is Mock",
+            "type": "boolean"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt_version": {
+            "title": "Prompt Version",
+            "type": "string"
+          },
+          "result": {
+            "$ref": "#/components/schemas/ReviewResult"
+          },
+          "submission_id": {
+            "format": "uuid",
+            "title": "Submission Id",
+            "type": "string"
+          },
+          "verdict": {
+            "enum": [
+              "accepted",
+              "accepted_with_notes",
+              "requires_rework",
+              "human_review"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "submission_id",
+          "verdict",
+          "result",
+          "model",
+          "prompt_version",
+          "created_at",
+          "is_mock"
+        ],
+        "title": "AIReviewView",
+        "type": "object"
+      },
       "ActionCommand": {
         "additionalProperties": false,
         "properties": {
@@ -371,6 +427,43 @@
         "title": "ErrorResponse",
         "type": "object"
       },
+      "Finding": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "evidence_refs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Refs",
+            "type": "array"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "info",
+              "warning",
+              "error"
+            ],
+            "title": "Severity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "severity",
+          "message",
+          "evidence_refs"
+        ],
+        "title": "Finding",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -454,6 +547,133 @@
           "password"
         ],
         "title": "LoginRequest",
+        "type": "object"
+      },
+      "MasterDecisionCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "assignment_version": {
+            "exclusiveMinimum": 0.0,
+            "title": "Assignment Version",
+            "type": "integer"
+          },
+          "decision": {
+            "enum": [
+              "accept",
+              "rework"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "expected_version": {
+            "exclusiveMinimum": 0.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "maximum": 5.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "submission_id": {
+            "format": "uuid",
+            "title": "Submission Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision",
+          "submission_id",
+          "expected_version",
+          "assignment_version"
+        ],
+        "title": "MasterDecisionCommand",
+        "type": "object"
+      },
+      "MasterDecisionView": {
+        "properties": {
+          "decided_at": {
+            "format": "date-time",
+            "title": "Decided At",
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "accept",
+              "rework"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "master_id": {
+            "format": "uuid",
+            "title": "Master Id",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "submission_id": {
+            "format": "uuid",
+            "title": "Submission Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "submission_id",
+          "decision",
+          "score",
+          "reason",
+          "master_id",
+          "decided_at"
+        ],
+        "title": "MasterDecisionView",
         "type": "object"
       },
       "MaterialView": {
@@ -628,6 +848,64 @@
           }
         },
         "title": "ReadyResponse",
+        "type": "object"
+      },
+      "ReviewResult": {
+        "additionalProperties": false,
+        "properties": {
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/Finding"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "missing_evidence": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Evidence",
+            "type": "array"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "maximum": 5.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "verdict": {
+            "enum": [
+              "accepted",
+              "accepted_with_notes",
+              "requires_rework",
+              "human_review"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "verdict",
+          "score",
+          "findings",
+          "missing_evidence",
+          "limitations"
+        ],
+        "title": "ReviewResult",
         "type": "object"
       },
       "ShiftMemberView": {
@@ -1182,11 +1460,32 @@
       },
       "WorkOrderDetail": {
         "properties": {
+          "ai_review": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AIReviewView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "allowed_actions": {
             "items": {
               "type": "string"
             },
             "title": "Allowed Actions",
+            "type": "array"
+          },
+          "allowed_decisions": {
+            "items": {
+              "enum": [
+                "accept",
+                "rework"
+              ],
+              "type": "string"
+            },
+            "title": "Allowed Decisions",
             "type": "array"
           },
           "area_id": {
@@ -1257,6 +1556,16 @@
             "title": "Is Overdue",
             "type": "boolean"
           },
+          "master_decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MasterDecisionView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "master_id": {
             "format": "uuid",
             "title": "Master Id",
@@ -1298,6 +1607,24 @@
               }
             ],
             "title": "Responsible Id"
+          },
+          "review_status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "pending",
+                  "running",
+                  "blocked",
+                  "completed",
+                  "discarded"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Status"
           },
           "status": {
             "enum": [
@@ -2910,6 +3237,110 @@
           }
         },
         "summary": "Apply Action",
+        "tags": [
+          "work-orders"
+        ]
+      }
+    },
+    "/api/v1/work-orders/{order_id}/decision": {
+      "post": {
+        "operationId": "decide_order_api_v1_work_orders__order_id__decision_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MasterDecisionCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkOrderView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Decide Order",
         "tags": [
           "work-orders"
         ]

@@ -9,6 +9,7 @@ from app.modules.catalog import (
 )
 from app.modules.work_orders import models  # noqa: F401 — registers SQLAlchemy metadata
 from app.modules.telegram import models as telegram_models  # noqa: F401
+from app.modules.ai_review import jobs_models as review_models  # noqa: F401
 
 
 def run_migrations():

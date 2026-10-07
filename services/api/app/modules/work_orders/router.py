@@ -12,6 +12,7 @@ from app.modules.work_orders import queries
 from app.modules.work_orders.schemas import (
     ActionCommand, WorkOrderCreate, WorkOrderDetail, WorkOrderList,
     WorkOrderPriority, WorkOrderStatus, WorkOrderView, SubmissionCreate, SubmissionView,
+    MasterDecisionCommand,
 )
 from app.modules.work_orders.service import WorkOrderService
 from app.modules.work_orders.submissions import SubmissionService
@@ -59,3 +60,11 @@ def submit_order(order_id: UUID, command: SubmissionCreate, response: Response, 
                  actor: User = Depends(get_current_user), db: Session = Depends(get_db)):
     response.headers["Cache-Control"] = "no-store"
     return SubmissionService(db).submit_order(order_id, actor, command, key)
+
+
+@router.post("/{order_id}/decision", response_model=WorkOrderView, responses=ERRORS)
+def decide_order(order_id: UUID, command: MasterDecisionCommand, response: Response, key: Key,
+                 actor: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    from app.modules.ai_review.decisions import MasterDecisionService
+    response.headers["Cache-Control"] = "no-store"
+    return MasterDecisionService(db).apply_master_decision(order_id, actor, command, key)

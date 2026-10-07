@@ -1,0 +1,155 @@
+{
+  "synthetic": true,
+  "seed": 42,
+  "as_of": "2026-10-04",
+  "window_local": [
+    "2026-07-04T00:00:00+05:00",
+    "2026-10-04T00:00:00+05:00"
+  ],
+  "use": "TEST/EVALUATION ONLY; never consumed by runtime analytics",
+  "patterns": {
+    "repeat_unit": {
+      "equipment_id": "8d444518-dec0-57f9-99b7-b68a240aea9c",
+      "order_ids": [
+        "b393bcb9-3adc-54d7-a79e-16e1bbe1f0e5",
+        "f0c90414-c0e9-5035-b93b-8d6c022872ec",
+        "471651f6-8bfc-57c3-83e7-ddee74707150",
+        "2c35f7ed-a006-5f98-a6e5-3c2ce3cdcbca",
+        "596476a0-0c8a-584e-8b0f-7150e5d7fa3e",
+        "01b3a1fe-ec2f-5abb-8cec-f35d76740130",
+        "1ec677d2-71b8-5bb8-9ce4-c9c3a36e1dab",
+        "8d5d193e-e3bf-51a5-ae96-07e94c7487dd",
+        "1fe63d04-c6b6-5b8e-bb9a-907978799e9c",
+        "9070b3e8-890b-5803-b987-85a69f2c48f5",
+        "1c53d187-a5ce-5270-9ef0-73245adb82a4",
+        "c1f18ae7-6c05-5798-9292-707e3a047132",
+        "fda6a22f-c5e2-524c-8837-188170a49ce4",
+        "878d57c0-31d6-5d13-81ac-90bee0e15480",
+        "d5def6cb-eed0-570c-a2f1-a7a408d89d10",
+        "33f518f3-0a0b-5588-9d03-b56257cf90ba",
+        "cbb94027-1b72-5635-99e3-45a9989eb652",
+        "760ab28c-546b-5ee1-bc9f-1778ea907098",
+        "9dbbcbba-e305-53e9-a27f-c2440b4ebe11",
+        "d87764c8-64c0-55da-bee5-7b53569ea639",
+        "eee3d5c1-156d-561c-aa6b-f192fa584f60",
+        "511baac0-f9c4-5ba4-a829-e7d185b2e909",
+        "748c419f-23e2-595b-b92f-93e37307fea9",
+        "9d75a331-7058-52a1-95e1-a353649116d9"
+      ],
+      "count": 24,
+      "node": "подшипниковый узел"
+    },
+    "after_ppr": {
+      "pairs": [
+        {
+          "planned_order_id": "93ad38c4-cd5a-5628-b92c-b7254c3f02e1",
+          "followup_order_id": "55fd3aad-11f7-58f5-94bf-9ff820cd4b76",
+          "equipment_id": "3c99e1e9-f97a-535b-ae1e-dc214112dae2"
+        },
+        {
+          "planned_order_id": "7b4e3c01-c70b-5b71-b855-c3dc42d7bcc9",
+          "followup_order_id": "9cb7a4be-7bd0-5dfa-9a96-1ee762cc120e",
+          "equipment_id": "3c99e1e9-f97a-535b-ae1e-dc214112dae2"
+        },
+        {
+          "planned_order_id": "c4b82f89-73fa-58fc-908a-130561b3268f",
+          "followup_order_id": "50bbe7ad-06f1-5bad-aaaa-6f48f12c6bc7",
+          "equipment_id": "3c99e1e9-f97a-535b-ae1e-dc214112dae2"
+        },
+        {
+          "planned_order_id": "422615c4-8eff-5e98-986b-00dc64353377",
+          "followup_order_id": "c68e260a-203d-5d80-a199-abaa4ca5863a",
+          "equipment_id": "3c99e1e9-f97a-535b-ae1e-dc214112dae2"
+        },
+        {
+          "planned_order_id": "9efc1714-fea0-59d7-a053-b8ff4383d11a",
+          "followup_order_id": "d00d324b-c24b-52b9-a69b-aa007e6759ed",
+          "equipment_id": "3c99e1e9-f97a-535b-ae1e-dc214112dae2"
+        },
+        {
+          "planned_order_id": "2e49d5a8-56ff-53b9-9b91-036a94623593",
+          "followup_order_id": "6ff78fcb-88f0-5891-a6b2-f730f94899fe",
+          "equipment_id": "3c99e1e9-f97a-535b-ae1e-dc214112dae2"
+        },
+        {
+          "planned_order_id": "2691af7a-4441-599b-9cae-2a34daa4a27a",
+          "followup_order_id": "f14b8264-044a-5a5e-b5f5-4122488cfce7",
+          "equipment_id": "3c99e1e9-f97a-535b-ae1e-dc214112dae2"
+        },
+        {
+          "planned_order_id": "97289465-4388-52f2-a2dc-8dba3fc4d37c",
+          "followup_order_id": "fbc73494-d8d2-5879-827b-4813921c851f",
+          "equipment_id": "3c99e1e9-f97a-535b-ae1e-dc214112dae2"
+        },
+        {
+          "planned_order_id": "b27d6247-ce89-51c7-b104-e58cbba1d0d1",
+          "followup_order_id": "7f92f2bd-0428-570f-ad1e-77208e589468",
+          "equipment_id": "3c99e1e9-f97a-535b-ae1e-dc214112dae2"
+        },
+        {
+          "planned_order_id": "78b1314a-efd6-5362-bcf0-ffa6c57fb5de",
+          "followup_order_id": "eb4b141a-edf4-5f72-82f3-5dca82054c7d",
+          "equipment_id": "3c99e1e9-f97a-535b-ae1e-dc214112dae2"
+        },
+        {
+          "planned_order_id": "97fae129-c251-5ba1-972e-ff8cdbeb6e70",
+          "followup_order_id": "ce079bd8-29e4-527b-aa40-4563846bb179",
+          "equipment_id": "3c99e1e9-f97a-535b-ae1e-dc214112dae2"
+        },
+        {
+          "planned_order_id": "673e6e6b-9425-5427-b5c5-aaf30a03248e",
+          "followup_order_id": "6a930a84-c38e-5016-a69e-39e2f20f87fe",
+          "equipment_id": "3c99e1e9-f97a-535b-ae1e-dc214112dae2"
+        }
+      ],
+      "count": 12,
+      "window_hours": 48
+    },
+    "excess_material": {
+      "order_ids": [
+        "75d1423c-a592-5cd5-b427-05675ebe8482",
+        "5bd2009f-6e98-5028-9323-fcd3889ada0b",
+        "d469f3dd-670c-5a95-b3e1-d37ae435df53",
+        "770687bf-9b10-5aac-b017-fa28a3ffaf40",
+        "f09ad3f0-ec1a-5fa4-a125-9c0f2f3b5004",
+        "7ddf2bad-3a79-5e43-98ee-24feb9590b73",
+        "1fda88c2-62ec-51dc-822d-f17ebd18e31b",
+        "4c7b9cb4-81e9-54d5-be40-94b18208c48e",
+        "7d2e6d4c-9237-5c1c-b592-ed58a5be1853",
+        "81cd15d0-3563-5f9c-b9e3-aaf084fec2b2",
+        "845140a1-1359-5053-a960-b49484209af1",
+        "0c829234-3ca2-5c80-9362-065a8a23a792"
+      ],
+      "count": 12,
+      "actual": "3.0000",
+      "norm": "1.0000",
+      "ratio": "3.0"
+    }
+  },
+  "control_order_ids": [
+    "3c674b05-25e0-56e2-8e3a-bd61a15480ad",
+    "43d881e1-ebb1-56ef-a202-782e8bf8364c",
+    "d0fb9799-af30-547d-9290-e77039c6351f",
+    "a92c47df-b845-5522-97cf-6ac68823386d",
+    "172b0220-3eff-58b5-a89d-75648e2124d9",
+    "64769c75-1958-5bde-a704-ba199c421ade",
+    "ecdcff8a-73ba-5078-a5dc-3b9bb914eae9",
+    "dd167b54-1edf-5ce6-b1f6-649b3aeead3b",
+    "262a11bf-f857-5e37-9fa9-0decfdbf9a38",
+    "7df5bbe3-210e-5999-93ca-db09e517cca8",
+    "77fcb5c1-9414-556c-afbb-e34762ff8cff",
+    "d5c31c79-2f00-5cbb-a322-bae83ff1371e",
+    "966a29a5-e584-508e-a567-d3e4faaf9e38",
+    "091210d0-1465-59aa-b95a-5aee72b530c7",
+    "21a2d3cd-54c0-5ca7-96f7-98b31c0d91aa",
+    "a7b04e04-c44f-5e82-9a3e-bf78f3182066",
+    "3f178902-b60d-5260-831b-8a5830887e4e",
+    "155850b9-931b-5214-a817-b91877f8c104",
+    "e43292c2-f8ae-5c36-bcfd-3d3b8019c802",
+    "8c24c138-eb10-586a-a998-724ce510cc90",
+    "3955f5ee-c0e2-5970-acf3-3805660ea1aa",
+    "dca2113b-1e0a-5ae0-ae3c-c2478632378b",
+    "607c35c7-a6d7-5321-ad5e-f2553ee05924",
+    "00c8c364-5e98-5c80-9a57-1d1c1272c508"
+  ]
+}

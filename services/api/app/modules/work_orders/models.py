@@ -178,7 +178,7 @@ class MasterDecision(Base):
     __table_args__ = (
         CheckConstraint("decision IN ('accept','rework')", name="valid_decision"),
         CheckConstraint(
-            "score IS NULL OR (score >= 0 AND score <= 100)", name="valid_score"
+            "score IS NULL OR (score >= 1 AND score <= 5)", name="valid_score"
         ),
     )
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)

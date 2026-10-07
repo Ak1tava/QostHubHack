@@ -67,6 +67,23 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+  ai-worker:
+    build:
+      context: .
+      dockerfile: infra/api.Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL with host db in root .env}
+      PHOTO_STORAGE_PATH: /workspace/data/photos
+    command: ["/workspace/services/api/.venv/bin/python", "-m", "app.workers.reviews"]
+    volumes:
+      - photo_data:/workspace/data/photos:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
   web:
     build:
       context: .

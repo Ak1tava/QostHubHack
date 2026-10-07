@@ -1,0 +1,741 @@
+{
+  "date": "2026-10-07",
+  "code_sha": "229375cdbff86458f9eca900c6c3c38b13369075",
+  "mode": "live",
+  "frozen_config": {
+    "authorization": {
+      "additional_usd": "8",
+      "development_ceiling_usd": "5",
+      "reserved_holdout_usd": "3"
+    },
+    "complex_max_output_tokens": 8192,
+    "corpus_hash": "a672ffa03406ede22ad2dd35cddd3d1fc01cdfd2c67564012ca3a3831be6e5ff",
+    "image_token_reserve": 32768,
+    "max_output_tokens": 4096,
+    "models": {
+      "complex": "gpt-6-astra",
+      "light": "gpt-6-luna",
+      "primary": "gpt-6.1-sol"
+    },
+    "normalized_media_hashes": {
+      "acca-after.normalized.jpg": "832714830ccd232bac612146fb6b070d24d9ff95ef99080b4ed4892f386c401d",
+      "acca-before.normalized.jpg": "8a36c3b3a78a34cc7521daa6f9c1e82fb5da2f36c79a845c6edea7ad316987ba",
+      "corrocoat-after.blurred.jpg": "a281c84ed1abe22650f6350a5be2b02a331a62d57d0b854bdebb30dfc2b9286d",
+      "corrocoat-after.normalized.jpg": "580db67d23cb8084eab2ecda95cbec7660b6e0963430bc6bb8f30e74f4567c32",
+      "corrocoat-before.normalized.jpg": "4a204473c6420aac3dfdae6588509f24d7dca76d24ec8ea2954d86123fa32527",
+      "rezitech-after.blurred.jpg": "1427542f5a58448ffaa0546f75a94637770f7dcd1316fa7d051c9205158d5eb1",
+      "rezitech-after.normalized.jpg": "495580568c4662f4ac05948cc2db5dade8d4ffd4d60f2621c498d41b1c22096a",
+      "rezitech-before.normalized.jpg": "dc6c8d04402a2f020566961cb84e4f4b0dae2e269bd3884ccb719325231f1fbb",
+      "westin-after.blurred.jpg": "9b71f086b1adbb960a61e5531520bf7b40ba6e84f1e501d8e3d912a7933b2546",
+      "westin-after.normalized.jpg": "7b9efa7feceed69132d3ccefacb5bfb80e21973000da171b8c946f0150b8c971",
+      "westin-before.normalized.jpg": "87bef56c4cbab8588916a92732af7e173c5f5a7ccf6c6a023e406bc224b9f0ed"
+    },
+    "openai_sdk": "2.54.0",
+    "price_date": "2026-10-06",
+    "price_verified_at": "2026-10-07",
+    "prices_per_million_conservative": {
+      "gpt-6-astra": [
+        "27.50",
+        "82.50"
+      ],
+      "gpt-6-luna": [
+        "0.275",
+        "0.825"
+      ],
+      "gpt-6.1-sol": [
+        "5.50",
+        "16.50"
+      ]
+    },
+    "prompt_version": "t07-v3",
+    "provider_source_hash": "ced384ad71d3eae8dae7b8a822b4403702fefd55e503745eb3d7e2fc24fb4bb9",
+    "quality_image_token_bound": {
+      "gpt-6-astra": 1300,
+      "other_allowed": 32768
+    },
+    "reasoning": {
+      "complex": "medium",
+      "light": "low",
+      "primary": "medium"
+    },
+    "resvg_py": "0.5.0",
+    "rules_version": "t07-rules-v1",
+    "schema_hash": "cbc2d113dbee93a2658f827db9f3a71ffab0dfde135016f6be29f943917d46d5",
+    "source_manifest_hash": "bb1ab78340883ea326179fa427b972c92166715be44975cdfc359f7a0197e524",
+    "timeout_seconds": 90.0
+  },
+  "holdout_passes": 1,
+  "dev": [
+    {
+      "case_id": "QDEV-01",
+      "category": "good",
+      "expected_verdict": "accepted",
+      "verdict": "accepted",
+      "score": 4,
+      "findings": [
+        "report_complete",
+        "work_matches_problem"
+      ],
+      "invalid_refs": 0,
+      "rejection_reasons": []
+    },
+    {
+      "case_id": "QDEV-02",
+      "category": "good",
+      "expected_verdict": "accepted",
+      "verdict": "accepted",
+      "score": 4,
+      "findings": [
+        "report_complete",
+        "work_matches_problem"
+      ],
+      "invalid_refs": 0,
+      "rejection_reasons": []
+    },
+    {
+      "case_id": "QDEV-03",
+      "category": "good",
+      "expected_verdict": "accepted_with_notes",
+      "verdict": "accepted_with_notes",
+      "score": 4,
+      "findings": [
+        "report_complete",
+        "norm_unavailable",
+        "work_matches_problem"
+      ],
+      "invalid_refs": 0,
+      "rejection_reasons": []
+    },
+    {
+      "case_id": "QDEV-04",
+      "category": "good",
+      "expected_verdict": "accepted_with_notes",
+      "verdict": "accepted_with_notes",
+      "score": 4,
+      "findings": [
+        "report_complete",
+        "material_overuse",
+        "work_matches_problem"
+      ],
+      "invalid_refs": 0,
+      "rejection_reasons": []
+    },
+    {
+      "case_id": "QDEV-05",
+      "category": "bad",
+      "expected_verdict": "requires_rework",
+      "verdict": "requires_rework",
+      "score": 4,
+      "findings": [
+        "report_complete",
+        "work_problem_mismatch"
+      ],
+      "invalid_refs": 0,
+      "rejection_reasons": []
+    },
+    {
+      "case_id": "QDEV-06",
+      "category": "bad",
+      "expected_verdict": "requires_rework",
+      "verdict": "requires_rework",
+      "score": null,
+      "findings": [
+        "missing_required_photo"
+      ],
+      "invalid_refs": 0,
+      "rejection_reasons": []
+    },
+    {
+      "case_id": "QDEV-07",
+      "category": "ambiguous",
+      "expected_verdict": "human_review",
+      "verdict": "human_review",
+      "score": null,
+      "findings": [
+        "report_complete",
+        "unusable_images"
+      ],
+      "invalid_refs": 0,
+      "rejection_reasons": []
+    },
+    {
+      "case_id": "QDEV-08",
+      "category": "ambiguous",
+      "expected_verdict": "human_review",
+      "verdict": "human_review",
+      "score": null,
+      "findings": [
+        "report_complete",
+        "photo_subject_mismatch"
+      ],
+      "invalid_refs": 0,
+      "rejection_reasons": []
+    }
+  ],
+  "holdout": [
+    {
+      "case_id": "QH-01",
+      "category": "good",
+      "expected_verdict": "accepted",
+      "verdict": "accepted",
+      "score": 4,
+      "findings": [
+        "report_complete",
+        "work_matches_problem"
+      ],
+      "invalid_refs": 0,
+      "rejection_reasons": []
+    },
+    {
+      "case_id": "QH-02",
+      "category": "good",
+      "expected_verdict": "accepted",
+      "verdict": "accepted",
+      "score": 4,
+      "findings": [
+        "report_complete",
+        "work_matches_problem",
+        "visible_cleaning_comparison"
+      ],
+      "invalid_refs": 0,
+      "rejection_reasons": []
+    },
+    {
+      "case_id": "QH-03",
+      "category": "good",
+      "expected_verdict": "accepted",
+      "verdict": "accepted",
+      "score": 4,
+      "findings": [
+        "report_complete",
+        "work_matches_problem"
+      ],
+      "invalid_refs": 0,
+      "rejection_reasons": []
+    },
+    {
+      "case_id": "QH-04",
+      "category": "good",
+      "expected_verdict": "accepted",
+      "verdict": "accepted",
+      "score": 4,
+      "findings": [
+        "report_complete",
+        "work_matches_problem"
+      ],
+      "invalid_refs": 0,
+      "rejection_reasons": []
+    },
+    {
+      "case_id": "QH-05",
+      "category": "bad",
+      "expected_verdict": "requires_rework",
+      "verdict": "human_review",
+      "score": null,
+      "findings": [
+        "report_complete",
+        "api_error"
+      ],
+      "invalid_refs": 0,
+      "rejection_reasons": [
+        "api_error"
+      ]
+    },
+    {
+      "case_id": "QH-06",
+      "category": "bad",
+      "expected_verdict": "requires_rework",
+      "verdict": "requires_rework",
+      "score": 4,
+      "findings": [
+        "report_complete",
+        "work_problem_mismatch",
+        "visible_surface_change"
+      ],
+      "invalid_refs": 0,
+      "rejection_reasons": []
+    },
+    {
+      "case_id": "QH-07",
+      "category": "bad",
+      "expected_verdict": "requires_rework",
+      "verdict": "requires_rework",
+      "score": null,
+      "findings": [
+        "missing_required_photo"
+      ],
+      "invalid_refs": 0,
+      "rejection_reasons": []
+    },
+    {
+      "case_id": "QH-08",
+      "category": "bad",
+      "expected_verdict": "requires_rework",
+      "verdict": "requires_rework",
+      "score": null,
+      "findings": [
+        "missing_work_description",
+        "report_incomplete"
+      ],
+      "invalid_refs": 0,
+      "rejection_reasons": []
+    },
+    {
+      "case_id": "QH-09",
+      "category": "ambiguous",
+      "expected_verdict": "human_review",
+      "verdict": "human_review",
+      "score": null,
+      "findings": [
+        "report_complete",
+        "unusable_images",
+        "work_matches_problem"
+      ],
+      "invalid_refs": 0,
+      "rejection_reasons": []
+    },
+    {
+      "case_id": "QH-10",
+      "category": "ambiguous",
+      "expected_verdict": "human_review",
+      "verdict": "human_review",
+      "score": null,
+      "findings": [
+        "report_complete",
+        "unusable_images"
+      ],
+      "invalid_refs": 0,
+      "rejection_reasons": []
+    },
+    {
+      "case_id": "QH-11",
+      "category": "ambiguous",
+      "expected_verdict": "human_review",
+      "verdict": "human_review",
+      "score": null,
+      "findings": [
+        "report_complete",
+        "photo_subject_mismatch"
+      ],
+      "invalid_refs": 0,
+      "rejection_reasons": []
+    },
+    {
+      "case_id": "QH-12",
+      "category": "ambiguous",
+      "expected_verdict": "human_review",
+      "verdict": "human_review",
+      "score": null,
+      "findings": [
+        "report_complete",
+        "photo_subject_mismatch"
+      ],
+      "invalid_refs": 0,
+      "rejection_reasons": []
+    }
+  ],
+  "acceptance": {
+    "ambiguous_human": 4,
+    "bad_accepted": 0,
+    "counts": {
+      "ambiguous": 4,
+      "bad": 4,
+      "good": 4
+    },
+    "good_positive": 4,
+    "passed": true
+  },
+  "budget": {
+    "authorized_additional_usd": "8",
+    "known_usage_conservative_usd": "0.7473730",
+    "unknown_usage_reserved_usd": "3.5194500",
+    "accounted_usd": "4.2668230"
+  },
+  "calls": [
+    {
+      "case_id": "QDEV-01",
+      "model": "gpt-6.1-sol",
+      "stage": "primary",
+      "state": "settled",
+      "usage": {
+        "cached_tokens": 0,
+        "input_tokens": 3544,
+        "output_tokens": 352,
+        "reasoning_tokens": 206,
+        "total_tokens": 3896
+      },
+      "error_code": null,
+      "latency_ms": 12256
+    },
+    {
+      "case_id": "QDEV-02",
+      "model": "gpt-6.1-sol",
+      "stage": "primary",
+      "state": "settled",
+      "usage": {
+        "cached_tokens": 2039,
+        "input_tokens": 4472,
+        "output_tokens": 254,
+        "reasoning_tokens": 54,
+        "total_tokens": 4726
+      },
+      "error_code": null,
+      "latency_ms": 7785
+    },
+    {
+      "case_id": "QDEV-03",
+      "model": "gpt-6.1-sol",
+      "stage": "primary",
+      "state": "settled",
+      "usage": {
+        "cached_tokens": 2039,
+        "input_tokens": 3541,
+        "output_tokens": 606,
+        "reasoning_tokens": 456,
+        "total_tokens": 4147
+      },
+      "error_code": null,
+      "latency_ms": 17557
+    },
+    {
+      "case_id": "QDEV-04",
+      "model": "gpt-6.1-sol",
+      "stage": "primary",
+      "state": "settled",
+      "usage": {
+        "cached_tokens": 2039,
+        "input_tokens": 4473,
+        "output_tokens": 200,
+        "reasoning_tokens": 60,
+        "total_tokens": 4673
+      },
+      "error_code": null,
+      "latency_ms": 7010
+    },
+    {
+      "case_id": "QDEV-05",
+      "model": "gpt-6.1-sol",
+      "stage": "primary",
+      "state": "settled",
+      "usage": {
+        "cached_tokens": 2039,
+        "input_tokens": 3528,
+        "output_tokens": 375,
+        "reasoning_tokens": 173,
+        "total_tokens": 3903
+      },
+      "error_code": null,
+      "latency_ms": 10684
+    },
+    {
+      "case_id": "QDEV-07",
+      "model": "gpt-6.1-sol",
+      "stage": "primary",
+      "state": "settled",
+      "usage": {
+        "cached_tokens": 2039,
+        "input_tokens": 3542,
+        "output_tokens": 114,
+        "reasoning_tokens": 0,
+        "total_tokens": 3656
+      },
+      "error_code": null,
+      "latency_ms": 4476
+    },
+    {
+      "case_id": "QDEV-08",
+      "model": "gpt-6.1-sol",
+      "stage": "primary",
+      "state": "settled",
+      "usage": {
+        "cached_tokens": 2039,
+        "input_tokens": 4119,
+        "output_tokens": 220,
+        "reasoning_tokens": 60,
+        "total_tokens": 4339
+      },
+      "error_code": null,
+      "latency_ms": 7607
+    },
+    {
+      "case_id": "QDEV-01",
+      "model": "gpt-6-astra",
+      "stage": "escalation",
+      "state": "unknown_usage_reserved",
+      "usage": {},
+      "error_code": "api_error",
+      "latency_ms": 91267
+    },
+    {
+      "case_id": "QDEV-02",
+      "model": "gpt-6-astra",
+      "stage": "escalation",
+      "state": "settled",
+      "usage": {
+        "cached_tokens": 0,
+        "input_tokens": 4474,
+        "output_tokens": 301,
+        "reasoning_tokens": 43,
+        "total_tokens": 4775
+      },
+      "error_code": null,
+      "latency_ms": 11964
+    },
+    {
+      "case_id": "QDEV-01",
+      "model": "gpt-6.1-sol",
+      "stage": "primary",
+      "state": "settled",
+      "usage": {
+        "cached_tokens": 0,
+        "input_tokens": 3733,
+        "output_tokens": 423,
+        "reasoning_tokens": 191,
+        "total_tokens": 4156
+      },
+      "error_code": null,
+      "latency_ms": 16792
+    },
+    {
+      "case_id": "QDEV-02",
+      "model": "gpt-6.1-sol",
+      "stage": "primary",
+      "state": "settled",
+      "usage": {
+        "cached_tokens": 2099,
+        "input_tokens": 4673,
+        "output_tokens": 325,
+        "reasoning_tokens": 83,
+        "total_tokens": 4998
+      },
+      "error_code": null,
+      "latency_ms": 12849
+    },
+    {
+      "case_id": "QDEV-03",
+      "model": "gpt-6.1-sol",
+      "stage": "primary",
+      "state": "settled",
+      "usage": {
+        "cached_tokens": 2099,
+        "input_tokens": 3739,
+        "output_tokens": 574,
+        "reasoning_tokens": 341,
+        "total_tokens": 4313
+      },
+      "error_code": null,
+      "latency_ms": 18470
+    },
+    {
+      "case_id": "QDEV-04",
+      "model": "gpt-6.1-sol",
+      "stage": "primary",
+      "state": "settled",
+      "usage": {
+        "cached_tokens": 2099,
+        "input_tokens": 4686,
+        "output_tokens": 343,
+        "reasoning_tokens": 40,
+        "total_tokens": 5029
+      },
+      "error_code": null,
+      "latency_ms": 13019
+    },
+    {
+      "case_id": "QDEV-05",
+      "model": "gpt-6.1-sol",
+      "stage": "primary",
+      "state": "settled",
+      "usage": {
+        "cached_tokens": 2099,
+        "input_tokens": 3720,
+        "output_tokens": 310,
+        "reasoning_tokens": 125,
+        "total_tokens": 4030
+      },
+      "error_code": null,
+      "latency_ms": 15567
+    },
+    {
+      "case_id": "QDEV-07",
+      "model": "gpt-6.1-sol",
+      "stage": "primary",
+      "state": "settled",
+      "usage": {
+        "cached_tokens": 2099,
+        "input_tokens": 3725,
+        "output_tokens": 242,
+        "reasoning_tokens": 0,
+        "total_tokens": 3967
+      },
+      "error_code": null,
+      "latency_ms": 10392
+    },
+    {
+      "case_id": "QDEV-08",
+      "model": "gpt-6.1-sol",
+      "stage": "primary",
+      "state": "settled",
+      "usage": {
+        "cached_tokens": 2099,
+        "input_tokens": 4305,
+        "output_tokens": 330,
+        "reasoning_tokens": 74,
+        "total_tokens": 4635
+      },
+      "error_code": null,
+      "latency_ms": 16378
+    },
+    {
+      "case_id": "QH-01",
+      "model": "gpt-6.1-sol",
+      "stage": "primary",
+      "state": "settled",
+      "usage": {
+        "cached_tokens": 0,
+        "input_tokens": 3521,
+        "output_tokens": 299,
+        "reasoning_tokens": 42,
+        "total_tokens": 3820
+      },
+      "error_code": null,
+      "latency_ms": 11844
+    },
+    {
+      "case_id": "QH-02",
+      "model": "gpt-6.1-sol",
+      "stage": "primary",
+      "state": "settled",
+      "usage": {
+        "cached_tokens": 2099,
+        "input_tokens": 3670,
+        "output_tokens": 437,
+        "reasoning_tokens": 134,
+        "total_tokens": 4107
+      },
+      "error_code": null,
+      "latency_ms": 15796
+    },
+    {
+      "case_id": "QH-03",
+      "model": "gpt-6.1-sol",
+      "stage": "primary",
+      "state": "settled",
+      "usage": {
+        "cached_tokens": 2099,
+        "input_tokens": 3150,
+        "output_tokens": 219,
+        "reasoning_tokens": 42,
+        "total_tokens": 3369
+      },
+      "error_code": null,
+      "latency_ms": 9934
+    },
+    {
+      "case_id": "QH-04",
+      "model": "gpt-6.1-sol",
+      "stage": "primary",
+      "state": "settled",
+      "usage": {
+        "cached_tokens": 2099,
+        "input_tokens": 2994,
+        "output_tokens": 250,
+        "reasoning_tokens": 73,
+        "total_tokens": 3244
+      },
+      "error_code": null,
+      "latency_ms": 10321
+    },
+    {
+      "case_id": "QH-05",
+      "model": "gpt-6.1-sol",
+      "stage": "primary",
+      "state": "unknown_usage_reserved",
+      "usage": {},
+      "error_code": "api_error",
+      "latency_ms": 57267
+    },
+    {
+      "case_id": "QH-06",
+      "model": "gpt-6.1-sol",
+      "stage": "primary",
+      "state": "settled",
+      "usage": {
+        "cached_tokens": 2099,
+        "input_tokens": 3643,
+        "output_tokens": 402,
+        "reasoning_tokens": 125,
+        "total_tokens": 4045
+      },
+      "error_code": null,
+      "latency_ms": 12468
+    },
+    {
+      "case_id": "QH-09",
+      "model": "gpt-6.1-sol",
+      "stage": "primary",
+      "state": "settled",
+      "usage": {
+        "cached_tokens": 2099,
+        "input_tokens": 3521,
+        "output_tokens": 193,
+        "reasoning_tokens": 0,
+        "total_tokens": 3714
+      },
+      "error_code": null,
+      "latency_ms": 6400
+    },
+    {
+      "case_id": "QH-10",
+      "model": "gpt-6.1-sol",
+      "stage": "primary",
+      "state": "settled",
+      "usage": {
+        "cached_tokens": 2099,
+        "input_tokens": 3666,
+        "output_tokens": 164,
+        "reasoning_tokens": 0,
+        "total_tokens": 3830
+      },
+      "error_code": null,
+      "latency_ms": 6090
+    },
+    {
+      "case_id": "QH-11",
+      "model": "gpt-6.1-sol",
+      "stage": "primary",
+      "state": "settled",
+      "usage": {
+        "cached_tokens": 2099,
+        "input_tokens": 3372,
+        "output_tokens": 311,
+        "reasoning_tokens": 0,
+        "total_tokens": 3683
+      },
+      "error_code": null,
+      "latency_ms": 8105
+    },
+    {
+      "case_id": "QH-12",
+      "model": "gpt-6.1-sol",
+      "stage": "primary",
+      "state": "settled",
+      "usage": {
+        "cached_tokens": 2099,
+        "input_tokens": 3827,
+        "output_tokens": 336,
+        "reasoning_tokens": 69,
+        "total_tokens": 4163
+      },
+      "error_code": null,
+      "latency_ms": 10989
+    }
+  ],
+  "limitations": [
+    "12 scenarios use 2 held-out source projects; derivatives are correlated.",
+    "Internet photos and synthetic order text do not establish production accuracy.",
+    "Two bad cases are rejected by deterministic completeness rules without paid calls.",
+    "Raw provider outputs and source image files remain only in ignored local storage.",
+    "The first Astra API error has unknown usage; its complete reserve is retained."
+  ]
+}

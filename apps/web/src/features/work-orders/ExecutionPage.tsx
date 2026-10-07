@@ -9,6 +9,7 @@ import { orderAction, priorities, statuses, useShift, type OrderAction, type Wor
 import { PhotoUpload } from './PhotoUpload';
 import { SubmissionForm } from './SubmissionForm';
 import { SavedSubmission } from './SavedSubmission';
+import { ReviewPanel } from './ReviewPanel';
 
 const names = { accept: 'Принять', queue: 'В очередь', reject: 'Отказаться', start: 'Начать работу', pause: 'Приостановить', resume: 'Продолжить', restart: 'Начать доработку' };
 type WorkerAction = keyof typeof names;
@@ -39,7 +40,7 @@ export function ExecutionPage({ api, user, orderId }: { api: ApiClient; user: Us
     {detail.error && <p role="alert">{detail.error.message} <button onClick={detail.reload}>Обновить</button></p>}
     {order && <>
       <div className="page-heading"><h2>Наряд {order.number}</h2><span className={`badge priority-${order.priority}`}>{priorities[order.priority]}</span></div>
-      <p className="badge">{statuses[order.status]}{order.is_overdue ? ' · Просрочен' : ''}</p><p className="full-description">{order.description}</p>
+      <p className="badge">{statuses[order.status]}{order.is_overdue ? ' · Просрочен' : ''}</p><p id={`problem-${order.id}`} className="full-description">{order.description}</p>
       <p>Срок: {displayTime(order.due_at, timezone)} ({timezone})</p>
       {order.brigade_id && <p>{responsible ? 'Ответственный бригады' : 'Наряд бригады · просмотр'}</p>}
       {responsible && <div className="choices" aria-label="Действия исполнителя">{(Object.keys(names) as WorkerAction[]).filter(name => order.allowed_actions?.includes(name)).map(name => <button key={name} disabled={command.busy || command.pending || submissionLocked} onClick={() => { setAction(name); setReason(''); }}>{names[name]}</button>)}</div>}
@@ -52,7 +53,8 @@ export function ExecutionPage({ api, user, orderId }: { api: ApiClient; user: Us
       </form>}
       {responsible && photoStatuses.has(order.status) && <PhotoUpload api={api} orderId={order.id} type="before" disabled={command.busy || command.pending || submissionLocked} onUploaded={() => {}} />}
       {responsible && <SubmissionForm api={api} order={order} disabled={command.busy || command.pending} reload={detail.reload} onSubmitted={changed} onLockChange={setSubmissionLocked} />}
-      {order.submission && <SavedSubmission api={api} submission={order.submission} />}
+      {order.submission && <div id={`submission-${order.submission.id}`}><SavedSubmission api={api} submission={order.submission} /></div>}
+      <ReviewPanel order={order} />
       <section aria-label="История наряда"><h3>История</h3><ol className="history">{order.events?.map(item => <li key={item.id}><strong>{names[item.action as WorkerAction] ?? item.action}</strong><time dateTime={item.occurred_at}>{displayTime(item.occurred_at, timezone)}</time>{item.reason && <p>{item.reason}</p>}</li>)}</ol></section>
     </>}
   </section>;
