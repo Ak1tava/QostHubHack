@@ -209,3 +209,28 @@ def test_provider_material_and_timing_commentary_in_limitations_does_not_propaga
     assert "Расход материала завышен." not in result.limitations
     assert "Отчёт сдан с просрочкой." not in result.limitations
     assert "Скрытые узлы не проверялись." in result.limitations
+
+
+def test_grounded_semantic_conflict_can_escalate_but_is_not_accepted_unresolved():
+    from app.modules.ai_review.service import can_escalate, finalize_result
+    from app.modules.ai_review.rules import assess_rules
+    from app.modules.ai_review.schemas import Finding
+
+    value = review()
+    outcome = good(value)
+    outcome.result.verdict = "human_review"
+    outcome.result.score = None
+    outcome.result.findings = [
+        Finding(
+            code="evidence_conflict",
+            severity="warning",
+            message="Чёткое фото расходится с описанием.",
+            evidence_refs=["problem", "work_description", "photo_after"],
+        )
+    ]
+    outcome.unresolved_conflict = True
+    outcome.conflict_refs = ["problem", "work_description", "photo_after"]
+    assert can_escalate(value, outcome)
+    assert (
+        finalize_result(value, assess_rules(value), outcome).verdict == "human_review"
+    )

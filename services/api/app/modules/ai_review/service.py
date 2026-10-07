@@ -22,7 +22,6 @@ BLOCKING_CODES = {
     "unusable_images",
     "photo_subject_mismatch",
     "comparison_unavailable",
-    "evidence_conflict",
 }
 FORBIDDEN_CODES = {
     "automatic_closure",
@@ -290,7 +289,9 @@ def finalize_result(
         and (f.code, tuple(f.evidence_refs)) not in existing
     )
     verdict = result.verdict
-    if outcome.unresolved_conflict or any(f.code in BLOCKING_CODES for f in combined):
+    if outcome.unresolved_conflict or any(
+        f.code in BLOCKING_CODES | {"evidence_conflict"} for f in combined
+    ):
         verdict = "human_review"
     elif verdict == "accepted" and any(f.severity != "info" for f in combined):
         verdict = "accepted_with_notes"
