@@ -37,7 +37,7 @@
 | T04 | Создание наряда и панель мастера | REVIEW | A | T02, T03 | A / Codex; main, [PR №5 MERGED](https://github.com/Ak1tava/QostHubHack/pull/5), `24d05ba`; [CI PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37438252785); ручные замеры и R02 фото мастера при выдаче остаются; [проверка](docs/T04-T05-integration.md) |
 | T05 | Исполнение, фото и материалы | REVIEW | A + B | T03 | A + B / Codex; main, [PR №5 MERGED](https://github.com/Ak1tava/QostHubHack/pull/5), `24d05ba`; [CI PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37438252785): pytest 1262/Vitest 47/Playwright 14 и реальное photo persistence; ручные телефоны/мобильная сеть остаются; [проверка](docs/T04-T05-integration.md) |
 | T06 | Telegram, сроки и эскалации | REVIEW | B | T03 | Богдан / Codex — исходный `17f59ea`; A / Codex — main, [PR №6 MERGED](https://github.com/Ak1tava/QostHubHack/pull/6), `81d1c3e`; [CI PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37447310167): pytest 1330/T06 68/Vitest 47/E2E 14 без retries и реальный worker restart; живая приёмка BLOCKED и UI остаются; [проверка](docs/T06-integration.md) |
-| T07 | ИИ-проверка и приёмка мастером | IN_PROGRESS | C + B | T03, T05, T06, T09 | A / Codex — стабилизация `codex/t07-quality-mvp` от `e4dbc5f`; исходная реализация C + B / Codex, draft PR №7; дополнительные evals ≤$8, качество проверяется |
+| T07 | ИИ-проверка и приёмка мастером | REVIEW | C + B | T03, T05, T06, T09 | A / Codex — `codex/t07-quality-mvp`; [draft PR №8](https://github.com/Ak1tava/QostHubHack/pull/8), база `e4dbc5f`, код `229375c`; [CI PASS](https://github.com/Ak1tava/QostHubHack/actions/runs/37601848738): pytest 1505/Vitest 54/E2E 15; новый holdout 4/4 good, 0/4 bad accepted, 4/4 ambiguous human; $4.266823 учтено из $8; `docs/T07-quality-verification.md`; интеграция и живая worker/PWA приёмка остаются |
 | T08 | Отчёты, рейтинг и закономерности | TODO | C + A | T07, T09 | Не назначен |
 | T09 | Демоданные и набор оценки ИИ | REVIEW | C | T02 | Богдан / Codex; `feat/T09-demo-evals` от main `7bc2b3a`; 500 нарядов, 32 evals/12 holdout; pytest 1185 PASS; `docs/T09-verification.md`; интеграция ожидается |
 | T10 | Проверка, развёртывание и защита | TODO | Все | T04–T09 | Не назначен |
@@ -328,6 +328,8 @@ Outbox T03: одна запись на event_id, тип `work_order.<action>`, p
 - [ ] Включить worker проверки с привязкой к revision/version/назначению; тестировать поздний ответ на старую revision и отменённый наряд. Сохранить версию prompt, модель, latency и usage; не писать секреты и исходные персональные данные в логи.
 - [ ] Реализовать объяснение результата и решение мастера: ни один ответ модели не даёт CLOSED; override требует причину; неполный отчёт нельзя закрыть. Выполнить `uv run pytest tests/test_ai_review.py tests/test_master_decision.py -q`.
 - [ ] Провести настоящие модельные запросы на отложенных примерах T09, записать ошибки и стоимость в `evals/results.md`. Тестовый provider маркируется MOCK и не выдаётся за работающий ИИ на защите. Создать коммит `feat: verify repair evidence with human acceptance`.
+
+**Передача T07 — стабилизация REVIEW (2026-10-07):** A / Codex; `codex/t07-quality-mvp`, draft PR №8. C5/API сохранены, новый фотоконтроль пройден; один API error передан мастеру, два неизвестных расхода зарезервированы. Проверенный код `229375c`, CI 1505/54/15 PASS; подробности и границы — [docs/T07-quality-verification.md](docs/T07-quality-verification.md). Main не изменялась; старый holdout не повторять.
 
 ### T08. Отчёты, рейтинг и аномалии
 

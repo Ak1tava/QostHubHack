@@ -212,9 +212,9 @@ def test_provider_material_and_timing_commentary_in_limitations_does_not_propaga
 
 
 def test_grounded_semantic_conflict_can_escalate_but_is_not_accepted_unresolved():
-    from app.modules.ai_review.service import can_escalate, finalize_result
     from app.modules.ai_review.rules import assess_rules
     from app.modules.ai_review.schemas import Finding
+    from app.modules.ai_review.service import can_escalate, finalize_result
 
     value = review()
     outcome = good(value)

@@ -170,9 +170,10 @@ def test_media_filename_cannot_hide_holdout_photo_in_development_group(tmp_path)
 
 
 def test_photo_eval_uses_real_worker_reference_format_instead_of_example_ids(tmp_path):
-    from PIL import Image
     from uuid import UUID
+
     from app.modules.ai_review.quality_eval import load_photo_case
+    from PIL import Image
 
     Image.new("RGB", (200, 200), "gray").save(tmp_path / "unit-after.jpg")
     case = {
