@@ -1,10 +1,10 @@
 # Native runtime MVP (Windows)
 
-Владелец: Runtime / Codex, `codex/mvp-final-runtime`; интеграцию и живую приёмку выполняет A / Codex. Runtime не скачивает бинарники/модель, не создаёт БД, не запускает миграции/seed и не меняет webhook. Используется существующий локальный PostgreSQL, подготовленная PWA и faster-whisper large-v3-turbo.
+Стенд работает на компьютере организатора: компьютер должен быть включён, подключён к интернету и не переходить в сон. Полный сценарий требует PostgreSQL, API, Nginx, локального Whisper, review/notification workers и cloudflared. Runtime не скачивает бинарники/модель, не создаёт БД, не запускает миграции/seed и не меняет webhook. Используются существующие PostgreSQL, подготовленная PWA и faster-whisper large-v3-turbo.
 
 ## Конфигурация и запуск
 
-Скопировать `infra/native-runtime.example.json` в ignored `.tooling/native-runtime-config.json`, заполнить абсолютные пути. `env_file` указывает на существующий ignored `.env` либо JSON с переменными окружения. Значения секретов в config не помещать; неизвестные поля отклоняются. Нужны `DATABASE_URL` с host `127.0.0.1` и `postgres_port`, `SESSION_SECRET`, `SESSION_COOKIE_SECURE=true`, `PUBLIC_BASE_URL=https://...`, `SPEECH_SERVICE_TOKEN`. Для consumers — прежние OpenAI/Telegram credentials и прежние параметры моделей/токенов.
+Скопировать `infra/native-runtime.example.json` в ignored `.tooling/native-runtime-config.json`, заполнить абсолютные пути. `env_file` указывает на существующий ignored `.env` либо JSON с переменными окружения. Значения секретов в config не помещать; неизвестные поля отклоняются. Нужны `DATABASE_URL` с host `127.0.0.1` и `postgres_port`, `SESSION_SECRET`, `SESSION_COOKIE_SECURE=true`, `PUBLIC_BASE_URL=https://...`, `SPEECH_SERVICE_TOKEN`. Для consumers — прежние OpenAI/Telegram credentials и прежние параметры моделей/токенов. Для трёх кнопок входа нужны настройки [судейского режима](judge-profiles.md); пароли судьям не передаются.
 
 `manage_postgres=false` оставляет существующий общий PostgreSQL внешним: проверяет readiness, не запускает и не останавливает его. Для отдельного уже инициализированного кластера можно указать `true`; наличие чужого `postmaster.pid` блокирует старт. `state_dir` должен быть отдельным ignored каталогом, доступным только владельцу стенда: там конфигурация без секретов, PID/creation/executable, Nginx config и приватные логи.
 
@@ -13,12 +13,18 @@
 ```powershell
 $nativePython = 'C:/path/to/existing/venv/Scripts/python.exe'
 $nativeConfig = 'C:/path/to/qoshackhub/.tooling/native-runtime-config.json'
-& $nativePython infra/native_runtime.py start --config $nativeConfig
+& $nativePython infra/native_runtime.py start --config $nativeConfig --live-ai --notifications --tunnel
 & $nativePython infra/native_runtime.py status --config $nativeConfig
-& $nativePython infra/native_runtime.py stop --config $nativeConfig
+& $nativePython infra/native_runtime.py stop --config $nativeConfig --keep-db
 ```
 
-Обычный `start` запускает только DB (если managed), ASR, API, Nginx. `--notifications`, `--live-ai`, `--tunnel` включают соответствующие процессы явно. Например, разрешённый живой запуск: `start --config $nativeConfig --notifications --live-ai --tunnel`. Quick Tunnel получает новый hostname из своего свежего лога и передаёт URL API/consumer/Nginx через snapshot config; URL остаётся в `.tooling/native-runtime/runtime.json`. Webhook при смене hostname обновляет интегратор отдельно. Если остаётся внешний существующий tunnel, флаг `--tunnel` не нужен; hostname берётся из env.
+Приведённый `start` запускает весь стенд одной командой. При `manage_postgres=false` PostgreSQL нужно заранее запустить отдельно; при `true` launcher управляет уже инициализированным кластером. `status` показывает состояние процессов; `stop --keep-db` останавливает стенд и сохраняет БД работающей. Обычный `start` без флагов включает только DB (если managed), ASR, API и Nginx.
+
+Managed Quick Tunnel получает новый hostname из свежего лога и передаёт URL API/consumer/Nginx через snapshot config; URL сохраняется в `runtime.json` внутри настроенного `state_dir`. После перезапуска адрес может измениться: оператор обновляет **<АКТУАЛЬНЫЙ_HTTPS_URL>** в [инструкции судьям](T18-judge-guide.md), раздаваемые ссылки/QR и Telegram webhook. Launcher webhook не меняет. Если намеренно используется существующий внешний tunnel, `--tunnel` не нужен и его запуск/остановка остаются у оператора.
+
+`--live-ai` использует прежний ledger с общим потолком **$10**, включая предыдущие расходы. Supervisor по умолчанию выполняет до **30 циклов**; каждый ограничен **86400 секундами** или **10000 стадиями**. `review_worker_cycles` задаёт число циклов в config (1–365). Следующий цикл начинается только после штатного выхода предыдущего, с тем же ledger и новой проверкой блокировок/бюджета; это не новый бюджет и не обещание 30 суток работы.
+
+Ошибки, чужая блокировка, незавершённое списание, halt-файл, несовпадение или исчерпание бюджета приводят к безопасному отказу (fail-closed). Оператор проверяет `status` и приватные логи; не удаляет ledger/lock/halt и не поднимает лимит ради продолжения. При исчерпании циклов нужен явный запуск с прежним ledger после проверки состояния.
 
 Все серверы слушают loopback. Nginx сохраняет точный Host gate и проверенные proxy headers. ASR использует только локальные веса (`model.bin`, `config.json`, `tokenizer.json`), outbound скачивание отключено. Child entrypoint загружает явный env, затем `Settings(_env_file=None)`: `.env` другой ветки не подмешивается. OpenAI key доступен только budgeted reviews, Telegram token — только notification worker, webhook secret — API.
 
@@ -30,7 +36,7 @@ Consumers имеют startup handshake с PID и новым случайным t
 
 Windows venv Python может создавать wrapper и настоящий worker с разными PID. Launcher проверяет direct parent, creation stamps и точный base interpreter из `pyvenv.cfg`, затем сохраняет worker identity и отдельную wrapper identity. Marker должен совпасть с PID настоящего worker. Stop/rollback проверяют и завершают обе identities; переиспользованный wrapper PID не затрагивается. Уже завершающийся wrapper проверяется bounded ожиданием того же открытого handle.
 
-Если managed Quick Tunnel умер, а свои API/Nginx/consumers ещё живы, новый `start --tunnel` отказывает до создания нового tunnel: hostname может измениться, а прежний origin продолжит использовать старый адрес. Такое же правило действует при добавлении managed tunnel к уже работающему origin. Явное восстановление: `stop --config $nativeConfig --keep-db` → `start --config $nativeConfig --tunnel` с нужными consumer flags. Внешний tunnel без `--tunnel` остаётся вне этого правила и не останавливается launcher.
+Если managed Quick Tunnel умер, а свои API/Nginx/consumers ещё живы, новый `start --tunnel` отказывает до создания нового tunnel: hostname может измениться, а прежний origin продолжит использовать старый адрес. Такое же правило действует при добавлении managed tunnel к уже работающему origin. Явное восстановление: `stop --config $nativeConfig --keep-db` → `start --config $nativeConfig --live-ai --notifications --tunnel`. Затем оператор сверяет новый URL и обновляет ссылки/QR и webhook. Внешний tunnel без `--tunnel` остаётся вне этого правила и не останавливается launcher.
 
 ## Mapping существующего стенда
 
@@ -49,7 +55,7 @@ Windows venv Python может создавать wrapper и настоящий 
 | `ledger` | `.worktrees/t08-t10-integration/.tooling/mobile/budget.json` — именно прежний файл |
 | Порты | PostgreSQL `55486`, API `8036`, Nginx `5214`; ASR `8016` только если свободен |
 
-Активный config: `.tooling/mvp-native-release/config.json`. Для текущего стенда использовать его с `start --notifications --live-ai`, без `--tunnel`: внешний Quick Tunnel уже работает. `postgres_bin`/`postgres_data` берутся из действующего portable PostgreSQL, `manage_postgres=false`. Не копировать чужой PID registry и не использовать старый `api.py`: он явно запрещает ASR. Общий `SPEECH_SERVICE_TOKEN` уже находится в ignored env; model/service paths launcher задаёт сам. ASR readiness проверяет файлы/зависимости; фактический inference, перезапуск и восстановление подтверждаются отдельно в [проверке релиза](MVP-finalization-verification.md).
+Config стенда: `.tooling/mvp-native-release/config.json`. Для единого управляемого запуска использовать `start --live-ai --notifications --tunnel`; переход с внешнего tunnel и старых процессов выполняет их владелец после остановки. `postgres_bin`/`postgres_data` берутся из существующего portable PostgreSQL; при `manage_postgres=false` он остаётся внешним. Не копировать чужой PID registry и не использовать старый `api.py`: он явно запрещает ASR. Общий `SPEECH_SERVICE_TOKEN` находится в ignored env; model/service paths launcher задаёт сам. ASR readiness проверяет файлы/зависимости; фактический inference, перезапуск и восстановление подтверждаются отдельно в [проверке релиза](MVP-finalization-verification.md).
 
 ## Compose и бюджет
 
