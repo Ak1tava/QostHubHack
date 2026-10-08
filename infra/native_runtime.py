@@ -20,7 +20,7 @@ FLAGS = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
 CONFIG_KEYS = {'repo', 'state_dir', 'env_file', 'python', 'postgres_bin', 'postgres_data',
     'postgres_port', 'api_port', 'web_port', 'asr_port', 'nginx', 'nginx_mime_types',
     'model_path', 'photo_path', 'ledger', 'cloudflared', 'ready_timeout_seconds',
-    'manage_postgres', 'public_base_url'}
+    'manage_postgres', 'public_base_url', 'review_worker_cycles'}
 
 
 class TunnelRecoveryRequired(RuntimeError):
@@ -112,6 +112,36 @@ def validate_budget(path, limit='10'):
     if any(call['state'] != 'settled' or call.get('metadata', {}).get('error_code')
            for call in value['calls']):
         raise RuntimeError('Budget has an unresolved paid call: audit required')
+
+
+def validate_worker_cycles(value):
+    if type(value) is not int or not 1 <= value <= 365:
+        raise ValueError('Worker cycle count must be an integer between 1 and 365')
+
+
+def supervise_budget_worker(worker_main, ledger, limit='10', *, max_cycles=30,
+                            on_ready=None, before_cycle=None):
+    """Renew only normal time/stage exits, with the original ledger and fresh locks."""
+    validate_worker_cycles(max_cycles)
+    # Resolve once: all cycles must refer to the same existing file, never a new budget.
+    ledger = Path(ledger).absolute()
+    argv = ['--live', '--ordinary-worker-stopped', '--ledger', str(ledger),
+        '--budget-usd', limit, '--max-seconds', '86400', '--max-stages', '10000']
+    for cycle in range(max_cycles):
+        if before_cycle is not None:
+            before_cycle()
+        validate_budget(ledger, limit)
+        try:
+            result = worker_main(list(argv), **({'on_ready': on_ready} if on_ready else {}))
+        finally:
+            if before_cycle is not None:
+                before_cycle()
+        if type(result) is not int or result != 0:
+            return result if type(result) is int else 2
+        if cycle + 1 < max_cycles:
+            # A finite retry count and delay also bound an unexpectedly fast normal exit.
+            time.sleep(1)
+    return 0
 
 
 def render_nginx(config, hostname):
@@ -434,6 +464,7 @@ class Controller:
         if urlparse(env.get('PUBLIC_BASE_URL', '')).scheme != 'https':
             raise ValueError('HTTPS public URL required')
         if 'reviews' in names:
+            validate_worker_cycles(config.get('review_worker_cycles', 30))
             validate_budget(config['ledger'])
             if not load_environment(config, 'reviews').get('OPENAI_API_KEY'):
                 raise ValueError('Budgeted worker key unavailable')
@@ -549,11 +580,12 @@ def entry(config, name):
         from app.workers.main import main as notification_main
         notification_main(on_ready=lambda: publish_consumer_ready(config, name, ready_token))
     else:
-        validate_budget(config['ledger'])
         from app.workers.budgeted_reviews import main
-        raise SystemExit(main(['--live', '--ordinary-worker-stopped', '--ledger', config['ledger'],
-            '--budget-usd', '10', '--max-seconds', '86400', '--max-stages', '10000'],
-            on_ready=lambda: publish_consumer_ready(config, name, ready_token)))
+        marker = Path(config['state_dir']) / f'{name}.ready.json'
+        raise SystemExit(supervise_budget_worker(main, config['ledger'],
+            max_cycles=config.get('review_worker_cycles', 30),
+            on_ready=lambda: publish_consumer_ready(config, name, ready_token),
+            before_cycle=lambda: marker.unlink(missing_ok=True)))
 
 
 def main():
@@ -568,15 +600,16 @@ def main():
     parser.add_argument('--existing-budget-worker', action='store_true')
     parser.add_argument('--ledger', type=Path)
     parser.add_argument('--budget-usd', default='10')
+    parser.add_argument('--worker-cycles', type=int, default=30,
+        help='Existing-budget worker: finite normal-exit cycles (1-365, default 30)')
     args = parser.parse_args()
     try:
         if args.existing_budget_worker:
-            validate_budget(args.ledger, args.budget_usd)
             # Python script execution adds /workspace/infra, not the Docker WORKDIR, to sys.path.
             sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'services/api'))
             from app.workers.budgeted_reviews import main as worker_main
-            return worker_main(['--live', '--ordinary-worker-stopped', '--ledger', str(args.ledger),
-                '--budget-usd', args.budget_usd, '--max-seconds', '86400', '--max-stages', '10000'])
+            return supervise_budget_worker(worker_main, args.ledger, args.budget_usd,
+                max_cycles=args.worker_cycles)
         if args.config is None:
             parser.error('--config is required')
         config = json.loads(args.config.read_text(encoding='utf-8'))

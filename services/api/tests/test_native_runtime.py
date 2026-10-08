@@ -427,9 +427,160 @@ def test_docker_entry_bootstraps_api_package_with_no_pythonpath(tmp_path):
     env = {k: v for k, v in os.environ.items() if k.upper() in
            ('SYSTEMROOT', 'WINDIR', 'PATH', 'TEMP', 'TMP')}
     result = subprocess.run([sys.executable, '-I', str(script), '--existing-budget-worker',
-        '--ledger', str(ledger)], cwd=api, env=env, capture_output=True, text=True, timeout=15)
+        '--ledger', str(ledger), '--worker-cycles', '1'], cwd=api, env=env,
+        capture_output=True, text=True, timeout=15)
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == 'FAKE_WORKER_BOOTSTRAPPED'
+
+
+def test_budget_supervision_continues_normal_exits_with_original_ledger(configuration, monkeypatch):
+    module = runtime()
+    ledger = Path(configuration['ledger'])
+    original = ledger.read_bytes()
+    calls, sleeps, readiness = [], [], []
+
+    def worker(argv, *, on_ready=None):
+        calls.append(argv)
+        if on_ready:
+            on_ready()
+        return 0
+
+    monkeypatch.setattr(module.time, 'sleep', sleeps.append)
+    assert module.supervise_budget_worker(worker, ledger, max_cycles=3,
+        on_ready=lambda: readiness.append('ready')) == 0
+    assert len(calls) == 3 and readiness == ['ready'] * 3
+    assert sleeps == [1, 1]
+    assert all(argv == calls[0] for argv in calls)
+    assert calls[0] == ['--live', '--ordinary-worker-stopped', '--ledger', str(ledger),
+        '--budget-usd', '10', '--max-seconds', '86400', '--max-stages', '10000']
+    assert ledger.read_bytes() == original
+
+
+@pytest.mark.parametrize('result', [2, 1, None])
+def test_budget_supervision_never_retries_abnormal_exit(configuration, monkeypatch, result):
+    module, calls = runtime(), []
+    monkeypatch.setattr(module.time, 'sleep', lambda _: pytest.fail('Unsafe retry'))
+    def worker(argv):
+        calls.append(argv)
+        return result
+    assert module.supervise_budget_worker(worker, configuration['ledger'], max_cycles=3) == (
+        result if result is not None else 2)
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize('mutation', ['missing', 'halt', 'exhausted', 'unresolved', 'provider-error'])
+def test_budget_supervision_rechecks_ledger_before_continuation(configuration, monkeypatch, mutation):
+    module, calls = runtime(), []
+    ledger = Path(configuration['ledger'])
+    monkeypatch.setattr(module.time, 'sleep', lambda _: None)
+    def worker(argv):
+        calls.append(argv)
+        value = json.loads(ledger.read_text())
+        if mutation == 'missing':
+            ledger.unlink()
+        elif mutation == 'halt':
+            ledger.with_suffix('.halt.json').write_text('{}')
+        else:
+            if mutation == 'exhausted':
+                value['spent_or_reserved_usd'] = '10'
+            elif mutation == 'unresolved':
+                value['calls'] = [{'state': 'reserved'}]
+            else:
+                value['calls'] = [{'state': 'settled', 'metadata': {'error_code': 'provider_error'}}]
+            ledger.write_text(json.dumps(value))
+        return 0
+    with pytest.raises((RuntimeError, ValueError), match='[Bb]udget|[Ll]edger'):
+        module.supervise_budget_worker(worker, ledger, max_cycles=3)
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize('cycles', [0, -1, True, 1.5, 366])
+def test_budget_supervision_requires_bounded_positive_cycle_count(configuration, cycles):
+    module = runtime()
+    with pytest.raises(ValueError, match='cycle'):
+        module.supervise_budget_worker(lambda _: pytest.fail('Unexpected launch'),
+            configuration['ledger'], max_cycles=cycles)
+
+
+def test_budget_supervision_clears_readiness_between_cycles(configuration, monkeypatch):
+    module = runtime()
+    state = Path(configuration['state_dir'])
+    state.mkdir()
+    marker = state / 'reviews.ready.json'
+    calls = []
+    def worker(argv, *, on_ready=None):
+        assert not marker.exists(), 'Previous cycle must not confirm new consumer ownership'
+        on_ready()
+        calls.append(argv)
+        return 0 if len(calls) == 1 else 2
+    monkeypatch.setattr(module.time, 'sleep', lambda _: None)
+    result = module.supervise_budget_worker(worker, configuration['ledger'], max_cycles=3,
+        on_ready=lambda: marker.write_text('ready'),
+        before_cycle=lambda: marker.unlink(missing_ok=True))
+    assert result == 2 and len(calls) == 2
+
+
+@pytest.mark.parametrize('corrupt_frozen', [False, True])
+def test_budget_supervision_reacquires_real_locks_without_resetting_spend(database, tmp_path,
+                                                                        monkeypatch, corrupt_frozen):
+    from app.core import config as settings_module, db as db_module
+    from app.modules.ai_review import provider as provider_module
+    from app.workers import budgeted_reviews as worker
+    from test_budgeted_worker import FakeProvider, call
+
+    module = runtime()
+    settings = settings_module.Settings(_env_file=None, openai_api_key='synthetic')
+    monkeypatch.setattr(settings_module, 'settings', settings)
+    monkeypatch.setattr(db_module, 'get_engine', lambda: database['engine'])
+    monkeypatch.setattr(provider_module, 'OpenAIReviewProvider', lambda *a, **kw: FakeProvider())
+    monkeypatch.setattr(module.time, 'sleep', lambda _: None)
+    ledger = tmp_path / 'budget.json'
+    call(worker.DemoBudgetedProvider(FakeProvider(), worker.open_ledger(ledger, '10')))
+    original = ledger.read_bytes()
+    frozen = dict(models=[settings.ai_light_model, settings.ai_model, settings.ai_complex_model],
+        max_output_tokens=settings.ai_max_output_tokens,
+        complex_max_output_tokens=settings.ai_complex_max_output_tokens,
+        price_date=worker.PRICE_DATE, budget_usd='10')
+    frozen_path = tmp_path / 'frozen.json'
+    frozen_path.write_text(json.dumps(frozen))
+    events = []
+
+    def bounded_run(engine, provider, **bounds):
+        assert bounds['max_stages'] == 10000 and bounds['max_seconds'] == 86400
+        provider.check_ownership()
+        events.append('run')
+        if corrupt_frozen:
+            frozen_path.write_text('{}')
+        return 0 if events.count('run') == 1 else 2
+
+    monkeypatch.setattr(worker, 'run', bounded_run)
+    assert module.supervise_budget_worker(worker.main, ledger, max_cycles=3,
+        on_ready=lambda: events.append('ready')) == 2
+    assert events == (['ready', 'run'] if corrupt_frozen else ['ready', 'run', 'ready', 'run'])
+    assert ledger.read_bytes() == original
+    # A successor can acquire both real ownership locks only after every cycle released them.
+    with worker.exclusive_worker(ledger.with_suffix('.lock')):
+        with worker.single_database_consumer(database['engine']) as guard:
+            guard.check()
+
+
+def test_budget_supervision_does_not_retry_worker_exception(configuration, monkeypatch):
+    module, calls = runtime(), []
+    monkeypatch.setattr(module.time, 'sleep', lambda _: pytest.fail('Unsafe retry'))
+    def worker(argv):
+        calls.append(argv)
+        raise RuntimeError('Unexpected exit')
+    with pytest.raises(RuntimeError, match='Unexpected exit'):
+        module.supervise_budget_worker(worker, configuration['ledger'], max_cycles=3)
+    assert len(calls) == 1
+
+
+def test_native_start_refuses_invalid_cycle_limit_before_spawning(configuration):
+    module, backend = runtime(), FakeProcesses()
+    configuration['review_worker_cycles'] = 0
+    with pytest.raises(ValueError, match='cycle'):
+        module.Controller(configuration, backend).start(live_ai=True)
+    assert not backend.started
 
 
 @pytest.mark.parametrize('marker', ['absent', 'old-token', 'wrong-pid', 'dead'])
