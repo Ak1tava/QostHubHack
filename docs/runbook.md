@@ -202,6 +202,8 @@ Invoke-WebRequest https://github.com/cloudflare/cloudflared/releases/latest/down
 
 Сохраните только hostname выданного URL в `TUNNEL_HOSTNAME` без scheme/порта/пути; `PUBLIC_BASE_URL` в `.env` — точный `https://<hostname>`, `SESSION_COOKIE_SECURE=true`. Задайте `DEMO_AS_OF` календарным днём демонстрации. `--allowed-mail` не применять: интерактивная email-проверка не подходит Telegram webhook. Приложение сохраняет собственные сессии, CSRF/Origin и проверку webhook secret.
 
+Перед любой командой с `compose.tunnel.yaml` задайте в локальном `.env` или окружении `LIVE_AI_LEDGER_DIR` — абсолютный путь к **исходному существующему** каталогу с `budget.json`, `frozen.json` и audit-файлами. Compose требует эту переменную при чтении конфигурации даже без профиля `live-ai`. Новый каталог/ledger создавать нельзя; само указание пути не запускает платный consumer.
+
 ```sh
 docker compose stop ai-worker worker
 docker compose -f compose.yaml -f compose.tunnel.yaml up -d --build --force-recreate --wait api web
