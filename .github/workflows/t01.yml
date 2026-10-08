@@ -125,7 +125,13 @@ jobs:
       - name: Real PostgreSQL, recovery and persistent data/photos
         run: python infra/verify_stack.py
       - name: Production browser auth and PWA acceptance
-        run: npm --prefix apps/web run test:e2e -- --retries=0
+        run: npm --prefix apps/web run test:e2e -- --retries=0 --grep-invert '^T17 '
+      - name: Isolate bilingual browser acceptance login budget
+        env:
+          E2E_BASE_URL: http://localhost:5173
+        run: DATABASE_URL="$PHOTO_ACCEPTANCE_DATABASE_URL" services/api/.venv/bin/python infra/reset_acceptance_throttles.py
+      - name: Russian and Kazakh production browser acceptance
+        run: npm --prefix apps/web run test:e2e -- --retries=0 --grep '^T17 '
       - name: Isolate worker acceptance login budget from browser acceptance
         env:
           E2E_BASE_URL: http://localhost:5173
