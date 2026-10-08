@@ -4,6 +4,8 @@ import { ApiClient, type UserView } from '../../lib/api';
 import { useCommand } from '../../lib/useCommand';
 import { localDateTime, utcDateTime } from '../../lib/time';
 import { compressPhoto } from '../../lib/compressPhoto';
+import { useQuery } from '../../lib/useQuery';
+import { TemplateRequirements, type WorkOrderTemplate } from './TemplateRequirements';
 import { SpeechInput } from '../speech/SpeechInput';
 import { availability, createOrder, priorities, uploadPhoto, useCatalogs, useShift, type CreateOrder, type Photo, type WorkOrder } from './data';
 
@@ -11,6 +13,10 @@ export function CreateOrderPage({ api, user }: { api: ApiClient; user: UserView 
   const [query] = useSearchParams();
   const navigate = useNavigate();
   const catalogs = useCatalogs(api);
+  const templates = useQuery(useCallback((signal: AbortSignal) => api.request<{ items: WorkOrderTemplate[] }>('/api/v1/work-orders/templates', { signal }), [api]));
+  const [templateId, setTemplateId] = useState('');
+  const template = templates.data?.items.find(item => item.id === templateId);
+  const templateDescription = useRef('');
   const [areaId, setAreaId] = useState(query.has('equipment_id') ? '' : query.get('area_id') ?? '');
   const [equipmentId, setEquipmentId] = useState('');
   const equipmentInitialized = useRef(false);
@@ -68,6 +74,15 @@ export function CreateOrderPage({ api, user }: { api: ApiClient; user: UserView 
     if (brigadeId && !available.some(member => member.user.brigade_id === brigadeId)) setBrigadeId('');
   }, [shift.data, assigneeId, responsibleId, brigadeId, command.pending, command.busy]);
 
+  function changeTemplate(id: string) {
+    const next = templates.data?.items.find(item => item.id === id);
+    const text = next?.initial_description ?? '';
+    const previousTemplateText = templateDescription.current;
+    setDescription(previous => !previous.trim() || previous === previousTemplateText ? text : previous);
+    templateDescription.current = text;
+    setTemplateId(id);
+  }
+
   function changeArea(id: string) {
     setAreaId(id);
     if (!catalogs.data?.equipment.some(item => item.id === equipmentId && item.area_id === id)) setEquipmentId('');
@@ -91,7 +106,7 @@ export function CreateOrderPage({ api, user }: { api: ApiClient; user: UserView 
       let body: CreateOrder | undefined;
       if (!createdRef.current && !command.pending) {
         if (!valid || !timezone) return;
-        body = { work_type: workType, description: description.trim(), area_id: areaId, equipment_id: equipmentId, priority,
+        body = { ...(template ? { template_id: template.id } : {}), work_type: workType, description: description.trim(), area_id: areaId, equipment_id: equipmentId, priority,
           due_at: utcDateTime(deadline, timezone), assignee_id: mode === 'worker' ? assigneeId : null,
           brigade_id: mode === 'brigade' ? brigadeId : null, responsible_id: mode === 'brigade' ? responsibleId : null };
       }
@@ -115,7 +130,7 @@ export function CreateOrderPage({ api, user }: { api: ApiClient; user: UserView 
     <Link to={areaId ? `/shift?area_id=${encodeURIComponent(areaId)}` : '/shift'}>← Панель смены</Link>
     <h2>Новый наряд</h2>
     <p className="muted">Мастер: {user.display_name}</p>
-    {[catalogs.error, shift.error, baseShift.error].filter(Boolean).map((error, index) => <p role="alert" key={index}>{error!.message} <button type="button" onClick={() => { catalogs.reload(); shift.reload(); baseShift.reload(); }}>Обновить</button></p>)}
+    {[catalogs.error, shift.error, baseShift.error, templates.error].filter(Boolean).map((error, index) => <p role="alert" key={index}>{error!.message} <button type="button" onClick={() => { catalogs.reload(); shift.reload(); baseShift.reload(); templates.reload(); }}>Обновить</button></p>)}
     <form onSubmit={submit}>
       <fieldset disabled={command.busy || command.pending || photoBusy || !!createdOrder || !catalogs.data} className="form-fields">
         <fieldset className="choice-group"><legend>Участок</legend><div className="choices">
@@ -140,6 +155,10 @@ export function CreateOrderPage({ api, user }: { api: ApiClient; user: UserView 
           </select></label>
         </>}
         {selected && <p role="status" className={`notice availability-${selected.availability}`}>{availability[selected.availability]} · в очереди: {selected.queue_count}{selected.availability !== 'free' ? '. Проверьте назначение и срок.' : ''}</p>}
+        <label>Шаблон<select name="template_id" value={templateId} onChange={event => changeTemplate(event.target.value)} disabled={!templates.data}>
+          <option value="">Без шаблона</option>{templates.data?.items.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
+        </select></label>
+        {template && <TemplateRequirements template={template} />}
         <label>Описание работ<textarea name="description" value={description} onChange={event => setDescription(event.target.value)} required maxLength={10000} rows={3} /></label>
         <SpeechInput api={api} value={description} onChange={setDescription} maxLength={10000} disabled={command.busy || command.pending || photoBusy || !!createdOrder || !catalogs.data} />
         <div className="form-row">

@@ -1,3 +1,4 @@
+import { TemplateRequirements } from './TemplateRequirements';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { ApiClient, ApiError, type UserView } from '../../lib/api';
@@ -63,6 +64,7 @@ export function OrderDetailsPage({ api, user, orderId }: { api: ApiClient; user:
     {order && <>
       <div className="page-heading"><h2>Наряд {order.number}</h2><span className={`badge priority-${order.priority}`}>{priorities[order.priority]}</span></div>
       <p className="badge">{statuses[order.status]}{order.is_overdue ? ' · Просрочен' : ''}</p>
+      {order.template_snapshot && <TemplateRequirements template={order.template_snapshot} />}
       <p id={`problem-${order.id}`} className="full-description">{order.description}</p>
       <dl className="order-info">
         <dt>Участок</dt><dd>{catalogs.data?.areas.find(area => area.id === order.area_id)?.name ?? 'Загружаем…'}</dd>
@@ -98,7 +100,7 @@ export function OrderDetailsPage({ api, user, orderId }: { api: ApiClient; user:
         <span>{event.actor_id ? shift.data?.items.find(member => member.user.id === event.actor_id)?.user.display_name ?? 'Сотрудник' : 'Система'}</span>
         {event.reason && <p>{event.reason}</p>}
       </li>)}</ol></section>
-      {order.submission && <div id={`submission-${order.submission.id}`}><SavedSubmission api={api} submission={order.submission} /></div>}
+      {order.submission && <div id={`submission-${order.submission.id}`}><SavedSubmission api={api} submission={order.submission} template={order.template_snapshot} /></div>}
       <IssuancePhotos photos={order.issuance_photos} />
       <NotificationDeliveryPanel api={api} user={user} orderId={order.id} />
       <ReviewPanel order={order} />

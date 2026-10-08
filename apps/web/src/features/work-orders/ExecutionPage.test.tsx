@@ -1,20 +1,25 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
-import { afterEach, beforeEach, expect, it } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ApiClient, type UserView } from '../../lib/api';
 import { events } from '../../lib/events';
 import { ExecutionPage } from './ExecutionPage';
+import { leakTemplate } from './templateFixture.test-helper';
+import type { WorkOrderDetail } from './data';
 import { MyOrdersPage } from './MyOrdersPage';
+vi.mock('../../lib/compressPhoto', () => ({ compressPhoto: async (file: File) => file }));
 
 const user: UserView = { id: 'worker', display_name: 'Слесарь', role: 'worker', brigade_id: 'brigade', grade: null, specialty: null, shift_id: null };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 let root: Root, container: HTMLDivElement, version: number, allowed: string[], timezone: string, requests: { body: string; key: string }[], outcome: () => Promise<Response>;
-const order = () => ({ id: 'order', number: 'N-5', description: 'Насос', status: 'IN_PROGRESS', version, assignment_version: 2, assignee_id: null, brigade_id: 'brigade', responsible_id: user.id, priority: 'normal', due_at: '2026-10-04T12:00:00Z', created_at: '2026-10-04T10:00:00Z', is_overdue: false, allowed_actions: allowed, events: [], submission: null, issuance_photos: [{ id: 'initial-photo', read_url: '/api/v1/photos/initial-photo' }] });
+let snapshot: WorkOrderDetail['template_snapshot'];
+let beforeCount: number;
+const order = () => ({ template_snapshot: snapshot, before_photo_count: beforeCount, id: 'order', number: 'N-5', description: 'Насос', status: 'IN_PROGRESS', version, assignment_version: 2, assignee_id: null, brigade_id: 'brigade', responsible_id: user.id, priority: 'normal', due_at: '2026-10-04T12:00:00Z', created_at: '2026-10-04T10:00:00Z', is_overdue: false, allowed_actions: allowed, events: [], submission: null, issuance_photos: [{ id: 'initial-photo', read_url: '/api/v1/photos/initial-photo' }] });
 beforeEach(() => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   container = document.createElement('div'); document.body.append(container); root = createRoot(container);
-  version = 3; allowed = ['pause', 'submit']; timezone = 'Asia/Qostanay'; requests = []; outcome = async () => json({ revision: 1 }, 201);
+  snapshot = null; beforeCount = 0; version = 3; allowed = ['pause', 'submit']; timezone = 'Asia/Qostanay'; requests = []; outcome = async () => json({ revision: 1 }, 201);
 });
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); });
 function api() {
@@ -24,6 +29,7 @@ function api() {
     if (url.pathname.endsWith('/speech/transcriptions')) return json({ text: 'Дополнение голосом', language: 'ru', model: 'large-v3-turbo', duration_seconds: 1, is_mock: true });
     if (url.pathname.endsWith('/notifications')) return json([]);
     if (url.pathname.endsWith('/shift')) return json({ timezone, items: [], as_of: '2026-10-04T10:00:00Z' });
+    if (url.pathname.endsWith('/photos')) { const type = (init!.body as FormData).get('type'); if (type === 'before') beforeCount++; return json({ id: `${type}-photo`, read_url: '/api/v1/photos/synthetic' }, 201); }
     if (init?.method === 'POST') { requests.push({ body: String(init.body), key: new Headers(init.headers).get('Idempotency-Key')! }); return outcome(); }
     if (url.pathname.endsWith('/work-codes')) return json({ items: [{ id: 'code', code: '01', name: 'Течь' }], total: 1 });
     if (url.pathname.endsWith('/materials')) return json({ items: [{ id: 'material', name: 'Масло', unit: 'л' }], total: 1 });
@@ -110,4 +116,57 @@ it('loads every list page and includes brigade orders for the responsible worker
   const client = new ApiClient(async input => { const url = new URL(String(input), 'http://localhost'); offsets.push(url.searchParams.get('offset')!); const offset = Number(url.searchParams.get('offset')); return json({ items: Array.from({ length: offset ? 1 : 50 }, (_, index) => ({ ...order(), id: String(offset + index), number: `N-${offset + index}`, queue_position: offset + index + 1 })), offset, limit: 50, total: 51 }); });
   await act(async () => root.render(<MemoryRouter><MyOrdersPage api={client} user={user} /></MemoryRouter>));
   expect(offsets).toEqual(['0', '50']); expect(container.querySelectorAll('a.order-card')).toHaveLength(51); expect(container.textContent).toContain('Ответственный бригады');
+});
+
+it('uses the saved template requirements and rejects partial checklist/photo evidence', async () => {
+  snapshot = { ...leakTemplate, title: 'Сохранённый шаблон v1' }; beforeCount = 1;
+  await render(); await report();
+  expect(container.textContent).toContain('Сохранённый шаблон v1');
+  expect(button('Передать на проверку').disabled).toBe(true);
+  for (const item of leakTemplate.checklist) {
+    const checkbox = container.querySelector<HTMLInputElement>(`[name="template-${item.id}"]`);
+    expect(checkbox).not.toBeNull(); await act(async () => checkbox!.click());
+  }
+  expect(button('Передать на проверку').disabled).toBe(true);
+  expect(container.textContent).not.toContain('Без фото отчёт можно отправить');
+});
+it('keeps legacy reports free of template answers', async () => {
+  await render(); await report(); await act(async () => button('Передать на проверку').click());
+  expect(JSON.parse(requests[0].body)).not.toHaveProperty('template_answers');
+});
+
+async function upload(type: 'before' | 'after') {
+  const section = container.querySelector<HTMLElement>(`[aria-label="Фото ${type === 'before' ? 'до' : 'после'}"]`)!;
+  await act(async () => {
+    const input = section.querySelector<HTMLInputElement>('input[type="file"]')!;
+    Object.defineProperty(input, 'files', { configurable: true, value: [new File(['image'], 'photo.jpg', { type: 'image/jpeg' })] });
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await act(async () => [...section.querySelectorAll<HTMLButtonElement>('button')].find(item => item.textContent === 'Загрузить фото')!.click());
+}
+it('reloads before evidence and retries immutable answers, then clears the checklist', async () => {
+  URL.createObjectURL = () => 'blob:photo'; URL.revokeObjectURL = () => {};
+  snapshot = leakTemplate; await render(); await report();
+  for (const item of leakTemplate.checklist) await act(async () => container.querySelector<HTMLInputElement>(`[name="template-${item.id}"]`)!.click());
+  await upload('after'); expect(button('Передать на проверку').disabled).toBe(true);
+  await upload('before'); expect(button('Передать на проверку').disabled).toBe(false);
+  outcome = async () => { throw new TypeError('offline'); };
+  await act(async () => button('Передать на проверку').click());
+  expect(container.querySelector<HTMLInputElement>('[name="template-identify_leak"]')!.matches(':disabled')).toBe(true);
+  version++; snapshot = { ...leakTemplate, version: 2, checklist: [{ id: 'changed', label: 'Новый пункт', required: true }] };
+  await act(async () => events.invalidate());
+  outcome = async () => json({ revision: 1 }, 201);
+  await act(async () => button('Повторить отправку').click());
+  expect(requests[1]).toEqual(requests[0]);
+  expect(JSON.parse(requests[0].body).template_answers).toEqual(leakTemplate.checklist.map(item => ({ id: item.id, checked: true })));
+  expect(container.querySelector<HTMLInputElement>('[name="template-changed"]')!.checked).toBe(false);
+});
+it('shows server template admission errors without clearing answers', async () => {
+  URL.createObjectURL = () => 'blob:photo'; URL.revokeObjectURL = () => {};
+  snapshot = leakTemplate; beforeCount = 1; await render(); await report(); await upload('after');
+  for (const item of leakTemplate.checklist) await act(async () => container.querySelector<HTMLInputElement>(`[name="template-${item.id}"]`)!.click());
+  outcome = async () => json({ error: { code: 'template_evidence', message: 'Недостаточно фото до', details: [] } }, 422);
+  await act(async () => button('Передать на проверку').click());
+  expect(container.textContent).toContain('Недостаточно фото до');
+  expect(container.querySelector<HTMLInputElement>('[name="template-identify_leak"]')!.checked).toBe(true);
 });

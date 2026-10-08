@@ -1,3 +1,4 @@
+import { TemplateRequirements } from './TemplateRequirements';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { ApiError, type ApiClient, type UserView } from '../../lib/api';
@@ -42,7 +43,8 @@ export function ExecutionPage({ api, user, orderId }: { api: ApiClient; user: Us
     {detail.error && <p role="alert">{detail.error.message} <button onClick={detail.reload}>Обновить</button></p>}
     {order && <>
       <div className="page-heading"><h2>Наряд {order.number}</h2><span className={`badge priority-${order.priority}`}>{priorities[order.priority]}</span></div>
-      <p className="badge">{statuses[order.status]}{order.is_overdue ? ' · Просрочен' : ''}</p><p id={`problem-${order.id}`} className="full-description">{order.description}</p>
+      <p className="badge">{statuses[order.status]}{order.is_overdue ? ' · Просрочен' : ''}</p>{order.template_snapshot && <TemplateRequirements template={order.template_snapshot} />}
+      <p id={`problem-${order.id}`} className="full-description">{order.description}</p>
       <p>Срок: {displayTime(order.due_at, timezone)} ({timezone})</p>
       <p><Link to={`/equipment/${order.equipment_id}`}>Оборудование и история нарядов</Link></p>
       {order.brigade_id && <p>{responsible ? 'Ответственный бригады' : 'Наряд бригады · просмотр'}</p>}
@@ -54,9 +56,9 @@ export function ExecutionPage({ api, user, orderId }: { api: ApiClient; user: Us
         <button className="primary" type="submit" disabled={command.busy || submissionLocked || (!command.pending && !valid)}>{command.busy ? 'Сохраняем…' : command.pending ? 'Повторить действие' : 'Применить'}</button>
         {!command.pending && <button type="button" disabled={command.busy} onClick={() => setAction(null)}>Вернуться</button>}
       </form>}
-      {responsible && photoStatuses.has(order.status) && <PhotoUpload api={api} orderId={order.id} type="before" disabled={command.busy || command.pending || submissionLocked} onUploaded={() => {}} />}
+      {responsible && photoStatuses.has(order.status) && <PhotoUpload api={api} orderId={order.id} type="before" disabled={command.busy || command.pending || submissionLocked} onUploaded={detail.reload} />}
       {responsible && <SubmissionForm api={api} order={order} disabled={command.busy || command.pending} reload={detail.reload} onSubmitted={changed} onLockChange={setSubmissionLocked} />}
-      {order.submission && <div id={`submission-${order.submission.id}`}><SavedSubmission api={api} submission={order.submission} /></div>}
+      {order.submission && <div id={`submission-${order.submission.id}`}><SavedSubmission api={api} submission={order.submission} template={order.template_snapshot} /></div>}
       <IssuancePhotos photos={order.issuance_photos} />
       <NotificationDeliveryPanel api={api} user={user} orderId={order.id} />
       <ReviewPanel order={order} />

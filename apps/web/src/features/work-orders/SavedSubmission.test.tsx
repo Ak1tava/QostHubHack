@@ -1,3 +1,4 @@
+import { leakTemplate } from './templateFixture.test-helper';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, it } from 'vitest';
@@ -16,4 +17,17 @@ it('shows immutable report with catalog names, units, protected photos and Russi
     expect(container.textContent).toContain('Фото после работы'); expect(container.textContent).not.toContain('material-id');
     expect(container.querySelector('img')!.getAttribute('src')).toBe('/api/v1/photos/photo-id'); expect(container.querySelector('input, textarea, select')).toBeNull();
   } finally { await act(async () => root.unmount()); container.remove(); }
+});
+
+it('renders persisted answers with labels from the issued snapshot', async () => {
+  (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+  const api = new ApiClient(async () => new Response(JSON.stringify({ items: [], total: 0 }), { headers: { 'Content-Type': 'application/json' } }));
+  const submission: Submission = { id: 'report', work_order_id: 'order', worker_id: 'worker', revision: 1, assignment_version: 1, work_description: 'Устранено', fault_code_id: 'code', comment: null, no_materials_used: true, submitted_at: '2026-10-08T10:00:00Z', template_answers: [{ id: 'identify_leak', checked: true }] };
+  const container = document.createElement('div'); const root = createRoot(container);
+  try {
+    await act(async () => root.render(<SavedSubmission api={api} submission={submission} template={leakTemplate} />));
+    expect(container.textContent).toContain('Место течи указано: Выполнено');
+    expect(container.textContent).toContain('Работы описаны: Не подтверждено');
+    expect(container.querySelector('input')).toBeNull();
+  } finally { await act(async () => root.unmount()); }
 });

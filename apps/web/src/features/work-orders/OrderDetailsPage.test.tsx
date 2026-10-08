@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router';
 import { expect, it } from 'vitest';
 import { ApiClient, type UserView } from '../../lib/api';
 import { OrderDetailsPage } from './OrderDetailsPage';
+import { leakTemplate } from './templateFixture.test-helper';
 
 const user: UserView = { id: 'master', display_name: 'Мастер', role: 'master', specialty: null, grade: null, brigade_id: null, shift_id: null };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -38,4 +39,22 @@ it('refreshes a conflict and requires a new explicit command with the current ve
     await act(async () => container.querySelector<HTMLButtonElement>('button[type="submit"]')!.click());
     expect(commands[1].expected_version).toBe(2);
   } finally { await act(async () => root.unmount()); container.remove(); }
+});
+
+it('shows the issued template and persisted checklist to the master', async () => {
+  (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+  const api = new ApiClient(async input => {
+    const path = String(input);
+    if (path.endsWith('/notifications')) return json([]);
+    if (path.includes('/catalog/')) return json({ items: [], total: 0 });
+    if (path.includes('/shift')) return json({ items: [], timezone: 'Asia/Qostanay' });
+    return json({ id: 'order', number: 'N-template', description: 'Течь', created_at: '2026-10-08T10:00:00Z', priority: 'normal', status: 'AI_REVIEW', master_id: user.id, due_at: '2026-10-08T12:00:00Z', allowed_actions: [], template_snapshot: leakTemplate,
+      submission: { id: 'report', revision: 1, work_description: 'Видимый участок восстановлен', no_materials_used: true, template_answers: leakTemplate.checklist.map(item => ({ id: item.id, checked: true })) } });
+  });
+  const container = document.createElement('div'); const root = createRoot(container);
+  try {
+    await act(async () => root.render(<MemoryRouter><OrderDetailsPage api={api} user={user} orderId="order" /></MemoryRouter>));
+    expect(container.textContent).toContain('Устранение видимой течи · версия 1');
+    expect(container.textContent).toContain('Место течи указано: Выполнено');
+  } finally { await act(async () => root.unmount()); }
 });

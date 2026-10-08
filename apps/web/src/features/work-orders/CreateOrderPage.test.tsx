@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ApiClient, type UserView } from '../../lib/api';
 import { CreateOrderPage } from './CreateOrderPage';
+import { leakTemplate } from './templateFixture.test-helper';
 vi.mock('../../lib/compressPhoto', () => ({ compressPhoto: async (file: File) => file }));
 
 const area = '11111111-1111-4111-8111-111111111111';
@@ -36,6 +37,7 @@ afterEach(async () => { await act(async () => root.unmount()); container.remove(
 async function render(query = `area_id=${area}&assignee_id=${workerId}`) {
   const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input), 'http://localhost');
+    if (url.pathname.endsWith('/templates')) return json({ items: [leakTemplate, { ...leakTemplate, id: 'visible_element', title: 'Восстановление видимого элемента', initial_description: 'Восстановить элемент' }] });
     if (url.pathname.endsWith('/csrf')) return json({ csrf_token: 'test-csrf' });
     if (url.pathname.endsWith('/speech/transcriptions')) { speechAttempts++; return json({ text: 'Дополнено голосом', language: 'ru', model: 'large-v3-turbo', duration_seconds: 1, is_mock: true }); }
     if (url.pathname.endsWith('/photos')) { photoAttempts.push(init!.body as FormData); return photoResult(); }
@@ -84,6 +86,8 @@ it('keeps QR equipment prefill when reviewed speech is inserted and only creates
   });
   const before = container.querySelector<HTMLTextAreaElement>('[name="description"]')!.value;
   expect(speechAttempts).toBe(1); expect(commands).toHaveLength(0);
+  await select('template_id', 'visible_leak');
+  expect(button('Вставить')).toBeDefined();
   await act(async () => button('Вставить').click());
   expect(container.querySelector<HTMLTextAreaElement>('[name="description"]')!.value).toBe(`${before}\n\nДополнено голосом`);
   expect(commands).toHaveLength(0);
@@ -184,4 +188,27 @@ it('retains the issued order and successful photos when a later upload fails and
   expect(photoAttempts[2].get('expected_version')).toBe('1');
   expect(photoAttempts[2].get('assignment_version')).toBe('1');
   expect(container.textContent).toContain('Наряд создан');
+});
+
+it('selects a template while retaining QR equipment and manual description', async () => {
+  await render(`equipment_id=${equipment}&assignee_id=${workerId}`);
+  expect(container.querySelector<HTMLSelectElement>('[name="template_id"]')?.value).toBe('');
+  await select('template_id', 'visible_leak');
+  expect(container.querySelector<HTMLTextAreaElement>('[name="description"]')!.value).toBe(leakTemplate.initial_description);
+  expect(container.textContent).toContain(leakTemplate.instructions[0]);
+  expect(container.textContent).toContain('Фото до: 1; после: 1');
+  await select('template_id', 'visible_element');
+  expect(container.querySelector<HTMLTextAreaElement>('[name="description"]')!.value).toBe('Восстановить элемент');
+  await describeWork(); await select('template_id', 'visible_leak');
+  expect(container.querySelector<HTMLTextAreaElement>('[name="description"]')!.value).toBe('Проверить насос');
+  expect(button('Насос').getAttribute('aria-pressed')).toBe('true');
+  await act(async () => button('Выдать наряд').click());
+  expect(JSON.parse(commands[0].body)).toMatchObject({ template_id: 'visible_leak', equipment_id: equipment, area_id: area });
+});
+it('removes only template-filled text and omits template_id on legacy create', async () => {
+  await render(`equipment_id=${equipment}&assignee_id=${workerId}`);
+  await select('template_id', 'visible_leak'); await select('template_id', '');
+  expect(container.querySelector<HTMLTextAreaElement>('[name="description"]')!.value).toBe('');
+  await describeWork(); await act(async () => button('Выдать наряд').click());
+  expect(JSON.parse(commands[0].body)).not.toHaveProperty('template_id');
 });
