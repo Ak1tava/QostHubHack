@@ -212,6 +212,108 @@ def test_nginx_render_keeps_host_gate_and_forwards_only_to_loopback(configuratio
         module.render_nginx(configuration, 'host.invalid; include secret;')
 
 
+def test_native_nginx_config_bounds_graceful_worker_shutdown(configuration):
+    rendered = runtime().render_nginx(configuration, 'synthetic.trycloudflare.com')
+    main_context = rendered.split('events {', 1)[0]
+    assert 'worker_shutdown_timeout 5s;' in main_context
+
+
+@pytest.mark.skipif(os.name != 'nt', reason='Windows native Nginx regression')
+def test_real_nginx_quit_closes_held_websocket_with_upstream_still_running(configuration, tmp_path):
+    import base64
+    import hashlib
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    import socket
+    import threading
+    import time
+    nginx = ROOT.parents[1] / '.worktrees/t08-t10-integration/.tooling/bin/nginx-1.30.5/nginx.exe'
+    if not nginx.is_file():
+        pytest.skip('Portable Windows Nginx is unavailable')
+    module = runtime()
+    config = dict(configuration)
+    config['nginx'] = str(nginx)
+    config['nginx_mime_types'] = str(nginx.parent / 'conf/mime.types')
+    config['ready_timeout_seconds'] = 10
+    assert 'worker_shutdown_timeout 5s;' in module.render_nginx(config, 'synthetic.trycloudflare.com')
+    stop_upstream = threading.Event()
+    upgraded = threading.Event()
+    class Upstream(BaseHTTPRequestHandler):
+        protocol_version = 'HTTP/1.1'
+        def log_message(self, *args):
+            pass
+        def do_GET(self):
+            if self.headers.get('Upgrade', '').lower() != 'websocket':
+                self.send_response(200)
+                self.send_header('Content-Length', '0')
+                self.end_headers()
+                return
+            accept = base64.b64encode(hashlib.sha1((self.headers['Sec-WebSocket-Key'] +
+                '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').encode()).digest()).decode()
+            self.send_response(101)
+            self.send_header('Upgrade', 'websocket')
+            self.send_header('Connection', 'Upgrade')
+            self.send_header('Sec-WebSocket-Accept', accept)
+            self.end_headers()
+            upgraded.set()
+            self.connection.settimeout(.1)
+            while not stop_upstream.is_set():
+                try:
+                    if not self.connection.recv(1024):
+                        break
+                except socket.timeout:
+                    continue
+                except OSError:
+                    break
+    server = ThreadingHTTPServer(('127.0.0.1', 0), Upstream)
+    server.daemon_threads = True
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    config['api_port'] = server.server_port
+    with socket.socket() as reservation:
+        reservation.bind(('127.0.0.1', 0))
+        config['web_port'] = reservation.getsockname()[1]
+    prefix = Path(config['state_dir']) / 'nginx'
+    (prefix / 'logs').mkdir(parents=True)
+    (prefix / 'temp').mkdir()
+    rendered = module.render_nginx(config, 'synthetic.trycloudflare.com')
+    (prefix / 'nginx.conf').write_text(rendered, encoding='utf-8')
+    backend = module.WindowsProcesses()
+    env = module.load_environment(config, 'nginx')
+    command = [str(nginx), '-p', prefix.as_posix() + '/', '-c', 'nginx.conf']
+    identity = None
+    connection = None
+    try:
+        backend.run(command + ['-t'], config['repo'], env, tmp_path / 'syntax.log')
+        identity = backend.spawn('nginx', command + ['-g', 'daemon off;'],
+            config['repo'], env, tmp_path / 'nginx.log')
+        backend.wait('nginx', config, env)
+        connection = socket.create_connection(('127.0.0.1', config['web_port']), timeout=2)
+        connection.sendall(b'GET /api/ws HTTP/1.1\r\nHost: synthetic.trycloudflare.com\r\n'
+            b'Upgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Version: 13\r\n'
+            b'Sec-WebSocket-Key: c3ludGhldGljLXByb2Jl\r\n\r\n')
+        handshake = connection.recv(4096)
+        assert b'101 Switching Protocols' in handshake
+        assert upgraded.wait(2)
+        started = time.monotonic()
+        backend.stop('nginx', identity, config)
+        elapsed = time.monotonic() - started
+        assert elapsed < 10, f'Graceful shutdown took {elapsed:.2f}s'
+        assert backend.identity(identity['pid']) is None
+        assert thread.is_alive() and not stop_upstream.is_set()
+        backend.free(config['web_port'])
+        (tmp_path / 'shutdown-proof.json').write_text(json.dumps({
+            'websocket_upgraded': True, 'shutdown_seconds': round(elapsed, 3),
+            'upstream_running': True, 'nginx_stopped': True}), encoding='utf-8')
+    finally:
+        if connection is not None:
+            connection.close()
+        stop_upstream.set()
+        server.shutdown()
+        server.server_close()
+        if identity and backend.identity(identity['pid']) == identity:
+            backend.stop('nginx', identity, config)
+
+
 def test_controller_uses_original_config_for_stop_after_operator_changes_paths(configuration):
     module, backend = runtime(), FakeProcesses()
     control = module.Controller(configuration, backend)

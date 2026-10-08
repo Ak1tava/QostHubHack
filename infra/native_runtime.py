@@ -124,7 +124,7 @@ def render_nginx(config, hostname):
         .replace('root /usr/share/nginx/html;', f'root "{(repo / "apps/web/dist").as_posix()}";')
         .replace('http://api:8000', f"http://127.0.0.1:{config['api_port']}"))
     mime = Path(config['nginx_mime_types']).as_posix()
-    return ('worker_processes 1;\npid logs/nginx.pid;\nerror_log logs/error.log;\n'
+    return ('worker_processes 1;\nworker_shutdown_timeout 5s;\npid logs/nginx.pid;\nerror_log logs/error.log;\n'
             f'events {{ worker_connections 256; }}\nhttp {{ include "{mime}";\n'
             'access_log off;\n' + server + '\n}\n')
 
