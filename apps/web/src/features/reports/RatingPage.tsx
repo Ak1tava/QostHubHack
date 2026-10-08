@@ -3,13 +3,14 @@ import type { ApiClient, UserView } from '../../lib/api';
 import { number, useReport, useReportContext, type Rating } from './data';
 import { Limitations, ReportFilters, ReportPeriodDetails, ReportStatus } from './ReportFilters';
 import { ReportHeading } from './ReportHeading';
+import { ratingReason } from './analyticsCopy';
 
 const labels = { Q: 'Качество', T: 'Своевременность', R: 'Без подтверждённых возвратов', V: 'Нормативная загрузка' };
 const weights = { Q: .50, T: .25, R: .15, V: .10 };
 const componentKeys = Object.keys(labels) as (keyof typeof labels)[];
 
 export function RatingPage({ api, user }: { api: ApiClient; user: UserView }) {
-  const { tx } = useLocale();
+  const { tx, locale } = useLocale();
   const context = useReportContext(api, user);
   const report = useReport<Rating>(api, '/api/v1/reports/rating', context.query);
   const data = context.query ? report.data : null;
@@ -34,7 +35,7 @@ export function RatingPage({ api, user }: { api: ApiClient; user: UserView }) {
         const totalWeight = available.reduce((total, key) => total + weights[key], 0);
         return <article className="report-panel rating-card" key={`${item.worker_id}:${item.work_type}`}>
           <div className="rating-person"><div><h4>{item.display_name}</h4><p>{tx("Закрыто работ: ")}{number(item.closed_count)}</p></div><div className="rating-score"><strong aria-label={tx("Итоговый рейтинг")}>{item.score === null ? tx("Нет данных") : `${number(item.score)} / 100`}</strong>{item.score !== null && <meter min={0} max={100} value={item.score} aria-label={(tx("Рейтинг: ") + (item.display_name))} />}</div></div>
-          <dl className="rating-components">{componentKeys.map(key => { const component = item.components[key]; return <div key={key}><dt>{key} · {tx(labels[key])}</dt><dd><strong>{component.value === null ? tx("Нет данных") : `${number(component.value * 100)}%`}</strong>{component.value !== null && <meter min={0} max={1} value={component.value} aria-label={`${tx(labels[key])}: ${item.display_name}`} />}<small>{tx("Выборка: ")}{number(component.sample_size)}</small>{component.reason && <p className="muted">{component.reason}</p>}</dd></div>; })}</dl>
+          <dl className="rating-components">{componentKeys.map(key => { const component = item.components[key]; return <div key={key}><dt>{key} · {tx(labels[key])}</dt><dd><strong>{component.value === null ? tx("Нет данных") : `${number(component.value * 100)}%`}</strong>{component.value !== null && <meter min={0} max={1} value={component.value} aria-label={`${tx(labels[key])}: ${item.display_name}`} />}<small>{tx("Выборка: ")}{number(component.sample_size)}</small>{component.reason && <p className="muted">{ratingReason(locale, component.reason)}</p>}</dd></div>; })}</dl>
           <p className="rating-weights">{totalWeight ? (tx("Веса доступных компонентов: ") + (available.map(key => `${key} ${number(weights[key] / totalWeight * 100)}%`).join(' · ')) + tx(". Компоненты без данных не участвуют в оценке.")) : tx("Доступных компонентов нет.")}</p>
         </article>;
       })}</div></section>)}<Limitations items={data.limitations} />

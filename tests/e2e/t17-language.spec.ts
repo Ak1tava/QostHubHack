@@ -32,7 +32,7 @@ test('T17 RU is the default; KK persists and localizes authored login errors wit
   await expect(page.getByRole('heading', { name: 'Вход', exact: true })).toBeVisible();
   await page.getByLabel('Логин', { exact: true }).fill('Войти');
   await page.getByLabel('Пароль или ПИН', { exact: true }).fill('synthetic-not-a-real-password');
-  await page.getByRole('button', { name: 'Қазақша', exact: true }).click();
+  await page.getByRole('button', { name: 'KZ', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('lang', 'kk');
   await expect(page.getByLabel('Логин', { exact: true })).toHaveValue('Войти');
   await expect(page.getByLabel('Құпиясөз немесе ПИН', { exact: true })).toHaveValue('synthetic-not-a-real-password');
@@ -42,7 +42,7 @@ test('T17 RU is the default; KK persists and localizes authored login errors wit
   await expect(page.getByRole('alert')).toContainText('Логин немесе құпиясөз қате.');
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('lang', 'kk');
-  await expect(page.getByRole('button', { name: 'Қазақша', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'KZ', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('button', { name: 'Кіру', exact: true })).toBeVisible();
   await mobileFits(page, 'login');
 });
@@ -50,7 +50,7 @@ test('T17 RU is the default; KK persists and localizes authored login errors wit
 test('T17 KK create and template report preserve user data, drafts, checks and speech choices across switches', async ({ page, browser }) => {
   test.setTimeout(90_000);
   await login(page, true);
-  await page.getByRole('button', { name: 'Қазақша', exact: true }).click();
+  await page.getByRole('button', { name: 'KZ', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Ауысым панелі', exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Ауысым панелі', exact: true })).toBeVisible();
@@ -65,7 +65,7 @@ test('T17 KK create and template report preserve user data, drafts, checks and s
   await expect(page.getByRole('textbox', { name: 'Описание работ', exact: true })).toHaveValue(suppliedDescription);
   await expect(page.getByRole('combobox', { name: 'Шаблон', exact: true })).toHaveValue('visible_leak');
   await expect(page.getByRole('combobox', { name: 'Язык речи', exact: true })).toHaveValue('ru');
-  await page.getByRole('button', { name: 'Қазақша', exact: true }).click();
+  await page.getByRole('button', { name: 'KZ', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Жұмыс сипаттамасы', exact: true })).toHaveValue(suppliedDescription);
   await expect(page.getByRole('combobox', { name: 'Сөйлеу тілі', exact: true })).toHaveValue('kk');
   await mobileFits(page, 'create-template');
@@ -87,7 +87,7 @@ test('T17 KK create and template report preserve user data, drafts, checks and s
     await expect(page.getByRole('alert')).toHaveText('Telegram әлі бапталмаған. Шеберге хабарласыңыз.');
     await page.getByRole('button', { name: 'RU', exact: true }).click();
     await expect(page.getByRole('alert')).toHaveText('Telegram пока не настроен. Обратитесь к мастеру.');
-    await page.getByRole('button', { name: 'Қазақша', exact: true }).click();
+    await page.getByRole('button', { name: 'KZ', exact: true }).click();
     await expect(page.getByRole('alert')).toHaveText('Telegram әлі бапталмаған. Шеберге хабарласыңыз.');
     await page.goto(`/orders/${id}`);
     await login(worker, false);
@@ -102,7 +102,7 @@ test('T17 KK create and template report preserve user data, drafts, checks and s
     const manualReport = 'Отчёты\nҚолмен енгізілген жұмыс сипаттамасы';
     await worker.getByRole('textbox', { name: 'Выполненные работы', exact: true }).fill(manualReport);
     await worker.locator('input[name="template-identify_leak"]').check();
-    await worker.getByRole('button', { name: 'Қазақша', exact: true }).click();
+    await worker.getByRole('button', { name: 'KZ', exact: true }).click();
     await expect(worker.getByRole('heading', { name: 'Орындалу есебі', exact: true })).toBeVisible();
     await expect(worker.getByRole('textbox', { name: 'Орындалған жұмыстар', exact: true })).toHaveValue(manualReport);
     await expect(worker.getByRole('group', { name: 'Үлгінің тексеру тізімі', exact: true })).toContainText('Ағудың көрінетін жері көрсетіліп, тіркелген.');
@@ -112,7 +112,7 @@ test('T17 KK create and template report preserve user data, drafts, checks and s
     await expect(voice).toHaveValue('kk');
     await voice.selectOption('ru');
     await worker.getByRole('button', { name: 'RU', exact: true }).click();
-    await worker.getByRole('button', { name: 'Қазақша', exact: true }).click();
+    await worker.getByRole('button', { name: 'KZ', exact: true }).click();
     await expect(voice).toHaveValue('ru');
     await expect(worker.getByRole('textbox', { name: 'Орындалған жұмыстар', exact: true })).toHaveValue(manualReport);
     await expect(worker.locator('input[name="template-identify_leak"]')).toBeChecked();

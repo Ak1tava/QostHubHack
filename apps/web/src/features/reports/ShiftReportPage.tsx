@@ -5,6 +5,7 @@ import { Limitations, ReportFilters, ReportPeriodDetails, ReportStatus } from '.
 import { ReportHeading } from './ReportHeading';
 import { MetricBars } from './MetricBars';
 import { Icon } from '../../components/Icon';
+import { shiftSummary } from './analyticsCopy';
 
 const counts = [
   { key: 'issued', label: 'Выдано', hint: 'Созданы в периоде', color: '' },
@@ -15,7 +16,7 @@ const counts = [
 ] as const;
 
 export function ShiftReportPage({ api, user }: { api: ApiClient; user: UserView }) {
-  const { tx } = useLocale();
+  const { tx, locale } = useLocale();
   const context = useReportContext(api, user, true);
   const report = useReport<ShiftReport>(api, '/api/v1/reports/shift', context.query);
   const data = context.query ? report.data : null;
@@ -28,12 +29,12 @@ export function ShiftReportPage({ api, user }: { api: ApiClient; user: UserView 
       <div className="report-chart-grid">
         <MetricBars title={tx("Наряды за период")} unit={tx("Наряды, шт.")} items={counts.map(item => ({ ...item, label: tx(item.label), value: data.counts[item.key] }))} caption={tx("Показатели пересекаются. Их сумма не равна общему числу нарядов.")} />
         <div className="report-panel workload-panel"><MetricBars title={tx("Длительности")} unit={tx("Время")} items={[
-          { label: tx("Работа"), value: data.workload.active_seconds, text: duration(data.workload.active_seconds), color: 'green' },
-          { label: tx("Паузы"), value: data.workload.pause_seconds, text: duration(data.workload.pause_seconds), color: 'amber' },
-          { label: tx("Приёмка"), value: data.workload.review_seconds, text: duration(data.workload.review_seconds) },
-        ]} /><dl className="downtime-stat"><div><dt>{tx("Простой оборудования")}</dt><dd>{data.downtime.has_data ? duration(data.downtime.seconds) : tx("Нет данных о простое")}</dd></div></dl><p className="chart-caption">{tx("Пересекающиеся интервалы одного оборудования объединены. Простой учитывается отдельно от времени работ.")}</p></div>
+          { label: tx("Работа"), value: data.workload.active_seconds, text: duration(data.workload.active_seconds, locale), color: 'green' },
+          { label: tx("Паузы"), value: data.workload.pause_seconds, text: duration(data.workload.pause_seconds, locale), color: 'amber' },
+          { label: tx("Приёмка"), value: data.workload.review_seconds, text: duration(data.workload.review_seconds, locale) },
+        ]} /><dl className="downtime-stat"><div><dt>{tx("Простой оборудования")}</dt><dd>{data.downtime.has_data ? duration(data.downtime.seconds, locale) : tx("Нет данных о простое")}</dd></div></dl><p className="chart-caption">{tx("Пересекающиеся интервалы одного оборудования объединены. Простой учитывается отдельно от времени работ.")}</p></div>
       </div>
-      <article className="report-panel report-summary"><Icon name="list" /><div><h3>{tx("Сводка")}</h3><p className="full-description">{data.summary}</p></div></article><Limitations items={data.limitations} />
+      <article className="report-panel report-summary"><Icon name="list" /><div><h3>{tx("Сводка")}</h3><p className="full-description">{shiftSummary(locale, data)}</p></div></article><Limitations items={data.limitations} />
     </>}
   </section>;
 }

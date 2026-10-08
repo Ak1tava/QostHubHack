@@ -7,6 +7,7 @@ import type { ApiClient, UserView } from '../../lib/api';
 import { localDateTime, utcDateTime } from '../../lib/time';
 import { useQuery } from '../../lib/useQuery';
 import { useCatalogs, useShift } from '../work-orders/data';
+import type { Locale } from '../../ui/i18n';
 
 export type ShiftReport = components['schemas']['ShiftReportResponse'];
 export type Rating = components['schemas']['RatingResponse'];
@@ -83,11 +84,11 @@ export function useReport<T>(api: ApiClient, path: keyof paths, query: Record<st
     : Promise.resolve(null), [api, path, key]), 'refresh');
 }
 
-export function duration(seconds: number): string {
+export function duration(seconds: number, locale: Locale = 'ru'): string {
   if (seconds > 0 && seconds < 1) return seconds < .01 ? '< 0,01 с' : `${number(seconds)} с`;
   const total = Math.max(0, Math.round(seconds));
   const hours = Math.floor(total / 3600), minutes = Math.floor(total % 3600 / 60), remainder = total % 60;
-  return [hours ? `${hours} ч` : '', minutes ? `${minutes} мин` : '', remainder || !total ? `${remainder} с` : ''].filter(Boolean).join(' ');
+  return [hours ? `${hours} ${locale === 'kk' ? 'сағ' : 'ч'}` : '', minutes ? `${minutes} мин` : '', remainder || !total ? `${remainder} с` : ''].filter(Boolean).join(' ');
 }
 
 export const number = (value: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(value);

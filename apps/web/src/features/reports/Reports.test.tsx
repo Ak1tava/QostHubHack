@@ -8,6 +8,8 @@ import { ShiftReportPage } from './ShiftReportPage';
 import { RatingPage } from './RatingPage';
 import { AnomaliesPage } from './AnomaliesPage';
 import type { ShiftReport, Rating, Anomalies } from './data';
+import { LanguageSelector, LocaleProvider } from '../../ui/locale';
+import type { Locale } from '../../ui/i18n';
 
 const master: UserView = { id: 'master', display_name: 'Мастер', role: 'master', brigade_id: null, shift_id: 'shift-1', specialty: null, grade: null };
 const worker: UserView = { ...master, id: 'own-worker', display_name: 'Исполнитель', role: 'worker', brigade_id: 'brigade-1', specialty: 'Слесарь' };
@@ -18,7 +20,7 @@ const anomalies: Anomalies = { period, limitations: ['Корреляция не 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
-afterEach(async () => { if (root) await act(async () => root.unmount()); container?.remove(); });
+afterEach(async () => { if (root) await act(async () => root.unmount()); container?.remove(); localStorage.clear(); });
 
 function client(report: unknown, requests: URL[] = [], reportStatus = 200, pending?: (url: URL) => Promise<Response> | undefined) {
   return new ApiClient(async input => {
@@ -32,11 +34,98 @@ function client(report: unknown, requests: URL[] = [], reportStatus = 200, pendi
     return pending?.(url) ?? json(report, reportStatus);
   });
 }
-async function mount(Page: typeof ShiftReportPage, api: ApiClient, user = master, path = '/') {
+async function mount(Page: typeof ShiftReportPage, api: ApiClient, user = master, path = '/', locale?: Locale) {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   container = document.createElement('div'); document.body.append(container); root = createRoot(container);
-  await act(async () => root.render(<MemoryRouter initialEntries={[path]}><Page api={api} user={user} /></MemoryRouter>));
+  if (locale) localStorage.setItem('naryadai.locale', locale);
+  const content = <MemoryRouter initialEntries={[path]}><Page api={api} user={user} /></MemoryRouter>;
+  await act(async () => root.render(locale ? <LocaleProvider><LanguageSelector />{content}</LocaleProvider> : content));
 }
+
+it('localizes the canonical shift summary and known limitations and restores original RU text', async () => {
+  const report = { ...shift, summary: 'Выдано 11, исполнено 7, закрыто 5. Просроченных за период: 3; отклонённых: 2. Нет данных о простое оборудования.', limitations: [
+    'У части нарядов отсутствует журнал: прошлые сроки и назначения восстановлены неполно.',
+    'Нет зарегистрированных интервалов простоя за период; это не подтверждает отсутствие простоя.',
+    'Уважительность отказов и внешние задержки не структурированы; скрытые штрафы не применяются.',
+    'Описание работ',
+  ] };
+  await mount(ShiftReportPage, client(report), master, '/', 'kk');
+  expect(container.querySelector('.report-summary p')!.textContent).toBe('Берілген 11, орындалған 7, жабылған 5. Кезеңде мерзімі өткен: 3; қабылданбаған: 2. Жабдықтың тоқтап тұруы туралы деректер жоқ.');
+  expect(container.textContent).toContain('1 сағ 1 мин 1 с');
+  expect(container.textContent).toContain('Кейбір нарядтардың журналы жоқ: бұрынғы мерзімдер мен тағайындаулар толық қалпына келтірілмеген.');
+  expect(container.textContent).toContain('Кезеңде тоқтап тұру аралықтары тіркелмеген; бұл тоқтап тұру болмағанын растамайды.');
+  expect(container.textContent).toContain('Бас тартудың негізділігі мен сыртқы кідірістер құрылымдалмаған; жасырын айыптар қолданылмайды.');
+  expect(container.querySelector('.notice li:last-child')!.textContent).toBe('Описание работ');
+  await act(async () => [...container.querySelectorAll('button')].find(button => button.textContent === 'RU')!.click());
+  expect(container.querySelector('.report-summary p')!.textContent).toBe(report.summary);
+  expect(container.querySelector('.notice li')!.textContent).toBe(report.limitations[0]);
+});
+
+it('keeps arbitrary or inconsistent shift summaries verbatim and preserves downtime precision', async () => {
+  const report = { ...shift, downtime: { has_data: true, seconds: 4500 }, summary: 'Выдано 11, исполнено 7, закрыто 5. Просроченных за период: 3; отклонённых: 2. Простой оборудования: 1.25 ч.' };
+  await mount(ShiftReportPage, client(report), master, '/', 'kk');
+  expect(container.querySelector('.report-summary p')!.textContent).toContain('Жабдықтың тоқтап тұруы: 1.25 сағ.');
+  await act(async () => root.unmount()); container.remove();
+  const unknown = 'Описание работ — произвольный текст ИИ';
+  await mount(ShiftReportPage, client({ ...report, summary: unknown }), master, '/', 'kk');
+  expect(container.querySelector('.report-summary p')!.textContent).toBe(unknown);
+  await act(async () => root.unmount()); container.remove();
+  const inconsistent = report.summary.replace('Выдано 11', 'Выдано 12');
+  await mount(ShiftReportPage, client({ ...report, summary: inconsistent }), master, '/', 'kk');
+  expect(container.querySelector('.report-summary p')!.textContent).toBe(inconsistent);
+});
+
+it('preserves Python rounded downtime hours and rejects values inconsistent with DTO seconds', async () => {
+  const report = { ...shift, downtime: { has_data: true, seconds: 450 }, summary: 'Выдано 11, исполнено 7, закрыто 5. Просроченных за период: 3; отклонённых: 2. Простой оборудования: 0.12 ч.' };
+  await mount(ShiftReportPage, client(report), master, '/', 'kk');
+  expect(container.querySelector('.report-summary p')!.textContent).toContain('Жабдықтың тоқтап тұруы: 0.12 сағ.');
+  await act(async () => root.unmount()); container.remove();
+  const inconsistent = report.summary.replace('0.12 ч.', '0.14 ч.');
+  await mount(ShiftReportPage, client({ ...report, summary: inconsistent }), master, '/', 'kk');
+  expect(container.querySelector('.report-summary p')!.textContent).toBe(inconsistent);
+});
+
+it('localizes unavailable rating reasons and limitations while preserving unknown reasons and worker data', async () => {
+  const report: Rating = { ...rating, limitations: [
+    'Доступные веса нормированы: Q 0.50, T 0.25; R/V неизвестны.',
+    'T использует исторический срок: подтверждённые внешние задержки не структурированы.',
+    'Оценки ИИ и свободный текст причин не подтверждают качество или вину исполнителя.',
+  ], items: [{ ...rating.items[0], display_name: 'Описание работ', components: {
+    Q: { value: null, sample_size: 0, reason: 'Нет окончательных оценок мастера.' },
+    T: { value: null, sample_size: 0, reason: 'Нет принятых сдач с известным сроком.' },
+    R: { value: null, sample_size: 0, reason: 'Окно наблюдения 7 дней не завершено для 5 работ. Нет структурированного подтверждения возврата или повтора по причине качества.' },
+    V: { value: null, sample_size: 0, reason: 'Нет нормативных часов работ и исторических доступных часов смен.' },
+  } }, { ...rating.items[0], worker_id: 'unknown-reasons', components: { ...rating.items[0].components, R: { value: null, sample_size: 0, reason: 'Описание работ' } } }] };
+  await mount(RatingPage, client(report), master, '/', 'kk');
+  expect(container.textContent).toContain('Шебердің қорытынды бағалары жоқ.');
+  expect(container.textContent).toContain('Мерзімі белгілі қабылданған жұмыстар жоқ.');
+  expect(container.textContent).toContain('5 жұмыс үшін 7 күндік бақылау кезеңі аяқталмаған. Сапа себебінен қайтару немесе қайталау туралы құрылымдалған растау жоқ.');
+  expect(container.textContent).toContain('Жұмыстардың нормативтік сағаттары мен ауысымдардың тарихи қолжетімді сағаттары жоқ.');
+  expect(container.textContent).toContain('Қолжетімді салмақтар нормаланған: Q 0.50, T 0.25; R/V белгісіз.');
+  expect(container.textContent).toContain('T тарихи мерзімді пайдаланады: расталған сыртқы кідірістер құрылымдалмаған.');
+  expect(container.textContent).toContain('ЖИ бағалары мен себептердің еркін мәтіні сапаны немесе орындаушының кінәсін растамайды.');
+  expect(container.querySelector('.rating-person h4')!.textContent).toBe('Описание работ');
+  expect(container.querySelectorAll('.rating-components')[1].textContent).toContain('Описание работ');
+});
+
+it('localizes only known anomaly system copy and retains arbitrary text and evidence IDs', async () => {
+  const limitation = 'Совпадение во времени — сигнал для проверки причины, а не доказательство вины исполнителя.';
+  const report: Anomalies = { ...anomalies, limitations: [
+    'Повтор шифра и расход анализируются только по окончательно принятым отчётам.',
+    'Без сопоставимой нормы превышение расхода не определяется.', limitation,
+  ], items: [{ ...anomalies.items[0], title: 'Повтор одного шифра на оборудовании', description: 'Два принятых ремонта одного оборудования с одинаковым окончательным шифром за 7 дней.', limitations: [limitation] },
+    { ...anomalies.items[0], id: 'unknown', title: 'Описание работ', description: 'Текст пользователя без перевода', limitations: ['Описание работ'] }] };
+  await mount(AnomaliesPage, client(report), master, '/', 'kk');
+  expect(container.textContent).toContain('Жабдықта бір кодтың қайталануы');
+  expect(container.textContent).toContain('7 күн ішінде бір жабдықтың бірдей қорытынды кодпен қабылданған екі жөндеуі.');
+  expect(container.textContent).toContain('Уақыт бойынша сәйкес келу — себепті тексеру сигналы, орындаушы кінәсінің дәлелі емес.');
+  expect(container.textContent).toContain('Кодтың қайталануы мен шығын тек түпкілікті қабылданған есептер бойынша талданады.');
+  expect(container.textContent).toContain('Салыстыруға болатын норма болмаса, артық шығын анықталмайды.');
+  expect(container.querySelectorAll('.insight-card > h3')[1].textContent).toBe('Описание работ');
+  expect(container.textContent).toContain('Текст пользователя без перевода');
+  expect(container.querySelectorAll('.insight-card .notice li')[1].textContent).toBe('Описание работ');
+  expect([...container.querySelectorAll('.insight-evidence a')].map(link => link.getAttribute('href'))).toContain('/orders/order-1');
+});
 async function choose(name: string, value: string) {
   await act(async () => { const field = container.querySelector<HTMLSelectElement>(`select[name="${name}"]`)!; field.value = value; field.dispatchEvent(new Event('change', { bubbles: true })); });
 }

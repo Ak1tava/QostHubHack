@@ -1,7 +1,7 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
-import { LocaleProvider, useLocale, localizedTemplate, localizeError } from './locale';
+import { LanguageSelector, LocaleProvider, useLocale, localizedTemplate, localizeError } from './locale';
 import { ApiClient, ApiError, type UserView } from '../lib/api';
 import { MemoryRouter } from 'react-router';
 import { OrderDetailsPage } from '../features/work-orders/OrderDetailsPage';
@@ -27,6 +27,15 @@ function Switch() {
   return <button onClick={() => setLocale(locale === 'ru' ? 'kk' : 'ru')}>switch</button>;
 }
 async function toggle() { await act(async () => container.querySelector('button')!.click()); }
+
+it('shows RU/KZ labels while storing the Kazakh locale as kk', async () => {
+  await act(async () => root.render(<LocaleProvider><LanguageSelector /></LocaleProvider>));
+  const buttons = [...container.querySelectorAll('button')];
+  expect(buttons.map(button => button.textContent)).toEqual(['RU', 'KZ']);
+  await act(async () => buttons[1].click());
+  expect(document.documentElement.lang).toBe('kk');
+  expect(localStorage.getItem('naryadai.locale')).toBe('kk');
+});
 
 it('defaults to Russian and preserves entered login while switching and after remount', async () => {
   const render = () => <LocaleProvider><Switch /><LoginPage busy={false} error={null} onLogin={async () => {}} /></LocaleProvider>;

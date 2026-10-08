@@ -57,7 +57,7 @@ export function LanguageSelector() {
   const { locale, setLocale, t } = useLocale();
   return <div className="language-selector" role="group" aria-label={t('language')}>
     <button type="button" lang="ru" aria-pressed={locale === 'ru'} onClick={() => setLocale('ru')}>RU</button>
-    <button type="button" lang="kk" aria-pressed={locale === 'kk'} onClick={() => setLocale('kk')}>Қазақша</button>
+    <button type="button" lang="kk" aria-pressed={locale === 'kk'} onClick={() => setLocale('kk')}>KZ</button>
   </div>;
 }
 const templates: Record<string, { title: string; instructions: string[]; checklist: Record<string, string> }> = {

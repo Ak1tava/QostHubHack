@@ -4,6 +4,7 @@ import type { UserView } from '../../lib/api';
 import { displayTime, localDateTime, utcDateTime } from '../../lib/time';
 import { defaultPeriod, type ShiftReport, type useReportContext } from './data';
 import { Icon } from '../../components/Icon';
+import { analyticsLimitation } from './analyticsCopy';
 
 type Context = ReturnType<typeof useReportContext>;
 
@@ -80,6 +81,6 @@ export function ReportPeriodDetails({ period }: { period: ShiftReport['period'] 
 }
 
 export function Limitations({ items }: { items: string[] }) {
-  const { tx } = useLocale();
-  return items.length > 0 ? <aside className="notice"><h3>{tx("Ограничения данных")}</h3><ul>{items.map((item, index) => <li key={`${index}:${item}`}>{item}</li>)}</ul></aside> : null;
+  const { tx, locale } = useLocale();
+  return items.length > 0 ? <aside className="notice"><h3>{tx("Ограничения данных")}</h3><ul>{items.map((item, index) => <li key={`${index}:${item}`}>{analyticsLimitation(locale, item)}</li>)}</ul></aside> : null;
 }
