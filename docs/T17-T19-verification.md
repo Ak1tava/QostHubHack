@@ -44,3 +44,16 @@ T17: исходные `9cb97e5`/`71998af`, исправления `a2b4c49` (и�
 Терминологию KK должен проверить человек; T17 сохраняет REVIEW. MOCK-резерв и настоящий ответ на синтетических рисунках не доказывают качество проверки производственных фотографий; решение о закрытии принимает мастер. Замеры≤60с/≤6 действий, обновления≤5с и мобильной загрузки фото≤10с отложены пользователем. ASR на новом живом стенде не настроен; T16 не переоценивается этой проверкой. Quick Tunnel требует включённого компьютера и процессов; постоянный VPS/домен не добавлялись.
 
 PostgreSQL на loopback55486, отдельные TEST/MIGRATION/browser/live databases. Migrations/check/seed PASS. Тестовые API/no-key consumer/fake-ASR отделены от live настроек. Первый pg_ctl в песочнице получил Windows restricted token87; собственный кластер запущен с разрешённым выходом из песочницы. Vite/Playwright также потребовали разрешения на дочерние процессы. Пароли, private photos, сессии, дампы и локальные runtime-скрипты находятся только в ignored .tooling/t17-t19 и не включены в Git.
+
+## Дополнение по пользовательским скриншотам — 2026-10-08
+
+Первая интеграция `main@4db0ab6`: [CI SUCCESS](https://github.com/Ak1tava/QostHubHack/actions/runs/37790533204). Последующее исправление: frontend `dfce191`, migration0007 `4477680`, Telegram `542930b`, сгенерированные контракты `4fbd999`.
+
+- Известные серверные сводки, ограничения, причины R/V и пояснения закономерностей переведены на KK; пользовательский/неизвестный/ИИ текст не переводится. Видимые переключатели RU/KZ, внутренний код `kk` сохранён. Регрессия округления Python0.12 против JS0.13 проверена.
+- Telegram: `/language`, кнопки RU/KZ, команды `/ru` и `/kz`; язык хранится в binding и используется в пяти типах уведомлений и кнопке наряда. Повторное связывание сохраняет выбор. Private/active/owner/dedup проверяются сервером; исправлена гонка конкурентного переноса binding. Служебный ответ после commit возвращается через webhook sendMessage; API200 не доказывает получение сообщения пользователем.
+- Независимый интеграционный `pytest` всех Telegram suites, deadlines и migration roundtrip: **107 passed in 55.86s**. `vitest run`: **143 passed**,22files; tsc app/E2E и Vite/PWA build PASS. OpenAPI/TS сгенерированы, typecheck и diff-check PASS.
+- `playwright test --retries=0 --grep 'T17 '`: **2 passed in 3.4s**; locale persistence, поля/черновики/checklist и voice selection. Полный E2E набор повторяется в CI; предыдущий полный набор PASS на main4db0ab6.
+- Публичный HTTPS: реальный вход ограниченного demo master, три экрана Reports/Rating/Anomalies, KK persistence и возврат RU, ширина390px без горизонтального переполнения — PASS; три скриншота просмотрены. После обновления API повторно **19 HTTPS/session/CSRF/WSS проверок PASS**.
+- Перед migration0007 сохранены приватный PostgreSQL dump, фото и ledger. Перезапущены только API и notification worker; PID AI consumer, Nginx и tunnel сохранены. Фото/ledger побайтово совпали с резервом; потолок $10, учтено $0.0272591. Новый платный вызов не выполнялся. getMe и getWebhookInfo PASS, pending0, ошибок webhook нет.
+
+Независимое ревью двух дополнений и миграции: открытых P1/P2 нет. Команды/проверки отдельных задач: [T17](T17-locale-completion-verification.md), [Telegram](T18-telegram-language-verification.md). Текущие статусы см. plans.md; лингвистическая проверка человеком остаётся.
