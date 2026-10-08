@@ -20,6 +20,7 @@ from app.modules.ai_review.schemas import (
 )
 from app.modules.work_orders.models import AIReview
 from app.seed_demo import TABLES, _png, build_dataset, validate_target
+from app.prepared_judge_demo import PreparedJudgeProvider, prepare_dataset, prepared_png, save_prepared_reviews
 
 NAMESPACE = UUID("80a492aa-354c-4462-93f5-539d110193db")
 
@@ -147,12 +148,18 @@ def build_judge_dataset(cohort: str, as_of: date) -> dict:
     return dataset
 
 
-def setup_judge_demo(db: Session, *, cohort: str, as_of: date, master_password: str, worker_password: str, photo_root: Path) -> str:
+def setup_judge_demo(db: Session, *, cohort: str, as_of: date, master_password: str, worker_password: str, photo_root: Path, scenario_set: str = "legacy-v1") -> str:
     """Caller commits; repeats preserve passwords and judge actions, never widen access."""
     validate_target(db.get_bind().url.render_as_string(hide_password=False))
     if any(not 12 <= len(p) <= 128 for p in (master_password, worker_password)) or master_password == worker_password:
         raise ValueError("Два разных пароля длиной 12–128 символов обязательны")
+    if scenario_set not in {"legacy-v1", "prepared-v2"}:
+        raise ValueError("Неизвестная версия демонстрационных сценариев")
+    if scenario_set == "prepared-v2":
+        cohort += "-prepared-v2"
     dataset = build_judge_dataset(cohort, as_of)
+    if scenario_set == "prepared-v2":
+        prepare_dataset(dataset)
     tables = {**TABLES, "ai_reviews": AIReview}
     db.execute(text("SELECT pg_advisory_xact_lock(718018)"))
     expected = dataset["users"]
@@ -170,6 +177,11 @@ def setup_judge_demo(db: Session, *, cohort: str, as_of: date, master_password: 
                     raise ValueError("Частичный набор судей; setup не восстанавливает изменённые данные")
         if any(not (photo_root / p["storage_key"]).is_file() for p in dataset["photos"]):
             raise ValueError("Фото судей отсутствуют; восстановите резервную копию")
+        if scenario_set == "prepared-v2":
+            from app.modules.ai_review.jobs_models import ReviewJob
+            for report in dataset["submissions"]:
+                if not db.scalar(select(AIReview.id).where(AIReview.submission_id == report["id"])) or not db.scalar(select(ReviewJob.id).where(ReviewJob.submission_id == report["id"])):
+                    raise ValueError("Частичный набор судей; setup не восстанавливает изменённые данные")
         return "unchanged"
     # Reject collisions before any row or file is created.
     for name, model in tables.items():
@@ -203,7 +215,9 @@ def setup_judge_demo(db: Session, *, cohort: str, as_of: date, master_password: 
             path.parent.mkdir(parents=True, exist_ok=True)
             with path.open("xb") as handle:
                 created_files.append(path)
-                handle.write(_png())
+                handle.write(prepared_png(photo) if scenario_set == "prepared-v2" else _png())
+        if scenario_set == "prepared-v2":
+            save_prepared_reviews(db, dataset, photo_root)
     except Exception:
         cleanup(db)
         raise
@@ -215,20 +229,23 @@ def main():
     parser.add_argument("--confirm-demo", action="store_true", required=True)
     parser.add_argument("--cohort", required=True)
     parser.add_argument("--as-of", type=date.fromisoformat, required=True)
+    parser.add_argument("--scenario-set", choices=["legacy-v1", "prepared-v2"], default="legacy-v1")
     args = parser.parse_args()
     try:
         if not settings.database_url:
             raise ValueError("DATABASE_URL не задан")
         validate_target(settings.database_url.get_secret_value())
-        build_judge_dataset(args.cohort, args.as_of)
+        cohort = args.cohort + ("-prepared-v2" if args.scenario_set == "prepared-v2" else "")
+        build_judge_dataset(cohort, args.as_of)
         master_password = getpass("Пароль мастера судей (12–128 символов): ")
         worker_password = getpass("Другой пароль исполнителя судей (12–128 символов): ")
         with Session(get_engine()) as db:
-            result = setup_judge_demo(db, cohort=args.cohort, as_of=args.as_of, master_password=master_password, worker_password=worker_password, photo_root=settings.photo_storage_path)
+            result = setup_judge_demo(db, cohort=args.cohort, as_of=args.as_of, master_password=master_password, worker_password=worker_password, photo_root=settings.photo_storage_path, scenario_set=args.scenario_set)
             db.commit()
     except ValueError as exc:
         parser.error(str(exc))
-    print(f"T18: {result}; 5 синтетических нарядов, MOCK test-provider; логины judge-{args.cohort}-master/worker. Пароли не выводятся.")
+    count = 3 if args.scenario_set == "prepared-v2" else 5
+    print(f"T18: {result}; {count} синтетических нарядов, MOCK, {args.scenario_set}; логины judge-{cohort}-master/worker. Пароли не выводятся.")
 
 
 if __name__ == "__main__":

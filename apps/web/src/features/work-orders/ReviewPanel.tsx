@@ -12,6 +12,7 @@ export function ReviewPanel({ order }: { order: WorkOrderDetail }) {
   function evidence(ref: string) {
     const photoId = ref.startsWith('photo:') ? ref.slice(6) : '';
     if (photoId && order.submission?.after_photo_ids?.includes(photoId)) return <a href={`/api/v1/photos/${encodeURIComponent(photoId)}`}>{tx("Фото после работы")}</a>;
+    if (photoId && order.issuance_photos?.some(photo => photo.id === photoId)) return <a href={`/api/v1/photos/${encodeURIComponent(photoId)}`}>{tx("Фото до работы")}</a>;
     if (ref === 'work_description' && order.submission) return <a href={`#submission-${order.submission.id}`}>{tx("Сохранённый отчёт")}</a>;
     if (ref === 'problem') return <a href={`#problem-${order.id}`}>{tx("Заявка")}</a>;
     return <span>{ref}</span>;
@@ -22,6 +23,7 @@ export function ReviewPanel({ order }: { order: WorkOrderDetail }) {
     {order.review_status && <p role="status">{tx(reviewStates[order.review_status])}</p>}
     {review && result && <>
       {review.is_mock && <p className="badge">{tx("MOCK · демонстрационный результат")}</p>}
+      {review.is_mock && review.model === 't18-prepared-demo-provider-v2' && <p className="badge">{tx("Подготовленный демонстрационный результат")}</p>}
       <p><StatusBadge domain="verdict" status={result.verdict} />{result.score != null ? (tx(" · Оценка ") + (result.score) + "/5") : tx(" · Оценка не выставлена")}</p>
       <ul>{result.findings.map((finding, index) => <li key={index}><p className="full-description">{finding.message}</p>{finding.evidence_refs.length > 0 && <ul aria-label={tx("Доказательства")}>{finding.evidence_refs.map((ref, position) => <li key={position}>{evidence(ref)}</li>)}</ul>}</li>)}</ul>
       {!!result.missing_evidence.length && <p>{tx("Недостающие доказательства: ")}{result.missing_evidence.join(', ')}</p>}
