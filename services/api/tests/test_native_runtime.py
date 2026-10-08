@@ -468,3 +468,45 @@ def test_consumer_readiness_failure_rolls_back_start(configuration, name):
         control.start(notifications=True, live_ai=True)
     assert not backend.running
     assert control.status() == {}
+
+
+@pytest.mark.parametrize('previous_tunnel', [False, True])
+def test_new_managed_tunnel_refused_while_owned_origin_uses_previous_hostname(configuration, previous_tunnel):
+    module, backend = runtime(), FakeProcesses()
+    control = module.Controller(configuration, backend)
+    control.start(tunnel=previous_tunnel, notifications=True, live_ai=True)
+    if previous_tunnel:
+        record = control.state()['tunnel']['identity']
+        backend.running.pop(record['pid'])
+    count = len(backend.started)
+    snapshot = (control.state_dir / 'runtime.json').read_bytes()
+    with pytest.raises(RuntimeError, match='stop.*start'):
+        control.start(tunnel=True)
+    assert len(backend.started) == count
+    assert not backend.stopped
+    assert (control.state_dir / 'runtime.json').read_bytes() == snapshot
+    assert control.status()['api'] == 'running'
+
+
+def test_managed_tunnel_recovery_after_explicit_stop(configuration):
+    module, backend = runtime(), FakeProcesses()
+    control = module.Controller(configuration, backend)
+    control.start()
+    control.stop(keep_db=True)
+    control.start(tunnel=True)
+    assert control.status() == {name: 'running' for name in ('db', 'tunnel', 'asr', 'api', 'nginx')}
+
+
+def test_tunnel_refusal_cli_explains_safe_recovery_without_secret_details(configuration, tmp_path, monkeypatch, capsys):
+    module, backend = runtime(), FakeProcesses()
+    control = module.Controller(configuration, backend)
+    control.start()
+    config_file = tmp_path / 'native.json'
+    config_file.write_text(json.dumps(configuration))
+    monkeypatch.setattr(module, 'Controller', lambda _: control)
+    monkeypatch.setattr(module.sys, 'argv', ['native_runtime.py', 'start', '--config', str(config_file), '--tunnel'])
+    assert module.main() == 2
+    error = capsys.readouterr().err
+    assert 'hostname' in error and 'stop --config' in error and 'then start' in error
+    assert 'synthetic-secret' not in error
+    assert not backend.stopped

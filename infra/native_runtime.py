@@ -23,6 +23,10 @@ CONFIG_KEYS = {'repo', 'state_dir', 'env_file', 'python', 'postgres_bin', 'postg
     'manage_postgres', 'public_base_url'}
 
 
+class TunnelRecoveryRequired(RuntimeError):
+    """Safe, actionable refusal before a new hostname can leave an old origin running."""
+
+
 def write_json(path, value):
     temporary = path.with_suffix('.tmp')
     with temporary.open('w', encoding='utf-8') as stream:
@@ -374,6 +378,10 @@ class Controller:
                 keys = (set(before) | set(self.config)) - {'public_base_url', 'ready_timeout_seconds'}
                 if self.owned(record) and any(before.get(key) != self.config.get(key) for key in keys):
                     raise RuntimeError('Runtime configuration changed; stop owned processes first')
+            if tunnel and not ('tunnel' in state and self.owned(state['tunnel'])):
+                dependents = ('api', 'nginx', 'notifications', 'reviews')
+                if any(name in state and self.owned(state[name]) for name in dependents):
+                    raise TunnelRecoveryRequired('Managed tunnel replacement requires stop followed by start')
             if not self.config.get('manage_postgres', True):
                 self.backend.wait('db', self.config, load_environment(self.config, 'db'))
             ports = dict(db='postgres_port', asr='asr_port', api='api_port', nginx='web_port')
@@ -501,6 +509,10 @@ def main():
             parser.error('start, stop or status required')
         print(json.dumps(control.status(), ensure_ascii=False))
         return 0
+    except TunnelRecoveryRequired:
+        print('Managed tunnel hostname may change. Run stop --config <config> '
+              '(optionally --keep-db), then start with the required flags.', file=sys.stderr)
+        return 2
     except Exception:
         # Settings/SDK/subprocess errors may include credential-bearing values.
         print('Runtime command failed; inspect private logs/configuration (credentials suppressed)', file=sys.stderr)

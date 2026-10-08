@@ -26,6 +26,8 @@ $nativeConfig = 'C:/path/to/qoshackhub/.tooling/native-runtime-config.json'
 
 Consumers имеют startup handshake с PID и новым случайным token каждого запуска. Budgeted worker сообщает готовность только после file lock, проверки ledger/frozen, DB lock и проверки владения; notification worker — после успешного первого outbox commit, до Telegram send. `status` до подтверждения возвращает `starting`, а `start` ждёт подтверждения и живого исходного процесса. Старый marker либо вышедший процесс не подтверждает новый запуск; timeout приводит к rollback. Docker entry добавляет API package path явно, не зависит от `PYTHONPATH`/текущего каталога.
 
+Если managed Quick Tunnel умер, а свои API/Nginx/consumers ещё живы, новый `start --tunnel` отказывает до создания нового tunnel: hostname может измениться, а прежний origin продолжит использовать старый адрес. Такое же правило действует при добавлении managed tunnel к уже работающему origin. Явное восстановление: `stop --config $nativeConfig --keep-db` → `start --config $nativeConfig --tunnel` с нужными consumer flags. Внешний tunnel без `--tunnel` остаётся вне этого правила и не останавливается launcher.
+
 ## Mapping существующего стенда
 
 Пути относительно основного checkout `C:/Users/white/Documents/ChatGPT/qoshackhub`:
@@ -101,3 +103,5 @@ Copy-Item -LiteralPath "$nativeBackup/budget" -Destination "$nativeRestoreRoot/b
 Фактическая scoped-проверка 2026-10-08: reusable Python `.worktrees/t13-t16-delivery/services/api/.venv/Scripts/python.exe`, команда выше с `--tb=short -p no:cacheprovider --basetemp=.tooling/runtime-tests-profile-green`: **23 passed**. Parsing/merge двух Compose YAML подтвердил: `live-ai` включает budgeted consumer и исключает ordinary, base сохраняет keyless CI worker. `git diff --check` — exit 0. Docker runtime не запускался; live-процессы/платные вызовы/Telegram не затрагивались.
 
 После reviewer fixes: scoped runtime/tunnel suite — **38 passed**, включая isolated Docker package bootstrap, устаревший marker/PID, frozen mismatch/file lock/DB lock и rollback consumers. Из `services/api` команда `python -m pytest tests/test_native_runtime.py tests/test_tunnel_config.py tests/test_budgeted_worker.py -k 'not amendment and not database_lock_loss and not live_original_session and not closed_original and not lock_loss_after_reservation' -q --tb=short -p no:cacheprovider --basetemp=../../.tooling/runtime-review-regression2` — **50 passed, 12 deselected**. PostgreSQL-only проверки остаются интегратору: в scoped среде `TEST_DATABASE_URL` не настроен.
+
+После managed tunnel recovery fix та же combined-команда с `--basetemp=../../.tooling/runtime-tunnel-green1` — **54 passed, 12 deselected**; дополнительные проверки покрывают отказ до нового hostname, отсутствие побочных эффектов, явное stop/start и безопасную CLI-инструкцию восстановления.
