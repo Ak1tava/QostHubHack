@@ -2,6 +2,8 @@
 
 2026-10-08. Владелец A / Codex; база `cd9bc97`, проверенный code [`63bb120`](https://github.com/Ak1tava/QostHubHack/commit/63bb120). Ветка `codex/t12-t15` интегрирована в main fast-forward через `ededbe2`; пользователь разрешил интеграцию и push main после проверок. T12 DONE, T15 REVIEW с перечисленными ниже оставшимися данными.
 
+**[CI main `798081f` — SUCCESS](https://github.com/Ak1tava/QostHubHack/actions/runs/37781852772):** API1711/Vitest128/E2E34/T15validator8, целевые lifecycle182/T08-T10 70/Telegram68 PASS. Контракты, build, миграции, Compose/Nginx/recovery, новый reset login counters, оба worker/restart и protected-photo persistence после пересоздания API PASS. После этого изменены только Markdown-отметки о проверках.
+
 ## Результат
 
 T12: два фиксированных шаблона `visible_leak` и `visible_element`, version 1. При создании сервер сохраняет независимый snapshot. Все три обязательных ответа и по одному фото до/после проверяются до записи отчёта, материалов, событий и receipt. Сохранённые ответы доступны исполнителю и мастеру; неполный шаблонный отчёт не допускается к приёмке. Legacy payload/receipt совместимы; QR и голосовые черновики сохраняются. Миграция0006 добавляет только snapshot/ответы.
