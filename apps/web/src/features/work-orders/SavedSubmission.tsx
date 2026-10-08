@@ -23,7 +23,9 @@ export function SavedSubmission({ api, submission, template: source }: { api: Ap
       const answer = submission.template_answers?.find(answer => answer.id === item.id);
       return <li key={item.id}>{item.label}: {answer?.checked ? tx("Выполнено") : tx("Не подтверждено")}</li>;
     })}</ul></section>}
-    {submission.comment && <p>{submission.comment}</p>}
+    {submission.comment && (submission.comment === 'Синтетическая история, не производственные сведения'
+      ? <details><summary>{tx('Происхождение отчёта')}</summary><p>{submission.comment}</p></details>
+      : <p>{submission.comment}</p>)}
     {!!submission.missing_evidence?.length && <p>{tx("Недостающие доказательства: ")}{submission.missing_evidence.map(item => tx(evidenceLabels[item] ?? "Дополнительное подтверждение")).join(', ')}</p>}
     {catalogs.error && <p role="alert">{tx("Справочники отчёта недоступны. ")}<button type="button" onClick={catalogs.reload}>{tx("Обновить справочники")}</button></p>}
     <p className="muted">{tx("Отчёт сохранён и не редактируется.")}</p>

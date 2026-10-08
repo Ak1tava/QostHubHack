@@ -13,6 +13,7 @@ it('cleans only known fixture metadata without changing arbitrary user text', ()
   expect(displayFaultCode('T18-jury-2026-F01')).toBe('F01');
   expect(displayFaultCode('T09-7-2026-10-08-F01')).toBe('F01');
   expect(displayFaultCode('T18-authored-custom')).toBe('T18-authored-custom');
+  expect(displayFaultCode('T18-jury-2026-prepared-v2-03')).toBe('03');
 });
 
 it.each([

@@ -22,7 +22,7 @@ it('shows immutable report with catalog names, units, protected photos and Russi
 it('renders persisted answers with labels from the issued snapshot', async () => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   const api = new ApiClient(async () => new Response(JSON.stringify({ items: [], total: 0 }), { headers: { 'Content-Type': 'application/json' } }));
-  const submission: Submission = { id: 'report', work_order_id: 'order', worker_id: 'worker', revision: 1, assignment_version: 1, work_description: '[T18 СИНТЕТИКА] Устранено', fault_code_id: 'code', comment: null, no_materials_used: true, submitted_at: '2026-10-08T10:00:00Z', template_answers: [{ id: 'identify_leak', checked: true }] };
+  const submission: Submission = { id: 'report', work_order_id: 'order', worker_id: 'worker', revision: 1, assignment_version: 1, work_description: '[T18 СИНТЕТИКА] Устранено', fault_code_id: 'code', comment: 'Синтетическая история, не производственные сведения', no_materials_used: true, submitted_at: '2026-10-08T10:00:00Z', template_answers: [{ id: 'identify_leak', checked: true }] };
   const container = document.createElement('div'); const root = createRoot(container);
   try {
     await act(async () => root.render(<SavedSubmission api={api} submission={submission} template={leakTemplate} />));
@@ -31,5 +31,8 @@ it('renders persisted answers with labels from the issued snapshot', async () =>
     expect(container.querySelector('input')).toBeNull();
     expect(container.querySelector('.full-description')?.textContent).toBe('Устранено');
     expect(submission.work_description).toBe('[T18 СИНТЕТИКА] Устранено');
+    expect(container.querySelector('details')?.textContent).toContain('Синтетическая история, не производственные сведения');
+    expect(container.querySelector('details')?.open).toBe(false);
+    expect(submission.comment).toBe('Синтетическая история, не производственные сведения');
   } finally { await act(async () => root.unmount()); }
 });
