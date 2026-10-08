@@ -41,7 +41,7 @@ test('no-key review permits explained rework and explicit manual acceptance with
     await login(worker, false); await worker.goto(`/orders/${id}/execute`);
     await action(worker, 'Принять'); await action(worker, 'Начать работу');
     await report(worker, 'Выполнен осмотр насоса, соединения подтянуты');
-    const panel = page.getByRole('region', { name: 'Результат проверки', exact: true });
+    const panel = page.getByRole('region', { name: 'ИИ-проверка работы', exact: true });
     await expect(panel).toContainText('Проверка недоступна', { timeout: 20_000 });
     expect((await (await page.request.get(`/api/v1/work-orders/${id}`)).json()).ai_review).toBeNull();
     const form = page.getByRole('form', { name: 'Приёмка мастером', exact: true });
@@ -49,7 +49,7 @@ test('no-key review permits explained rework and explicit manual acceptance with
     await expect(form.getByRole('button', { name: 'Сохранить решение', exact: true })).toBeDisabled();
     await form.locator('textarea[name="decision_reason"]').fill('Повторно проверить соединение после пробного запуска');
     await form.getByRole('button', { name: 'Сохранить решение', exact: true }).click();
-    await expect(worker.getByRole('region', { name: 'Результат проверки', exact: true })).toContainText('Повторно проверить соединение после пробного запуска');
+    await expect(worker.getByRole('region', { name: 'ИИ-проверка работы', exact: true })).toContainText('Повторно проверить соединение после пробного запуска');
     await expect(worker.getByRole('form', { name: 'Приёмка мастером', exact: true })).toHaveCount(0);
     await action(worker, 'Начать доработку'); await report(worker, 'Соединение проверено после пробного запуска, течи нет');
     await expect(page.getByRole('region', { name: 'Предыдущий отчёт', exact: true })).toContainText('Соединение проверено после пробного запуска, течи нет');

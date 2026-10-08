@@ -32,18 +32,18 @@ export function LoginPage({ busy, error, onLogin, profiles = [], onJudgeLogin }:
       <p>{tx('Выберите профиль')}</p>
       {profiles.map(profile => <button className="primary" key={profile.code} type="button" disabled={busy || !!retryIn} onClick={() => void onJudgeLogin?.(profile.code)}>{tx(profileLabels[profile.code])}</button>)}
     </div>}
-    <p>{tx("Введите логин и пароль или ПИН.")}</p>
+    {!profiles.length && <><p>{tx("Введите логин и пароль или ПИН.")}</p>
     <form onSubmit={submit}>
       <label htmlFor="login">{tx("Логин")}</label>
       <input id="login" name="login" autoComplete="username" autoCapitalize="none" value={login} onChange={event => setLogin(event.target.value)} required maxLength={128} disabled={busy} />
       <label htmlFor="password">{tx("Пароль или ПИН")}</label>
       <input id="password" name="password" type="password" autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} required maxLength={128} disabled={busy} />
-      {error && <div role="alert">
+      <button type="submit" disabled={busy || retryIn > 0}>{busy ? tx("Входим…") : tx("Войти")}</button>
+    </form></>}
+    {error && <div role="alert">
         <p>{errorText(error)}</p>
         {error.details?.map((detail, index) => <p key={`${detail.field}-${index}`}>{detail.field}: {detail.message}</p>)}
         {retryIn > 0 && <p>{tx("Повторите через ")}{retryIn}{tx(" с.")}</p>}
       </div>}
-      <button type="submit" disabled={busy || retryIn > 0}>{busy ? tx("Входим…") : tx("Войти")}</button>
-    </form>
   </section>;
 }

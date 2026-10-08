@@ -61,3 +61,26 @@ it.each([['rules', 'Проверка по правилам'], ['provider', 'Ре
     expect(container.textContent).toContain('Следующее действие');
   } finally { await act(async () => root.unmount()); }
 });
+
+it('keeps exact prepared photo provenance in details and neutral finding text without mutating results', async () => {
+  const container = document.createElement('div'); const root = createRoot(container);
+  const messages = [
+    'Описание очистки соответствует заявке; синтетический рисунок после показывает очищенный кожух.',
+    'По синтетическим рисункам нельзя подтвердить полноту очистки кожуха. Видимый результат должен проверить мастер.',
+  ];
+  const result = { verdict: 'human_review', score: null, findings: messages.map(message => ({ message, evidence_refs: [] })), missing_evidence: [], limitations: ['Скрытые узлы не проверены'] };
+  const review = { source: 'prepared', is_mock: true, model: 'prepared', prompt_version: 'v2', result };
+  try {
+    await act(async () => root.render(<ReviewPanel order={{ id: 'order', ai_review: review } as unknown as WorkOrderDetail} />));
+    const visible = container.cloneNode(true) as HTMLElement; visible.querySelector('details')?.remove();
+    expect(visible.textContent).not.toContain('синтетическ');
+    expect(visible.textContent).not.toContain('учебные изображения');
+    expect(visible.textContent).toContain('Скрытые узлы не проверены');
+    expect(visible.textContent).toContain('нельзя подтвердить полноту очистки');
+    expect(container.querySelector('details')?.textContent).toContain('учебные изображения');
+    expect(result.findings.map(finding => finding.message)).toEqual(messages);
+    await act(async () => root.render(<ReviewPanel order={{ id: 'order', ai_review: { ...review, source: 'provider', is_mock: false } } as unknown as WorkOrderDetail} />));
+    expect(container.textContent).toContain(messages[0]);
+    expect(container.textContent).toContain(messages[1]);
+  } finally { await act(async () => root.unmount()); }
+});

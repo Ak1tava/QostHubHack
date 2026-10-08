@@ -70,17 +70,17 @@ test('real two-session lifecycle preserves master photos and produces authoritat
     await action(worker, 'Приостановить', 'Ожидание согласования'); await action(worker, 'Продолжить');
     await submit(worker, 'Выполнен осмотр, соединения насоса подтянуты');
     // begin_review changes the version and correctly resets a stale decision form.
-    await expect(page.getByRole('region', { name: 'Результат проверки', exact: true })).toContainText('Проверка недоступна', { timeout: 20_000 });
+    await expect(page.getByRole('region', { name: 'ИИ-проверка работы', exact: true })).toContainText('Проверка недоступна', { timeout: 20_000 });
     const decision = page.getByRole('form', { name: 'Приёмка мастером', exact: true });
     await expect(decision).toBeVisible();
     await decision.locator('select[name="decision"]').selectOption('rework');
     await decision.locator('textarea[name="decision_reason"]').fill('Повторить осмотр после пробного запуска');
     await decision.getByRole('button', { name: 'Сохранить решение', exact: true }).click();
-    await expect(worker.getByRole('region', { name: 'Результат проверки', exact: true })).toContainText('Повторить осмотр');
+    await expect(worker.getByRole('region', { name: 'ИИ-проверка работы', exact: true })).toContainText('Повторить осмотр');
     await action(worker, 'Начать доработку');
     await submit(worker, 'Пробный запуск выполнен, соединения проверены повторно');
     await expect(page.getByRole('region', { name: 'Предыдущий отчёт', exact: true })).toContainText('Пробный запуск выполнен, соединения проверены повторно');
-    await expect(page.getByRole('region', { name: 'Результат проверки', exact: true })).toContainText('Проверка недоступна', { timeout: 20_000 });
+    await expect(page.getByRole('region', { name: 'ИИ-проверка работы', exact: true })).toContainText('Проверка недоступна', { timeout: 20_000 });
     await expect(decision).toBeVisible();
     await decision.locator('select[name="decision"]').selectOption('accept');
     await decision.locator('select[name="score"]').selectOption('5');

@@ -6,6 +6,10 @@ const reviewStates = { pending: 'Ожидает проверки', running: 'П�
 type ReviewSource = 'provider' | 'rules' | 'prepared' | 'mock' | 'unknown';
 const sourceLabels: Record<ReviewSource, string> = { provider: 'Результат ИИ', rules: 'Проверка по правилам', prepared: 'Подготовленный результат', mock: 'Тестовый результат', unknown: 'Источник не подтверждён' };
 const preparedOrigin = new Set(['Подготовленный демонстрационный результат', 'MOCK: синтетические рисунки; OpenAI не вызывался.']);
+const preparedFindings = new Map([
+  ['Описание очистки соответствует заявке; синтетический рисунок после показывает очищенный кожух.', 'Описание очистки соответствует заявке; изображение после показывает очищенный кожух.'],
+  ['По синтетическим рисункам нельзя подтвердить полноту очистки кожуха. Видимый результат должен проверить мастер.', 'По изображениям нельзя подтвердить полноту очистки кожуха. Видимый результат должен проверить мастер.'],
+]);
 
 export function ReviewPanel({ order }: { order: WorkOrderDetail }) {
   const { tx } = useLocale();
@@ -28,14 +32,14 @@ export function ReviewPanel({ order }: { order: WorkOrderDetail }) {
     {review && result && <>
       <p className="badge">{tx(sourceLabels[source])}</p>
       <p><StatusBadge domain="verdict" status={result.verdict} />{result.score != null ? (tx(" · Оценка ") + (result.score) + "/5") : tx(" · Оценка не выставлена")}</p>
-      <ul>{result.findings.map((finding, index) => <li key={index}><p className="full-description">{finding.message}</p>{finding.evidence_refs.length > 0 && <ul aria-label={tx("Доказательства")}>{finding.evidence_refs.map((ref, position) => <li key={position}>{evidence(ref)}</li>)}</ul>}</li>)}</ul>
+      <ul>{result.findings.map((finding, index) => <li key={index}><p className="full-description">{source === 'prepared' ? preparedFindings.get(finding.message) ?? finding.message : finding.message}</p>{finding.evidence_refs.length > 0 && <ul aria-label={tx("Доказательства")}>{finding.evidence_refs.map((ref, position) => <li key={position}>{evidence(ref)}</li>)}</ul>}</li>)}</ul>
       {!!result.missing_evidence.length && <p>{tx("Недостающие доказательства: ")}{result.missing_evidence.join(', ')}</p>}
-      {source === 'prepared' && <p>{tx('Использованы учебные изображения. Состояние реального оборудования не подтверждено.')}</p>}
+      {source === 'prepared' && <p>{tx('Состояние реального оборудования не подтверждено.')}</p>}
       {result.limitations.filter(limitation => source !== 'prepared' || !preparedOrigin.has(limitation)).map((limitation, index) => <p className="full-description" key={index}>{limitation}</p>)}
       <p><strong>{tx('Следующее действие: ')}</strong>{tx(decision ? 'Решение мастера сохранено.' : result.verdict === 'requires_rework' ? 'Мастеру следует указать причину доработки.' : result.verdict === 'human_review' ? 'Мастеру следует проверить доказательства и принять решение.' : 'Мастеру следует подтвердить приёмку или вернуть работу на доработку.')}</p>
       <details><summary>{tx('Подробности проверки')}</summary>
         <p>{tx(sourceLabels[source])}</p>
-        {source === 'prepared' && <p>{tx('Пример подготовлен заранее; внешний ИИ не вызывался.')}</p>}
+        {source === 'prepared' && <><p>{tx('Пример подготовлен заранее; внешний ИИ не вызывался.')}</p><p>{tx('Использованы учебные изображения.')}</p></>}
         <p className="muted">{tx("Модель: ")}{review.model}{tx(" · Версия проверки: ")}{review.prompt_version}</p>
       </details>
     </>}

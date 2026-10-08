@@ -18,8 +18,20 @@ it('offers three fixed profiles in RU/KZ and submits only the selected profile c
       ]} /></LocaleProvider>));
       const buttons = container.querySelectorAll<HTMLButtonElement>('.judge-profiles button');
       expect(Array.from(buttons, button => button.textContent)).toEqual(locale === 'ru' ? ['Мастер', 'Рабочий 1', 'Рабочий 2'] : ['Шебер', 'Жұмысшы 1', 'Жұмысшы 2']);
+      expect(container.querySelector('input[name="login"], input[name="password"], form')).toBeNull();
+      expect(container.querySelectorAll('button')).toHaveLength(3);
       await act(async () => buttons[2].click());
       expect(login).toHaveBeenLastCalledWith('worker-2');
     }
   } finally { await act(async () => root.unmount()); localStorage.removeItem('naryadai.locale'); }
+});
+
+it('keeps judge login errors visible without a password form', async () => {
+  const { ApiError } = await import('../../lib/api');
+  const container = document.createElement('div'); const root = createRoot(container);
+  try {
+    await act(async () => root.render(<LoginPage busy={false} error={new ApiError(503, 'unavailable', 'Сервер недоступен')} onLogin={vi.fn()} profiles={[{ code: 'master', display_name: 'Master', role: 'master' }]} />));
+    expect(container.querySelector('form')).toBeNull();
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain('Сервер недоступен');
+  } finally { await act(async () => root.unmount()); }
 });

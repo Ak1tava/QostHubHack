@@ -1,4 +1,4 @@
-// Only fixture metadata is formatted. Reports, evidence, photos and AI text stay verbatim.
+// Exact fixture markers are formatted only for display; stored reports and evidence are unchanged.
 export function displayFixtureName(value: string): string {
   if (value === '[T18 СИНТЕТИКА] Исполнитель судей') return 'Рабочий 1';
   return value.replace(/^\[T18 СИНТЕТИКА\] (Участок|Бригада|Мастер|Исполнитель) судей(?= |$)/u, '$1')

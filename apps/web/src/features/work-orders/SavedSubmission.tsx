@@ -1,4 +1,5 @@
 import { localizedTemplate, useLocale } from '../../ui/locale';
+import { displayOrderDescription, displayFaultCode, displayFixtureName } from '../../lib/displayFixture';
 import type { WorkOrderTemplate } from './TemplateRequirements';
 import type { ApiClient } from '../../lib/api';
 import { useExecutionCatalogs, type Submission } from './data';
@@ -11,8 +12,8 @@ export function SavedSubmission({ api, submission, template: source }: { api: Ap
   const catalogs = useExecutionCatalogs(api);
   const code = catalogs.data?.codes.find(item => item.id === submission.fault_code_id);
   return <section aria-label={tx("Предыдущий отчёт")}><h3>{tx("Передано на приёмку · отчёт ")}{submission.revision}</h3>
-    <p className="full-description">{submission.work_description}</p>
-    <p>{tx("Шифр: ")}{code ? `${code.code} · ${code.name}` : catalogs.loading ? tx("Загружаем…") : tx("Недоступен в справочнике")}</p>
+    <p className="full-description">{displayOrderDescription(submission.work_description)}</p>
+    <p>{tx("Шифр: ")}{code ? `${displayFaultCode(code.code)} · ${displayFixtureName(code.name)}` : catalogs.loading ? tx("Загружаем…") : tx("Недоступен в справочнике")}</p>
     {submission.no_materials_used ? <p>{tx("Материалы не потребовались")}</p> : <ul>{submission.materials?.map(item => {
       const material = catalogs.data?.materials.find(material => material.id === item.material_id);
       return <li key={item.material_id}>{material?.name ?? tx("Материал недоступен")}: {item.quantity}{material ? ` ${material.unit}` : ''}</li>;
