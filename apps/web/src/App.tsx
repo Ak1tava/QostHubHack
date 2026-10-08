@@ -44,9 +44,9 @@ export function App() {
   useEffect(() => {
     if (workspaceRevision !== previousWorkspace.current) {
       previousWorkspace.current = workspaceRevision;
-      navigate('/', { replace: true });
+      navigate(user ? user.role === 'worker' ? '/my-orders' : '/shift' : '/', { replace: true });
     }
-  }, [workspaceRevision, navigate]);
+  }, [workspaceRevision, user?.role, navigate]);
   useEffect(() => {
     if (!user) return;
     events.start(() => { void authStore.restore(); });

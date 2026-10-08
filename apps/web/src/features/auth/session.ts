@@ -55,7 +55,7 @@ export class AuthStore {
     this.update({ busy: true, error: null });
     try {
       const response = await this.api.login(payload);
-      if (revision === this.revision) this.update({ user: response.user, workspaceRevision: this.state.workspaceRevision + 1 });
+      if (revision === this.revision) this.update({ user: response.user });
     } catch (error) { this.fail(error); }
     finally { this.update({ busy: false, loading: false }); }
   }
