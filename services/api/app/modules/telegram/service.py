@@ -74,6 +74,90 @@ def _identity(value):
     return type(value) is int and 0 < value < 2**63
 
 
+def private_message(payload):
+    message = payload.get("message") if isinstance(payload, dict) else None
+    if not isinstance(message, dict):
+        return None
+    sender, chat = message.get("from"), message.get("chat")
+    if not isinstance(sender, dict) or not isinstance(chat, dict):
+        return None
+    if (chat.get("type") != "private" or not _identity(sender.get("id"))
+            or not _identity(chat.get("id")) or sender["id"] != chat["id"]
+            or not isinstance(message.get("text"), str)):
+        return None
+    return sender, chat, message["text"]
+
+
+def telegram_language(value):
+    return "kk" if isinstance(value, str) and value.casefold().split("-")[0] == "kk" else "ru"
+
+
+def _language_command(db, telegram_id, command):
+    binding = db.scalar(select(TelegramBinding).where(TelegramBinding.telegram_user_id == telegram_id))
+    if binding is None:
+        return "not_linked"
+    # Match issue/unlink/link lock order: user first, then binding. Re-read after
+    # the user lock, because unlink may have completed while we waited.
+    user = db.scalar(select(User).where(User.id == binding.user_id).with_for_update().execution_options(populate_existing=True))
+    binding = db.scalar(select(TelegramBinding).where(
+        TelegramBinding.telegram_user_id == telegram_id,
+    ).with_for_update().execution_options(populate_existing=True))
+    if not user or not user.is_active or not binding or binding.user_id != user.id:
+        return "not_linked"
+    language = {"/ru": "ru", "ru": "ru", "/kz": "kk", "/kk": "kk", "kz": "kk", "kk": "kk"}.get(command)
+    if language:
+        binding.language = language
+        db.flush()
+        return "language_updated"
+    return "language_menu" if command == "/language" else "help"
+
+
+def prepare_reply(db, payload, result):
+    """Prepare a webhook sendMessage response; caller commits before returning it."""
+    private = private_message(payload)
+    if private is None or result in {"ignored", "duplicate"}:
+        return {}
+    sender, chat, _ = private
+    binding = db.scalar(select(TelegramBinding).join(User).where(
+        TelegramBinding.telegram_user_id == sender["id"], User.is_active.is_(True),
+    ))
+    language = binding.language if binding else None
+    if language is None:
+        text = (
+            "Привяжите Telegram в PWA: откройте раздел Telegram и нажмите «Привязать». "
+            "После привязки язык выбирается через /language (RU/KZ).\n"
+            "Telegram-ды PWA ішінде байланыстырыңыз: Telegram бөлімін ашып, «Байланыстыру» түймесін басыңыз. "
+            "Байланыстырғаннан кейін тілді /language арқылы таңдаңыз (RU/KZ)."
+        )
+    else:
+        texts = {
+            "ru": {
+                "linked": "Telegram привязан. Здесь приходят уведомления; принятие и закрытие нарядов — в PWA. Язык: /language (RU/KZ).",
+                "language_updated": "Выбран русский язык. Уведомления будут на русском. Сменить язык: /language (RU/KZ).",
+                "language_menu": "Выберите язык уведомлений: RU — русский, KZ — қазақша.",
+                "help": "Здесь приходят уведомления. Все действия с нарядами выполняются в PWA. Сменить язык: /language (RU/KZ).",
+                "invalid_token": "Ссылка привязки недействительна. Создайте новую в PWA. Язык: /language (RU/KZ).",
+                "conflict": "Привязка не выполнена. Проверьте подключение Telegram в PWA. Язык: /language (RU/KZ).",
+            },
+            "kk": {
+                "linked": "Telegram байланыстырылды. Мұнда хабарламалар келеді; нарядты қабылдау және жабу PWA ішінде орындалады. Тіл: /language (RU/KZ).",
+                "language_updated": "Қазақ тілі таңдалды. Хабарламалар қазақ тілінде келеді. Тілді өзгерту: /language (RU/KZ).",
+                "language_menu": "Хабарламалар тілін таңдаңыз: RU — русский, KZ — қазақша.",
+                "help": "Мұнда хабарламалар келеді. Нарядқа қатысты барлық әрекет PWA ішінде орындалады. Тілді өзгерту: /language (RU/KZ).",
+                "invalid_token": "Байланыстыру сілтемесі жарамсыз. PWA ішінде жаңа сілтеме жасаңыз. Тіл: /language (RU/KZ).",
+                "conflict": "Байланыстыру орындалмады. PWA ішінде Telegram байланысын тексеріңіз. Тіл: /language (RU/KZ).",
+            },
+        }
+        text = texts[language].get(result, texts[language]["help"])
+    reply = dict(method="sendMessage", chat_id=chat["id"], text=text)
+    if binding:
+        reply["reply_markup"] = {
+            "keyboard": [[{"text": "RU"}, {"text": "KZ"}]],
+            "resize_keyboard": True, "is_persistent": True,
+        }
+    return reply
+
+
 def handle_update(db, payload, now):
     if (
         not isinstance(payload, dict)
@@ -89,24 +173,15 @@ def handle_update(db, payload, now):
     )
     if inserted is None:
         return "duplicate"
-    message = payload.get("message")
-    if not isinstance(message, dict):
+    private = private_message(payload)
+    if private is None:
         return "ignored"
-    sender, chat = message.get("from"), message.get("chat")
-    if not isinstance(sender, dict) or not isinstance(chat, dict):
-        return "ignored"
-    telegram_id, chat_id = sender.get("id"), chat.get("id")
-    command = message.get("text")
-    if (
-        chat.get("type") != "private"
-        or not _identity(telegram_id)
-        or telegram_id != chat_id
-        or not _identity(chat_id)
-    ):
-        return "ignored"
-    if not isinstance(command, str) or not re.fullmatch(
-        r"/start [A-Za-z0-9_-]{1,64}", command
-    ):
+    sender, chat, command = private
+    telegram_id, chat_id = sender["id"], chat["id"]
+    normalized = command.strip().casefold()
+    if normalized in {"/language", "/ru", "/kz", "/kk", "ru", "kz", "kk", "/start", "/help"}:
+        return _language_command(db, telegram_id, normalized)
+    if not re.fullmatch(r"/start [A-Za-z0-9_-]{1,64}", command):
         return "ignored"
     token_hash = session_hash(command[7:])
     # Discover owner without locking token first: issue/unlink and linking all
@@ -146,7 +221,8 @@ def handle_update(db, payload, now):
     if binding is None:
         db.add(
             TelegramBinding(
-                user_id=owner, telegram_user_id=telegram_id, private_chat_id=chat_id
+                user_id=owner, telegram_user_id=telegram_id, private_chat_id=chat_id,
+                language=telegram_language(sender.get("language_code")),
             )
         )
     token.used_at = now

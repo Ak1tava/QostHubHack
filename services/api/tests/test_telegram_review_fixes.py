@@ -123,7 +123,8 @@ def test_waiting_webhook_does_not_block_health_event_loop(app, database, monkeyp
             assert response.status_code == 200
             assert elapsed < 2
             assert result.status_code == 200
-            assert result.json() == {"result": "linked"}
+            assert result.json()["result"] == "linked"
+            assert result.json()["method"] == "sendMessage"
 
     try:
         asyncio.run(exercise())
@@ -176,9 +177,8 @@ def test_webhook_database_failure_rolls_back_and_is_safe_retryable(
     assert not list(db.scalars(select(TelegramUpdate)))
     monkeypatch.setattr(service, "handle_update", original_handle)
     monkeypatch.setattr(db, "commit", original_commit)
-    assert client.post("/api/v1/telegram/webhook", **request).json() == {
-        "result": "linked"
-    }
+    reply = client.post("/api/v1/telegram/webhook", **request).json()
+    assert reply["result"] == "linked" and reply["method"] == "sendMessage"
 
 
 @pytest.mark.parametrize(

@@ -262,8 +262,9 @@ def _prepare(db, claim, clock):
         brigade=db.get(Brigade, order.brigade_id) if order.brigade_id else None,
         now=now, timezone=settings.app_timezone,
         comment=_latest_comment(db, order) if job.kind == "overdue" else None,
+        language=binding.language,
     )
-    return binding.private_chat_id, summary, url, job.attempts
+    return binding.private_chat_id, summary, url, job.attempts, binding.language
 
 
 def send_due_notifications(
@@ -291,10 +292,10 @@ def send_due_notifications(
             prepared = _prepare(db, claim, clock)
             db.commit()  # Release API locks and persist attempt before external I/O.
         if prepared is not None:
-            chat, summary, url, attempts = prepared
+            chat, summary, url, attempts, language = prepared
             failure = None
             try:
-                client.send_message(chat, summary, url)
+                client.send_message(chat, summary, url, language=language)
             except TelegramError as error:
                 failure = error
             with session_factory() as db:

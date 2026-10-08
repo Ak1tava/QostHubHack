@@ -59,7 +59,7 @@ class Transport:
         self.error = error
         self.messages = []
 
-    def send_message(self, chat_id, text, url):
+    def send_message(self, chat_id, text, url, *, language="ru"):
         self.messages.append((chat_id, text, url))
         if self.error:
             raise self.error

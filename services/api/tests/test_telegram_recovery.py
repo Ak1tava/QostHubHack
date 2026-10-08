@@ -41,7 +41,7 @@ def test_live_clock_cancels_reminder_after_previous_slow_send(database, ready):
     current = [NOW + timedelta(minutes=30)]
 
     class Slow(Transport):
-        def send_message(self, chat_id, message, url):
+        def send_message(self, chat_id, message, url, *, language="ru"):
             super().send_message(chat_id, message, url)
             current[0] = NOW + timedelta(hours=1, seconds=1)
 
@@ -60,7 +60,7 @@ def test_expired_lease_during_transport_cannot_ack_sent(database, ready):
     current = [NOW]
 
     class Slow(Transport):
-        def send_message(self, chat_id, message, url):
+        def send_message(self, chat_id, message, url, *, language="ru"):
             current[0] = NOW + timedelta(seconds=61)
 
     deliver(ready, NOW, client=Slow(), clock=lambda: current[0], limit=1)
@@ -211,7 +211,7 @@ def test_prepared_attempt_persists_and_api_lock_released_during_http(database, r
     sending, release = Event(), Event()
 
     class Waiting(Transport):
-        def send_message(self, chat_id, message, url):
+        def send_message(self, chat_id, message, url, *, language="ru"):
             sending.set()
             assert release.wait(timeout=5)
 

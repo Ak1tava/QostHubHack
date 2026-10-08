@@ -3,6 +3,7 @@ import json
 import re
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
+from typing import Literal
 
 from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel, ConfigDict
@@ -36,8 +37,22 @@ class LinkStatus(BaseModel):
     linked: bool
 
 
+class LanguageButton(BaseModel):
+    text: Literal["RU", "KZ"]
+
+
+class LanguageKeyboard(BaseModel):
+    keyboard: list[list[LanguageButton]]
+    resize_keyboard: bool
+    is_persistent: bool
+
+
 class WebhookResult(BaseModel):
     result: str
+    method: Literal["sendMessage"] | None = None
+    chat_id: int | None = None
+    text: str | None = None
+    reply_markup: LanguageKeyboard | None = None
 
 
 class DeliveryStatus(BaseModel):
@@ -105,8 +120,9 @@ def _webhook_transaction(db, payload):
     """One synchronous unit of work; no raw DB exception escapes to ASGI logs."""
     try:
         result = service.handle_update(db, payload, datetime.now(timezone.utc))
+        reply = service.prepare_reply(db, payload, result)
         db.commit()
-        return result
+        return WebhookResult(result=result, **reply)
     except SQLAlchemyError:
         try:
             db.rollback()
@@ -117,7 +133,7 @@ def _webhook_transaction(db, payload):
         ) from None
 
 
-@router.post("/telegram/webhook", response_model=WebhookResult, responses=ERRORS)
+@router.post("/telegram/webhook", response_model=WebhookResult, response_model_exclude_none=True, responses=ERRORS)
 async def webhook(request: Request, response: Response, db: Session = Depends(get_db)):
     response.headers["Cache-Control"] = "no-store"
     secret = settings.telegram_webhook_secret
@@ -137,8 +153,7 @@ async def webhook(request: Request, response: Response, db: Session = Depends(ge
         payload = json.loads(body)
     except (ValueError, UnicodeError, RecursionError):
         raise AuthError(422, "invalid_payload", "Некорректный запрос") from None
-    result = await run_in_threadpool(_webhook_transaction, db, payload)
-    return WebhookResult(result=result)
+    return await run_in_threadpool(_webhook_transaction, db, payload)
 
 
 @router.get(

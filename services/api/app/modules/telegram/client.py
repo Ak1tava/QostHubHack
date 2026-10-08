@@ -104,7 +104,7 @@ class TelegramClient:
             raise TelegramError("invalid_response")
         return result.get("result")
 
-    def send_message(self, chat_id, text, url):
+    def send_message(self, chat_id, text, url, *, language="ru"):
         if not https_url(url):
             raise TelegramError("invalid_public_url")
         self._call(
@@ -113,7 +113,7 @@ class TelegramClient:
                 "chat_id": chat_id,
                 "text": text,
                 "reply_markup": {
-                    "inline_keyboard": [[{"text": "Открыть наряд", "url": url}]]
+                    "inline_keyboard": [[{"text": "Нарядты ашу" if language == "kk" else "Открыть наряд", "url": url}]]
                 },
             },
         )
