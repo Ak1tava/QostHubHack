@@ -510,3 +510,96 @@ def test_tunnel_refusal_cli_explains_safe_recovery_without_secret_details(config
     assert 'hostname' in error and 'stop --config' in error and 'then start' in error
     assert 'synthetic-secret' not in error
     assert not backend.stopped
+
+
+@pytest.mark.parametrize('mismatch', ['parent', 'created', 'exe', 'parent-reused'])
+def test_redirector_descendant_requires_parent_creation_and_exact_interpreter(mismatch):
+    module = runtime()
+    assert hasattr(module.WindowsProcesses, 'find_python_child'), 'Verified redirector child discovery missing'
+    backend = module.WindowsProcesses.__new__(module.WindowsProcesses)
+    launcher = {'pid': 100, 'created': '1000', 'exe': 'C:/synthetic/venv/Scripts/python.exe'}
+    child = {'pid': 101, 'created': '1001', 'exe': 'C:/synthetic/base/python.exe'}
+    if mismatch == 'created':
+        child['created'] = '999'
+    if mismatch == 'exe':
+        child['exe'] = 'C:/unrelated/python.exe'
+    parent = {**launcher, 'created': '2000'} if mismatch == 'parent-reused' else launcher
+    backend.identity = lambda pid: parent if pid == 100 else child
+    backend.process_parents = lambda: {101: 999 if mismatch == 'parent' else 100}
+    assert backend.find_python_child(launcher, Path('C:/synthetic/base/python.exe')) is None
+
+
+@pytest.mark.skipif(os.name != 'nt', reason='Windows venv redirector regression')
+def test_real_hidden_venv_redirector_readiness_and_stop(configuration, tmp_path):
+    import time
+    module = runtime()
+    backend = module.WindowsProcesses()
+    config = {**configuration, 'state_dir': str(tmp_path / 'real-process-state'),
+        'python': sys.executable, 'ready_timeout_seconds': 5}
+    control = module.Controller(config, backend)
+    control.state_dir.mkdir()
+    marker = control.state_dir / 'reviews.ready.json'
+    script = tmp_path / 'synthetic-consumer.py'
+    script.write_text('import json,os,sys,time\nfrom pathlib import Path\n'
+        'Path(sys.argv[1]).write_text(json.dumps({"pid":os.getpid(),'
+        '"token":os.environ["NATIVE_WORKER_READY_TOKEN"],"service":"reviews"}))\n'
+        'time.sleep(2)\n')
+    env = {k: v for k, v in os.environ.items() if k.upper() in
+        ('SYSTEMROOT', 'WINDIR', 'PATH', 'TEMP', 'TMP')}
+    env['NATIVE_WORKER_READY_TOKEN'] = 'synthetic-redirector-test'
+    identity = backend.spawn('reviews', [sys.executable, str(script), str(marker)],
+        str(tmp_path), env, tmp_path / 'synthetic.log')
+    try:
+        deadline = time.monotonic() + 5
+        while not marker.exists() and time.monotonic() < deadline:
+            time.sleep(.01)
+        value = json.loads(marker.read_text())
+        assert identity['pid'] == value['pid'], 'Tracked shim PID differs from actual worker PID'
+        launcher = backend.launcher_for(identity)
+        if (Path(sys.executable).parent.parent / 'pyvenv.cfg').is_file():
+            assert launcher and launcher['pid'] != identity['pid']
+        record = {'identity': identity, 'readiness_token': env['NATIVE_WORKER_READY_TOKEN'], 'config': config}
+        if launcher:
+            record['launcher_identity'] = launcher
+        module.write_json(control.state_file, {'reviews': record})
+        backend.wait('reviews', config, env)
+        assert control.status() == {'reviews': 'running'}
+        control.stop()
+        assert backend.identity(identity['pid']) is None
+        if launcher:
+            assert backend.identity(launcher['pid']) is None
+    finally:
+        # The synthetic script exits itself after two seconds, including the RED run.
+        deadline = time.monotonic() + 5
+        while backend.identity(identity['pid']) is not None and time.monotonic() < deadline:
+            time.sleep(.05)
+
+
+def test_owned_wrapper_exit_during_termination_is_already_stopped(configuration):
+    module = runtime()
+    backend = module.WindowsProcesses.__new__(module.WindowsProcesses)
+    record = {'pid': 123, 'created': '1000', 'exe': 'synthetic-python.exe'}
+    @contextmanager
+    def handle(*args, **kwargs):
+        yield 1
+    backend.handle = handle
+    backend._identity = lambda *args: record
+    backend.kernel = SimpleNamespace(TerminateProcess=lambda *args: False,
+        WaitForSingleObject=lambda handle, timeout: 258 if timeout == 0 else 0)
+    backend.stop('launcher', record, configuration)
+
+
+@pytest.mark.parametrize('wrapper_reused', [False, True])
+def test_stop_checks_wrapper_identity_even_if_worker_already_exited(configuration, wrapper_reused):
+    module, backend = runtime(), FakeProcesses()
+    control = module.Controller(configuration, backend)
+    control.state_dir.mkdir()
+    child = {'pid': 100, 'created': '1000', 'exe': 'synthetic-base-python.exe'}
+    launcher = {'pid': 101, 'created': '999', 'exe': 'synthetic-venv-python.exe'}
+    backend.running[101] = {**launcher, 'created': 'unrelated'} if wrapper_reused else launcher
+    module.write_json(control.state_file, {'reviews': {
+        'identity': child, 'launcher_identity': launcher, 'config': configuration}})
+    control.stop()
+    assert backend.stopped == ([] if wrapper_reused else ['launcher'])
+    assert (101 in backend.running) is wrapper_reused
+    assert control.status() == {}

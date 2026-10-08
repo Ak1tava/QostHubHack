@@ -152,6 +152,7 @@ class WindowsProcesses:
             raise RuntimeError('Native process control supports Windows only')
         from ctypes import wintypes
         self.kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+        self._launchers = {}
         k = self.kernel
         k.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
         k.OpenProcess.restype = wintypes.HANDLE
@@ -161,6 +162,17 @@ class WindowsProcesses:
                                                wintypes.LPWSTR, ctypes.POINTER(wintypes.DWORD)]
         k.TerminateProcess.argtypes = [wintypes.HANDLE, wintypes.UINT]
         k.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+        class ProcessEntry(ctypes.Structure):
+            _fields_ = [('dwSize', wintypes.DWORD), ('cntUsage', wintypes.DWORD),
+                ('th32ProcessID', wintypes.DWORD), ('th32DefaultHeapID', ctypes.c_size_t),
+                ('th32ModuleID', wintypes.DWORD), ('cntThreads', wintypes.DWORD),
+                ('th32ParentProcessID', wintypes.DWORD), ('pcPriClassBase', wintypes.LONG),
+                ('dwFlags', wintypes.DWORD), ('szExeFile', wintypes.WCHAR * 260)]
+        self.ProcessEntry = ProcessEntry
+        k.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
+        k.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+        k.Process32FirstW.argtypes = [wintypes.HANDLE, ctypes.POINTER(ProcessEntry)]
+        k.Process32NextW.argtypes = [wintypes.HANDLE, ctypes.POINTER(ProcessEntry)]
 
     @contextmanager
     def handle(self, pid, terminate=False):
@@ -190,6 +202,53 @@ class WindowsProcesses:
         with self.handle(pid) as handle:
             return self._identity(handle, pid)
 
+    def process_parents(self):
+        snapshot = self.kernel.CreateToolhelp32Snapshot(0x00000002, 0)
+        if snapshot == ctypes.c_void_p(-1).value:
+            raise RuntimeError('Cannot inspect native process ancestry')
+        try:
+            entry = self.ProcessEntry()
+            entry.dwSize = ctypes.sizeof(entry)
+            parents = {}
+            found = self.kernel.Process32FirstW(snapshot, ctypes.byref(entry))
+            while found:
+                parents[entry.th32ProcessID] = entry.th32ParentProcessID
+                found = self.kernel.Process32NextW(snapshot, ctypes.byref(entry))
+            return parents
+        finally:
+            self.kernel.CloseHandle(snapshot)
+
+    def find_python_child(self, launcher, expected):
+        if self.identity(launcher['pid']) != launcher:
+            return None
+        for pid, parent in self.process_parents().items():
+            if parent != launcher['pid']:
+                continue
+            child = self.identity(pid)
+            if (child and Path(child['exe']).resolve() == expected.resolve()
+                    and int(child['created']) >= int(launcher['created'])
+                    and self.identity(launcher['pid']) == launcher):
+                return child
+        return None
+
+    def launcher_for(self, identity):
+        return self._launchers.get((identity['pid'], identity['created']))
+
+    def python_base(self, executable):
+        executable = Path(executable).resolve()
+        config = executable.parent.parent / 'pyvenv.cfg'
+        if executable.name.lower() not in ('python.exe', 'pythonw.exe') or not config.is_file():
+            return None
+        values = dict(line.split('=', 1) for line in config.read_text(encoding='utf-8').splitlines()
+                      if '=' in line)
+        home = next((value.strip() for key, value in values.items() if key.strip() == 'home'), None)
+        if not home:
+            raise RuntimeError('Cannot verify venv base interpreter')
+        expected = Path(home) / executable.name
+        if not expected.is_file():
+            raise RuntimeError('Venv base interpreter is missing')
+        return expected.resolve() if expected.resolve() != executable else None
+
     def free(self, port):
         with socket.socket() as probe:
             try:
@@ -205,12 +264,25 @@ class WindowsProcesses:
             raise RuntimeError('Native command failed; inspect private runtime logs')
 
     def spawn(self, name, command, cwd, env, log):
+        expected_child = self.python_base(command[0])
         with Path(log).open('a', encoding='utf-8') as stream:
             process = subprocess.Popen(command, cwd=cwd, env=env, stdin=subprocess.DEVNULL,
                 stdout=stream, stderr=stream, creationflags=FLAGS)
         record = self.identity(process.pid)
         if record is None:
             raise RuntimeError(f'{name} exited during startup')
+        if expected_child is not None:
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                child = self.find_python_child(record, expected_child)
+                if child is not None:
+                    self._launchers[(child['pid'], child['created'])] = record
+                    return child
+                if self.identity(record['pid']) != record:
+                    raise RuntimeError(f'{name} redirector exited during startup')
+                time.sleep(.01)
+            self.stop('launcher', record, {})
+            raise RuntimeError(f'{name} redirector child identity unavailable')
         return record
 
     def postgres_start(self, config, env, log):
@@ -280,9 +352,9 @@ class WindowsProcesses:
         with self.handle(record['pid'], terminate=True) as handle:
             if self._identity(handle, record['pid']) != record:
                 return
-            env = load_environment(config, name)
-            log = Path(config['state_dir']) / 'stop.log'
             if name in ('db', 'nginx'):
+                env = load_environment(config, name)
+                log = Path(config['state_dir']) / 'stop.log'
                 if name == 'db':
                     pidfile = Path(config['postgres_data']) / 'postmaster.pid'
                     command = [str(Path(config['postgres_bin']) / 'pg_ctl.exe'), '-D',
@@ -296,7 +368,9 @@ class WindowsProcesses:
                     raise RuntimeError('Owned process and pidfile differ; refusing stop')
                 self.run(command, config['repo'], env, log)
             elif not self.kernel.TerminateProcess(handle, 0):
-                raise RuntimeError('Owned process termination failed')
+                # A redirector normally exits as soon as its child does; preserve the same handle.
+                if self.kernel.WaitForSingleObject(handle, 30000) != 0:
+                    raise RuntimeError('Owned process termination failed')
             if self.kernel.WaitForSingleObject(handle, 30000) != 0:
                 raise RuntimeError('Owned process did not stop; ownership retained')
 
@@ -425,6 +499,9 @@ class Controller:
                     if not identity:
                         raise RuntimeError('Process identity unavailable')
                     state[name] = {'identity': identity, 'config': dict(self.config)}
+                    launcher = getattr(self.backend, 'launcher_for', lambda _: None)(identity)
+                    if launcher:
+                        state[name]['launcher_identity'] = launcher
                     if ready_token:
                         state[name]['readiness_token'] = ready_token
                     started.append(name)
@@ -441,6 +518,9 @@ class Controller:
                 continue
             if self.owned(state[name]):
                 self.backend.stop(name, state[name]['identity'], state[name].get('config', self.config))
+            launcher = state[name].get('launcher_identity')
+            if launcher and self.backend.identity(launcher['pid']) == launcher:
+                self.backend.stop('launcher', launcher, state[name].get('config', self.config))
             state.pop(name)
             write_json(self.state_file, state)
 
