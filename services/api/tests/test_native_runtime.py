@@ -714,10 +714,9 @@ def test_identity_query_failure_accepts_only_same_handle_confirmed_exit(failed_a
     backend = module.WindowsProcesses.__new__(module.WindowsProcesses)
     waits = []
     queries = []
-    statuses = iter((258, final_wait))
     def wait(handle, timeout):
         waits.append((handle, timeout))
-        return next(statuses)
+        return 258 if len(waits) == 1 or timeout == 0 else final_wait
     def times(handle, *args):
         queries.append(('times', handle))
         return failed_api != 'times'
@@ -731,6 +730,25 @@ def test_identity_query_failure_accepts_only_same_handle_confirmed_exit(failed_a
     else:
         with pytest.raises(RuntimeError, match='Cannot verify process identity'):
             backend._identity(789, 123)
-    assert waits == [(789, 0), (789, 0)]
+    assert waits == [(789, 0), (789, 5000)]
     assert queries == ([('times', 789)] if failed_api == 'times' else
                        [('times', 789), ('image', 789)])
+
+
+@pytest.mark.skipif(os.name != 'nt', reason='Windows terminating-phase regression')
+def test_repeated_real_redirector_stop_tolerates_natural_launcher_exit(tmp_path):
+    module = runtime()
+    backend = module.WindowsProcesses()
+    script = tmp_path / 'synthetic.py'
+    script.write_text('import time\ntime.sleep(2)\n', encoding='utf-8')
+    env = {k: v for k, v in os.environ.items() if k.upper() in
+        ('SYSTEMROOT', 'WINDIR', 'PATH', 'TEMP', 'TMP')}
+    for _ in range(20):
+        worker = backend.spawn('api', [sys.executable, str(script)],
+            str(tmp_path), env, tmp_path / 'synthetic.log')
+        launcher = backend.launcher_for(worker)
+        backend.stop('api', worker, {})
+        if launcher:
+            backend.stop('launcher', launcher, {})
+            assert backend.identity(launcher['pid']) is None
+        assert backend.identity(worker['pid']) is None

@@ -194,7 +194,8 @@ class WindowsProcesses:
         image = ctypes.create_unicode_buffer(size.value)
         if (not self.kernel.GetProcessTimes(handle, *[ctypes.byref(x) for x in stamps])
                 or not self.kernel.QueryFullProcessImageNameW(handle, 0, image, ctypes.byref(size))):
-            if self.kernel.WaitForSingleObject(handle, 0) == 0:
+            # Windows can deny image queries before the terminating process signals its handle.
+            if self.kernel.WaitForSingleObject(handle, 5000) == 0:
                 return None
             raise RuntimeError('Cannot verify process identity')
         return {'pid': int(pid), 'created': str(stamps[0].value),
