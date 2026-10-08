@@ -4,6 +4,7 @@ import { ApiClient, type UserView } from '../../lib/api';
 import { useCommand } from '../../lib/useCommand';
 import { localDateTime, utcDateTime } from '../../lib/time';
 import { compressPhoto } from '../../lib/compressPhoto';
+import { SpeechInput } from '../speech/SpeechInput';
 import { availability, createOrder, priorities, uploadPhoto, useCatalogs, useShift, type CreateOrder, type Photo, type WorkOrder } from './data';
 
 export function CreateOrderPage({ api, user }: { api: ApiClient; user: UserView }) {
@@ -131,6 +132,7 @@ export function CreateOrderPage({ api, user }: { api: ApiClient; user: UserView 
         </>}
         {selected && <p role="status" className={`notice availability-${selected.availability}`}>{availability[selected.availability]} · в очереди: {selected.queue_count}{selected.availability !== 'free' ? '. Проверьте назначение и срок.' : ''}</p>}
         <label>Описание работ<textarea name="description" value={description} onChange={event => setDescription(event.target.value)} required maxLength={10000} rows={3} /></label>
+        <SpeechInput api={api} value={description} onChange={setDescription} maxLength={10000} disabled={command.busy || command.pending || photoBusy || !!createdOrder || !catalogs.data} />
         <div className="form-row">
           <label>Тип<select value={workType} onChange={event => { const type = event.target.value as CreateOrder['work_type']; setWorkType(type); if (type === 'emergency') setPriority('emergency'); else if (priority === 'emergency') setPriority('normal'); }}>
             <option value="planned">Плановый</option><option value="emergency">Аварийный</option>

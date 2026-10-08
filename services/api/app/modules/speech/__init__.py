@@ -1,0 +1,1 @@
+"""Ephemeral local speech transcription."""

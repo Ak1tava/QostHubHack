@@ -1,0 +1,27 @@
+# Synthetic ASR for disposable E2E acceptance only; never the production speech overlay.
+services:
+  api:
+    environment:
+      SPEECH_SERVICE_URL: http://speech-test:8016
+      SPEECH_SERVICE_TOKEN: ${SPEECH_SERVICE_TOKEN:?Set a random test-only ASR token}
+    depends_on:
+      speech-test:
+        condition: service_healthy
+  speech-test:
+    build:
+      context: .
+      dockerfile: infra/api.Dockerfile
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    environment:
+      SPEECH_SERVICE_TOKEN: ${SPEECH_SERVICE_TOKEN:?Set a random test-only ASR token}
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      - ./infra/fake_speech_service.py:/workspace/infra/fake_speech_service.py:ro
+    command: ["/workspace/services/api/.venv/bin/python", "-m", "uvicorn", "fake_speech_service:app", "--app-dir", "/workspace/infra", "--host", "0.0.0.0", "--port", "8016", "--no-access-log"]
+    healthcheck:
+      test: ["CMD", "/workspace/services/api/.venv/bin/python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8016/health/ready', timeout=5)"]
+      interval: 5s
+      timeout: 6s
+      retries: 12

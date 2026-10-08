@@ -264,6 +264,29 @@
         "title": "AuthResponse",
         "type": "object"
       },
+      "Body_transcribe_api_v1_speech_transcriptions_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "language": {
+            "enum": [
+              "ru",
+              "kk"
+            ],
+            "title": "Language",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "language"
+        ],
+        "title": "Body_transcribe_api_v1_speech_transcriptions_post",
+        "type": "object"
+      },
       "Body_upload_photo_api_v1_work_orders__order_id__photos_post": {
         "properties": {
           "assignment_version": {
@@ -1407,6 +1430,48 @@
           "timezone"
         ],
         "title": "ShiftResponse",
+        "type": "object"
+      },
+      "SpeechTranscription": {
+        "properties": {
+          "duration_seconds": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 60.0,
+            "title": "Duration Seconds",
+            "type": "number"
+          },
+          "is_mock": {
+            "default": false,
+            "title": "Is Mock",
+            "type": "boolean"
+          },
+          "language": {
+            "enum": [
+              "ru",
+              "kk"
+            ],
+            "title": "Language",
+            "type": "string"
+          },
+          "model": {
+            "const": "large-v3-turbo",
+            "default": "large-v3-turbo",
+            "title": "Model",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "language",
+          "duration_seconds"
+        ],
+        "title": "SpeechTranscription",
         "type": "object"
       },
       "SubmissionCreate": {
@@ -3296,6 +3361,107 @@
         "summary": "Shift",
         "tags": [
           "shift"
+        ]
+      }
+    },
+    "/api/v1/speech/transcriptions": {
+      "post": {
+        "operationId": "transcribe_api_v1_speech_transcriptions_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_transcribe_api_v1_speech_transcriptions_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpeechTranscription"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unsupported Media Type"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Transcribe",
+        "tags": [
+          "speech"
         ]
       }
     },

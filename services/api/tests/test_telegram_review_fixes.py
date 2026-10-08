@@ -217,10 +217,10 @@ def test_each_notification_kind_has_private_safe_distinct_label(
     deliver(ready, at, client=transport)
     assert len(transport.messages) == 1
     summary = transport.messages[0][1]
-    assert (
-        summary
-        == f"{label}\n{order.number} | {order.priority} | {order.due_at.isoformat()}"
-    )
+    assert summary.startswith(f"{label} — {order.number}\n")
+    assert "Приоритет: Аварийный" in summary
+    assert "Оборудование: Насос" in summary
+    assert "PWA" in summary
 
 
 def test_rollback_failure_keeps_database_exception_chain_suppressed(monkeypatch):

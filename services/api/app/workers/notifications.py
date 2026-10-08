@@ -10,26 +10,21 @@ from sqlalchemy.orm import object_session, sessionmaker
 from app.core.config import settings
 from app.core.db import get_engine
 from app.core.security import can_access_order
-from app.modules.auth.models import User
+from app.modules.auth.models import Brigade, User
+from app.modules.catalog.models import Area, Equipment
 from app.modules.telegram.client import TelegramClient, TelegramError, https_url
+from app.modules.telegram.formatter import KIND_LABELS, format_notification
 from app.modules.telegram.models import (
     Notification,
     NotificationReceipt,
     TelegramBinding,
 )
-from app.modules.work_orders.models import OutboxEvent, WorkOrder, WorkOrderEvent
+from app.modules.work_orders.models import OutboxEvent, Submission, WorkOrder, WorkOrderEvent
 from app.modules.work_orders.queries import responsible_id
 from app.workers.jobs import MAX_ATTEMPTS, claim_job, finish_job
 
 ONGOING = {"ISSUED", "ACCEPTED", "QUEUED", "IN_PROGRESS", "PAUSED", "REWORK"}
 UNFINISHED = {"PENDING", "RETRY", "BLOCKED", "LEASED"}
-KIND_LABELS = {
-    "new": "Новый наряд",
-    "reminder": "До срока 30 минут",
-    "unaccepted": "Наряд не принят",
-    "overdue": "Срок истёк",
-    "emergency_queued": "Аварийный наряд в очереди",
-}
 
 
 def _fresh(db, order, job):
@@ -176,6 +171,25 @@ def process_outbox(db, now, *, limit=100):
     return len(events)
 
 
+def _latest_comment(db, order):
+    candidates = []
+    for model, field, timestamp, sequence in (
+        (WorkOrderEvent, WorkOrderEvent.reason, WorkOrderEvent.occurred_at, WorkOrderEvent.version),
+        (Submission, Submission.comment, Submission.submitted_at, Submission.revision),
+    ):
+        row = db.scalar(
+            select(model).where(
+                model.work_order_id == order.id,
+                model.assignment_version == order.assignment_version,
+                field.is_not(None),
+                func.regexp_replace(field, r"\s+", "", "g") != "",
+            ).order_by(timestamp.desc(), sequence.desc()).limit(1)
+        )
+        if row:
+            candidates.append((getattr(row, timestamp.key), getattr(row, field.key)))
+    return max(candidates, key=lambda candidate: candidate[0])[1] if candidates else None
+
+
 def _prepare(db, claim, clock):
     job_id, token = claim
     job = db.get(Notification, job_id)
@@ -241,7 +255,14 @@ def _prepare(db, claim, clock):
     job.attempts += 1
     db.flush()
     url = settings.public_base_url.rstrip("/") + f"/orders/{order.id}"
-    summary = f"{KIND_LABELS[job.kind]}\n{order.number} | {order.priority} | {order.due_at.isoformat()}"
+    summary = format_notification(
+        kind=job.kind, order=order,
+        equipment=db.get(Equipment, order.equipment_id), area=db.get(Area, order.area_id),
+        responsible=db.get(User, responsible_id(order)),
+        brigade=db.get(Brigade, order.brigade_id) if order.brigade_id else None,
+        now=now, timezone=settings.app_timezone,
+        comment=_latest_comment(db, order) if job.kind == "overdue" else None,
+    )
     return binding.private_chat_id, summary, url, job.attempts
 
 
