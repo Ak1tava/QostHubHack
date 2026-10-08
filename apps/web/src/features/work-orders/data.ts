@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import type { components } from '../../../../../packages/contracts/api.generated';
 import { ApiClient } from '../../lib/api';
 import { useQuery } from '../../lib/useQuery';
+import { statusLabels } from '../../ui/status';
 
 export type WorkOrder = components['schemas']['WorkOrderView'];
 export type WorkOrderDetail = components['schemas']['WorkOrderDetail'];
@@ -21,12 +22,9 @@ export type MasterDecision = components['schemas']['MasterDecisionCommand'];
 type Catalog = components['schemas']['CatalogResponse'];
 type Kinds = { areas: Named; equipment: Equipment; brigades: Named; materials: Material; 'work-codes': WorkCode };
 
-export const statuses: Record<WorkOrder['status'], string> = {
-  ISSUED: 'Выданы', ACCEPTED: 'Приняты', QUEUED: 'Очередь', REJECTED: 'Отказ', IN_PROGRESS: 'В работе', PAUSED: 'Пауза',
-  SUBMITTED: 'На приёмке', AI_REVIEW: 'Проверка', REWORK: 'Доработка', CLOSED: 'Закрыты', CANCELLED: 'Отменены',
-};
-export const priorities: Record<WorkOrder['priority'], string> = { emergency: 'Аварийный', high: 'Высокий', normal: 'Обычный', planned: 'Плановый' };
-export const availability: Record<ShiftMember['availability'], string> = { free: 'Свободен', busy: 'Занят', queued: 'В очереди', off_shift: 'Вне смены' };
+export const statuses: Record<WorkOrder['status'], string> = statusLabels('order', 'ru', true);
+export const priorities: Record<WorkOrder['priority'], string> = statusLabels('priority');
+export const availability: Record<ShiftMember['availability'], string> = statusLabels('availability');
 
 async function catalog<K extends keyof Kinds>(api: ApiClient, kind: K, signal: AbortSignal): Promise<Kinds[K][]> {
   const all: Kinds[K][] = [];

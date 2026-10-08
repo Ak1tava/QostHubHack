@@ -1,0 +1,59 @@
+:root, [data-theme] {
+  color-scheme: light;
+  --bg: #f6f5f2;
+  --surface: #fff;
+  --surface-2: #f0eeea;
+  --border: #e5e3de;
+  --control-border: #858a93;
+  --text: #111827;
+  --text-muted: #606876;
+  --primary: #1e3a5f;
+  --primary-fg: #1e3a5f;
+  --primary-bg: #e8edf4;
+  --accent: #ff7a00;
+  --accent-hover: #ed7100;
+  --on-accent: #111827;
+  --ok-fg: #15803d; --ok-bg: #dcfce7; --ok-solid: #22c55e;
+  --busy-fg: #a16207; --busy-bg: #fef9c3; --busy-solid: #eab308;
+  --queue-fg: #1d4ed8; --queue-bg: #dbeafe; --queue-solid: #3b82f6;
+  --off-fg: #4b5563; --off-bg: #f3f4f6; --off-solid: #9ca3af;
+  --danger-fg: #b91c1c; --danger-bg: #fee2e2; --danger-solid: #ef4444;
+  --high-fg: #9a3412; --high-bg: #ffedd5; --high-solid: #f97316;
+  --free-fg: var(--ok-fg); --free-bg: var(--ok-bg); --free-solid: var(--ok-solid);
+  --done-fg: var(--ok-fg); --done-bg: var(--ok-bg); --done-solid: var(--ok-solid);
+  --planned-fg: var(--queue-fg); --planned-bg: var(--queue-bg); --planned-solid: var(--queue-solid);
+  --stopped-fg: var(--off-fg); --stopped-bg: var(--off-bg); --stopped-solid: var(--off-solid);
+  --muted: var(--text-muted);
+  --font-ui: Inter, Manrope, 'Segoe UI', system-ui, sans-serif;
+  --text-display: 48px; --text-h1: 28px; --text-h2: 20px;
+  --text-body: 15px; --text-label: 13px; --text-caption: 12px;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-6: 24px; --space-8: 32px;
+  --radius-chip: 8px; --radius-control: 12px; --radius-card: 16px;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 6%);
+  --motion-fast: 150ms; --motion-normal: 200ms; --motion-slow: 250ms;
+  --ease-ui: ease-out;
+  --chart-1: #1e3a5f; --chart-2: #54749a;
+}
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121417; --surface: #1c1f24; --surface-2: #252930; --border: #2e333b;
+  --control-border: #7c8797;
+  --text: #f3f4f6; --text-muted: #a4abb8;
+  --primary-fg: #bdd6fa; --primary-bg: #29384c;
+  --ok-fg: #86efac; --ok-bg: rgb(34 197 94 / 16%);
+  --busy-fg: #fde047; --busy-bg: rgb(234 179 8 / 16%);
+  --queue-fg: #93c5fd; --queue-bg: rgb(59 130 246 / 18%);
+  --off-fg: #d1d5db; --off-bg: rgb(156 163 175 / 16%);
+  --danger-fg: #fca5a5; --danger-bg: rgb(239 68 68 / 17%);
+  --high-fg: #fdba74; --high-bg: rgb(249 115 22 / 17%);
+  --chart-1: #adc9ee; --chart-2: #7b9bc2;
+}
+@media (max-width: 700px) {
+  :root, [data-theme] { --text-display: 40px; --text-h2: 22px; --text-body: 18px; --text-label: 15px; --text-caption: 13px; }
+}
+[data-tone="ok"] { --tone-fg: var(--ok-fg); --tone-bg: var(--ok-bg); --tone-solid: var(--ok-solid); }
+[data-tone="busy"] { --tone-fg: var(--busy-fg); --tone-bg: var(--busy-bg); --tone-solid: var(--busy-solid); }
+[data-tone="queue"] { --tone-fg: var(--queue-fg); --tone-bg: var(--queue-bg); --tone-solid: var(--queue-solid); }
+[data-tone="off"] { --tone-fg: var(--off-fg); --tone-bg: var(--off-bg); --tone-solid: var(--off-solid); }
+[data-tone="danger"] { --tone-fg: var(--danger-fg); --tone-bg: var(--danger-bg); --tone-solid: var(--danger-solid); }
+[data-tone="high"] { --tone-fg: var(--high-fg); --tone-bg: var(--high-bg); --tone-solid: var(--high-solid); }
