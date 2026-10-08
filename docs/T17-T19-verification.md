@@ -57,3 +57,7 @@ PostgreSQL на loopback55486, отдельные TEST/MIGRATION/browser/live da
 - Перед migration0007 сохранены приватный PostgreSQL dump, фото и ledger. Перезапущены только API и notification worker; PID AI consumer, Nginx и tunnel сохранены. Фото/ledger побайтово совпали с резервом; потолок $10, учтено $0.0272591. Новый платный вызов не выполнялся. getMe и getWebhookInfo PASS, pending0, ошибок webhook нет.
 
 Независимое ревью двух дополнений и миграции: открытых P1/P2 нет. Команды/проверки отдельных задач: [T17](T17-locale-completion-verification.md), [Telegram](T18-telegram-language-verification.md). Текущие статусы см. plans.md; лингвистическая проверка человеком остаётся.
+
+Пользователь отдельно подтвердил живую приёмку Telegram: после `/language` появляются RU/KZ и язык ответов меняется («Да, работает»). Это подтверждение интерфейса бота, не утверждение о замерах мобильной доставки или качестве производственных ИИ-проверок.
+
+Итоговая интеграция `main@a2cdb16`: [CI 37795136435 — SUCCESS](https://github.com/Ak1tava/QostHubHack/actions/runs/37795136435), проверено через `gh run view --json status,conclusion` и лог. API **1759 PASS (352.03s)**, целевые lifecycle182/reporting79/Telegram68, Vitest **143 PASS**, T15validator8; production browser **34 PASS (1.1m)** и RU/KZ **2 PASS (6.7s)**. Миграции, OpenAPI drift, typecheck/build, Compose и оставшаяся интеграционная приёмка завершены успешно. T18 DONE, T19 уже DONE; T17 сохраняет только человеческую проверку казахской терминологии.
