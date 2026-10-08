@@ -73,8 +73,10 @@ it('does not select inaccessible equipment from an untrusted QR query', async ()
   expect(container.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(true);
 });
 
-it('adds reviewed speech as a paragraph to creation description without issuing an order', async () => {
-  await render(); await describeWork();
+it('keeps QR equipment prefill when reviewed speech is inserted and only creates on explicit submit', async () => {
+  secondArea = true;
+  await render(`equipment_id=${equipment}&area_id=${otherArea}&assignee_id=${workerId}`);
+  await describeWork();
   await act(async () => {
     const input = container.querySelector<HTMLInputElement>('input[aria-label="Аудиофайл"]')!;
     expect(input).not.toBeNull(); Object.defineProperty(input, 'files', { value: [new File(['audio'], 'speech.webm', { type: 'audio/webm' })] });
@@ -85,6 +87,13 @@ it('adds reviewed speech as a paragraph to creation description without issuing 
   await act(async () => button('Вставить').click());
   expect(container.querySelector<HTMLTextAreaElement>('[name="description"]')!.value).toBe(`${before}\n\nДополнено голосом`);
   expect(commands).toHaveLength(0);
+  expect(button('Первый участок').getAttribute('aria-pressed')).toBe('true');
+  expect(button('Насос').getAttribute('aria-pressed')).toBe('true');
+  await act(async () => container.querySelector<HTMLButtonElement>('button[type="submit"]')!.click());
+  expect(commands).toHaveLength(1);
+  expect(JSON.parse(commands[0].body)).toMatchObject({
+    equipment_id: equipment, area_id: area, description: `${before}\n\nДополнено голосом`,
+  });
 });
 async function choose(text: string) { await act(async () => button(text).click()); }
 async function describeWork() {
