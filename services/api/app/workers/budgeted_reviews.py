@@ -1,10 +1,11 @@
-"""Opt-in, single-consumer live demo; the persisted total budget is at most $2."""
+"""Opt-in single-consumer live demo; explicit budget amendments, ceiling $10."""
 import argparse
 import json
 import os
 import time
 from contextlib import contextmanager
 from decimal import Decimal
+from datetime import datetime, timezone
 from pathlib import Path
 
 from sqlalchemy import text
@@ -15,6 +16,46 @@ from app.modules.ai_review.eval_runner import (
 )
 
 LOCK_KEY = 71007010
+LIVE_BUDGET_CEILING = Decimal('10')
+
+
+def validate_live_limit(value):
+    limit = Decimal(value)
+    if not limit.is_finite() or not Decimal('0') < limit <= LIVE_BUDGET_CEILING:
+        raise ValueError('Live worker budget limit must be >0 and <=10 USD')
+    return limit
+
+
+class LiveBudgetLedger(BudgetLedger):
+    """Keep generic evaluation's $5 ceiling; only this opt-in worker allows $10."""
+
+    def __init__(self, path, limit):
+        limit = validate_live_limit(limit)
+        super().__init__(path, str(min(limit, Decimal('5'))))
+        self.limit = limit
+
+
+def _amendment(path):
+    amendment_path = path.with_suffix('.budget-amendment.json')
+    if not amendment_path.exists():
+        return None
+    value = json.loads(amendment_path.read_text(encoding='utf-8'))
+    previous, new = validate_live_limit(value['from_usd']), validate_live_limit(value['to_usd'])
+    if (value['version'] != 1 or new <= previous
+            or Decimal(value['ledger_before']['limit_usd']) != previous
+            or Decimal(value['frozen_before']['budget_usd']) != previous):
+        raise ValueError('Invalid budget amendment: audit required')
+    return value
+
+
+def freeze_live_configuration(path, config):
+    amendment = _amendment(path)
+    if amendment is None:
+        return freeze_configuration(path.parent, config)
+    frozen = json.loads((path.parent / 'frozen.json').read_text(encoding='utf-8'))
+    effective = {**amendment['frozen_before'], 'budget_usd': amendment['to_usd']}
+    if frozen != amendment['frozen_before'] or config != effective:
+        raise ValueError('Frozen live configuration changed: audit required')
 
 
 class DatabaseLockLost(RuntimeError):
@@ -87,13 +128,16 @@ class OwnershipCheckedProvider:
 def open_ledger(path: Path, limit='2') -> BudgetLedger:
     if path.with_suffix('.halt.json').exists():
         raise RuntimeError('Persisted database ownership halt: audit required')
-    limit = Decimal(limit)
-    if not limit.is_finite() or not Decimal('0') < limit <= Decimal('2'):
-        raise ValueError('Live worker budget limit must be >0 and <=2 USD')
+    limit = validate_live_limit(limit)
+    amendment = _amendment(path)
     if path.exists():
         saved = json.loads(path.read_text(encoding='utf-8'))
         if Decimal(saved['limit_usd']) != limit:
             raise ValueError('Persisted budget limit cannot change on restart')
+        if amendment:
+            before_calls = amendment['ledger_before']['calls']
+            if limit != Decimal(amendment['to_usd']) or saved['calls'][:len(before_calls)] != before_calls:
+                raise ValueError('Incomplete or altered budget amendment: audit required')
         ids = set()
         for record in saved['calls']:
             reserved, charged = Decimal(record['reserved_usd']), Decimal(record['charged_usd'])
@@ -103,10 +147,43 @@ def open_ledger(path: Path, limit='2') -> BudgetLedger:
             ids.add(record['call_id'])
             if record['state'] != 'settled' or record.get('metadata', {}).get('error_code'):
                 raise RuntimeError('Unresolved paid call: audit required; reservation remains charged')
-    ledger = BudgetLedger(path, str(limit))
+    elif amendment:
+        raise ValueError('Budget amendment without ledger: audit required')
+    ledger = LiveBudgetLedger(path, str(limit))
     if ledger.spent > limit:
         raise BudgetExceeded('Persisted budget exceeded: audit required')
     return ledger
+
+
+def increase_budget(engine, path, *, previous_limit, new_limit, config):
+    """Amend only; preserve immutable frozen.json and the complete old ledger."""
+    previous, new = validate_live_limit(previous_limit), validate_live_limit(new_limit)
+    if new <= previous or Decimal(config['budget_usd']) != new:
+        raise ValueError('Explicit amendment must increase the matching budget')
+    with exclusive_worker(path.with_suffix('.lock')):
+        with single_database_consumer(engine) as guard:
+            if not path.is_file() or _amendment(path) is not None:
+                raise ValueError('Existing unamended ledger required: audit required')
+            ledger = open_ledger(path, str(previous))
+            guard.ledger = ledger
+            before = json.loads(path.read_text(encoding='utf-8'))
+            frozen = json.loads((path.parent / 'frozen.json').read_text(encoding='utf-8'))
+            if (Decimal(before['spent_or_reserved_usd']) != ledger.spent
+                    or Decimal(frozen['budget_usd']) != previous
+                    or {**frozen, 'budget_usd': str(new)} != config):
+                raise ValueError('Budget/configuration mismatch: audit required')
+            amendment = dict(
+                version=1, from_usd=str(previous), to_usd=str(new),
+                authorized_at=datetime.now(timezone.utc).isoformat(),
+                ledger_before=before, frozen_before=frozen,
+            )
+            guard.check()
+            # Immutable evidence first. A crash between writes fails closed on
+            # restart; audit can inspect both snapshots without resetting costs.
+            write_json(path.with_suffix('.budget-amendment.json'), amendment, exclusive=True)
+            guard.check()
+            write_json(path, {**before, 'limit_usd': str(new)})
+            return open_ledger(path, str(new))
 
 
 @contextmanager
@@ -198,6 +275,7 @@ def main(argv=None):
     parser.add_argument('--ordinary-worker-stopped', action='store_true')
     parser.add_argument('--ledger', type=Path)
     parser.add_argument('--budget-usd', default='2')
+    parser.add_argument('--increase-budget-from', help='Amend persisted total ceiling only; no provider calls')
     parser.add_argument('--max-stages', type=int, default=100)
     parser.add_argument('--max-seconds', type=int, default=600)
     args = parser.parse_args(argv)
@@ -208,7 +286,7 @@ def main(argv=None):
     from app.core.config import settings
     from app.core.db import get_engine
     from app.modules.ai_review.provider import OpenAIReviewProvider
-    if settings.openai_api_key is None:
+    if settings.openai_api_key is None and args.increase_budget_from is None:
         parser.error('OPENAI_API_KEY is required in the local environment')
     config = dict(models=[settings.ai_light_model, settings.ai_model, settings.ai_complex_model],
                   max_output_tokens=settings.ai_max_output_tokens,
@@ -217,10 +295,15 @@ def main(argv=None):
     if any(model not in PRICES for model in config['models']):
         parser.error('Unknown model pricing: no paid request is allowed')
     try:
+        if args.increase_budget_from is not None:
+            ledger = increase_budget(get_engine(), args.ledger,
+                previous_limit=args.increase_budget_from, new_limit=args.budget_usd, config=config)
+            print(f'Budget amendment recorded: total ceiling USD {ledger.limit}; historical spent/reserved USD {ledger.spent}. No provider calls.')
+            return 0
         with exclusive_worker(args.ledger.with_suffix('.lock')):
             ledger = open_ledger(args.ledger, args.budget_usd)
             ledger.save()
-            freeze_configuration(args.ledger.parent, config)
+            freeze_live_configuration(args.ledger, config)
             engine = get_engine()
             with single_database_consumer(engine) as guard:
                 provider = DemoBudgetedProvider(OpenAIReviewProvider(

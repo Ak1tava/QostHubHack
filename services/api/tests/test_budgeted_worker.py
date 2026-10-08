@@ -93,7 +93,127 @@ def test_persisted_limit_cannot_be_raised_on_restart(tmp_path):
     with pytest.raises(ValueError, match='limit'):
         open_ledger(path, '2')
     with pytest.raises(ValueError):
-        open_ledger(tmp_path / 'new.json', '2.01')
+        open_ledger(tmp_path / 'new.json', '10.01')
+
+
+def budget_config(limit='2'):
+    return dict(models=['gpt-6-luna', 'gpt-6.1-sol', 'gpt-6-astra'],
+                max_output_tokens=4096, complex_max_output_tokens=8192,
+                price_date='2026-10-06', budget_usd=limit)
+
+
+def budget_before_amendment(path):
+    from app.workers.budgeted_reviews import open_ledger
+    from app.modules.ai_review.eval_runner import freeze_configuration
+    ledger = open_ledger(path)
+    ledger.reserve('historical-call', '.05', {'usage': {'input_tokens': 100}})
+    ledger.settle('historical-call', '.001', {'usage': {'input_tokens': 100}})
+    freeze_configuration(path.parent, budget_config())
+    return json.loads(path.read_text()), (path.parent / 'frozen.json').read_bytes()
+
+
+def test_live_cap10_is_scoped_and_larger_limits_are_refused(tmp_path):
+    from app.workers.budgeted_reviews import open_ledger
+    from app.modules.ai_review.eval_runner import BudgetLedger
+    assert open_ledger(tmp_path / 'live.json', '10').limit == Decimal('10')
+    for limit in ('10.01', '0', '-1', 'NaN', 'Infinity'):
+        with pytest.raises(ValueError):
+            open_ledger(tmp_path / 'invalid.json', limit)
+    with pytest.raises(ValueError):
+        BudgetLedger(tmp_path / 'eval.json', '10')
+
+
+def test_explicit_amendment_preserves_calls_spending_and_frozen_history(database, tmp_path):
+    from app.workers.budgeted_reviews import increase_budget, open_ledger, freeze_live_configuration
+    path = tmp_path / 'budget.json'
+    before, frozen = budget_before_amendment(path)
+    with pytest.raises(ValueError, match='restart'):
+        open_ledger(path, '10')
+    result = increase_budget(database['engine'], path, previous_limit='2', new_limit='10', config=budget_config('10'))
+    assert result.limit == Decimal('10') and result.spent == Decimal('.001')
+    after = json.loads(path.read_text())
+    assert {**after, 'limit_usd': before['limit_usd']} == before
+    assert (tmp_path / 'frozen.json').read_bytes() == frozen
+    amendment = json.loads(path.with_suffix('.budget-amendment.json').read_text())
+    assert amendment['ledger_before'] == before and amendment['frozen_before'] == budget_config()
+    assert open_ledger(path, '10').records == before['calls']
+    freeze_live_configuration(path, budget_config('10'))
+    with pytest.raises(ValueError):
+        freeze_live_configuration(path, {**budget_config('10'), 'max_output_tokens': 8192})
+
+
+@pytest.mark.parametrize('problem', ['reserved', 'unknown_usage', 'provider_error', 'halt'])
+def test_amendment_fails_closed_without_reset_on_unresolved_call_or_halt(database, tmp_path, problem):
+    from app.workers.budgeted_reviews import increase_budget
+    path = tmp_path / 'budget.json'
+    budget_before_amendment(path)
+    saved = json.loads(path.read_text())
+    if problem == 'halt':
+        path.with_suffix('.halt.json').write_text('{}')
+    elif problem == 'provider_error':
+        saved['calls'][0]['metadata']['error_code'] = 'api_error'
+    else:
+        saved['calls'][0]['state'] = problem
+    path.write_text(json.dumps(saved))
+    with pytest.raises(RuntimeError, match='audit'):
+        increase_budget(database['engine'], path, previous_limit='2', new_limit='10', config=budget_config('10'))
+    assert json.loads(path.read_text()) == saved
+    assert not path.with_suffix('.budget-amendment.json').exists()
+
+
+def test_amendment_requires_matching_old_limit_config_and_exclusive_consumer(database, tmp_path):
+    from app.workers.budgeted_reviews import increase_budget, exclusive_worker, single_database_consumer
+    path = tmp_path / 'budget.json'
+    before, frozen = budget_before_amendment(path)
+    with pytest.raises(ValueError):
+        increase_budget(database['engine'], path, previous_limit='1', new_limit='10', config=budget_config('10'))
+    with pytest.raises(ValueError):
+        increase_budget(database['engine'], path, previous_limit='2', new_limit='10', config={**budget_config('10'), 'price_date': 'different'})
+    with exclusive_worker(path.with_suffix('.lock')):
+        with pytest.raises(RuntimeError, match='already running'):
+            increase_budget(database['engine'], path, previous_limit='2', new_limit='10', config=budget_config('10'))
+    with single_database_consumer(database['engine']):
+        with pytest.raises(RuntimeError, match='already running'):
+            increase_budget(database['engine'], path, previous_limit='2', new_limit='10', config=budget_config('10'))
+    assert json.loads(path.read_text()) == before
+    assert (tmp_path / 'frozen.json').read_bytes() == frozen
+
+
+def test_partial_amendment_refuses_restart_without_reset(database, tmp_path, monkeypatch):
+    from app.workers import budgeted_reviews
+    path = tmp_path / 'budget.json'
+    before, frozen = budget_before_amendment(path)
+    original_write = budgeted_reviews.write_json
+    def crash_on_ledger(target, value, **kwargs):
+        if target == path:
+            raise OSError('simulated crash after amendment')
+        return original_write(target, value, **kwargs)
+    monkeypatch.setattr(budgeted_reviews, 'write_json', crash_on_ledger)
+    with pytest.raises(OSError):
+        budgeted_reviews.increase_budget(database['engine'], path, previous_limit='2', new_limit='10', config=budget_config('10'))
+    assert json.loads(path.read_text()) == before
+    assert (tmp_path / 'frozen.json').read_bytes() == frozen
+    for limit in ('2', '10'):
+        with pytest.raises((RuntimeError, ValueError)):
+            budgeted_reviews.open_ledger(path, limit)
+
+
+def test_cli_amendment_only_requires_no_key_and_never_constructs_provider(database, tmp_path, monkeypatch):
+    from app.core import db
+    from app.core.config import settings
+    from app.modules.ai_review import provider
+    from app.workers.budgeted_reviews import main
+    path = tmp_path / 'budget.json'
+    before, frozen = budget_before_amendment(path)
+    monkeypatch.setattr(db, 'get_engine', lambda: database['engine'])
+    monkeypatch.setattr(settings, 'openai_api_key', None)
+    def forbidden(*args, **kwargs):
+        pytest.fail('Amendment must not construct a paid provider')
+    monkeypatch.setattr(provider, 'OpenAIReviewProvider', forbidden)
+    assert main(['--live', '--ordinary-worker-stopped', '--ledger', str(path),
+                 '--budget-usd', '10', '--increase-budget-from', '2']) == 0
+    assert json.loads(path.read_text())['calls'] == before['calls']
+    assert (tmp_path / 'frozen.json').read_bytes() == frozen
 
 
 def test_second_consumer_is_refused_and_lock_is_reusable(tmp_path):
