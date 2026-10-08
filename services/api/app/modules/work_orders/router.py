@@ -12,7 +12,7 @@ from app.modules.work_orders import queries
 from app.modules.work_orders.schemas import (
     ActionCommand, WorkOrderCreate, WorkOrderDetail, WorkOrderList,
     WorkOrderPriority, WorkOrderStatus, WorkOrderView, SubmissionCreate, SubmissionView,
-    MasterDecisionCommand,
+    MasterDecisionCommand, WorkOrderTemplateList,
 )
 from app.modules.work_orders.service import WorkOrderService
 from app.modules.work_orders.submissions import SubmissionService
@@ -39,6 +39,13 @@ def list_orders(response: Response, area_id: UUID | None = None, equipment_id: U
     return queries.list_orders(db, actor, area_id=area_id, equipment_id=equipment_id,
                                assignee_id=assignee_id, priority=priority, status=status,
                                offset=offset, limit=limit)
+
+
+@router.get("/templates", response_model=WorkOrderTemplateList, responses=ERRORS)
+def list_templates(response: Response, actor: User = Depends(get_current_user)):
+    from app.modules.work_orders.templates import list_templates
+    response.headers["Cache-Control"] = "no-store"
+    return WorkOrderTemplateList(items=list_templates())
 
 
 @router.get("/{order_id}", response_model=WorkOrderDetail, responses=ERRORS)
