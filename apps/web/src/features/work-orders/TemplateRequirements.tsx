@@ -1,12 +1,15 @@
+import { localizedTemplate, useLocale } from '../../ui/locale';
 import type { components } from '../../../../../packages/contracts/api.generated';
 
 export type WorkOrderTemplate = components['schemas']['WorkOrderTemplate'];
 
-export function TemplateRequirements({ template }: { template: WorkOrderTemplate }) {
-  return <section aria-label="Требования шаблона">
-    <h3>{template.title} · версия {template.version}</h3>
+export function TemplateRequirements({ template: source }: { template: WorkOrderTemplate }) {
+  const { tx, locale } = useLocale();
+  const template = localizedTemplate(source, locale);
+  return <section aria-label={tx("Требования шаблона")}>
+    <h3>{template.title}{tx(" · версия ")}{template.version}</h3>
     <ul>{template.instructions.map((instruction, index) => <li key={index}>{instruction}</li>)}</ul>
-    <ul>{template.checklist.map(item => <li key={item.id}>{item.label}{item.required ? ' · обязательно' : ''}</li>)}</ul>
-    <p>Фото до: {template.photo_requirements.before}; после: {template.photo_requirements.after}. Требуются перед отправкой отчёта.</p>
+    <ul>{template.checklist.map(item => <li key={item.id}>{item.label}{item.required ? tx(" · обязательно") : ''}</li>)}</ul>
+    <p>{tx("Фото до: ")}{template.photo_requirements.before}{tx("; после: ")}{template.photo_requirements.after}{tx(". Требуются перед отправкой отчёта.")}</p>
   </section>;
 }

@@ -1,7 +1,9 @@
+import { useLocale } from './ui/locale';
 import { useState } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
 export function PwaUpdatePrompt() {
+  const { tx } = useLocale();
   const { needRefresh: [needRefresh, setNeedRefresh], updateServiceWorker } = useRegisterSW();
   const [updating, setUpdating] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -22,10 +24,10 @@ export function PwaUpdatePrompt() {
 
   return (
     <aside className="update-notice" role="status">
-      <p>Доступна новая версия приложения.</p>
-      {failed && <p role="alert">Не удалось обновить. Проверьте соединение и повторите попытку.</p>}
-      <button disabled={updating} onClick={() => void confirmUpdate()}>Обновить приложение</button>
-      <button disabled={updating} onClick={() => setNeedRefresh(false)}>Позже</button>
+      <p>{tx("Доступна новая версия приложения.")}</p>
+      {failed && <p role="alert">{tx("Не удалось обновить. Проверьте соединение и повторите попытку.")}</p>}
+      <button disabled={updating} onClick={() => void confirmUpdate()}>{tx("Обновить приложение")}</button>
+      <button disabled={updating} onClick={() => setNeedRefresh(false)}>{tx("Позже")}</button>
     </aside>
   );
 }

@@ -1,9 +1,11 @@
+import { useLocale } from '../../ui/locale';
 import { useEffect, useRef, useState } from 'react';
 import type { ApiClient } from '../../lib/api';
 import { compressPhoto } from '../../lib/compressPhoto';
 import { uploadPhoto, type Photo } from './data';
 
 export function PhotoUpload({ api, orderId, type, disabled, onUploaded, onPendingChange }: { api: ApiClient; orderId: string; type: 'before' | 'after'; disabled: boolean; onUploaded: (photo: Photo) => void; onPendingChange?: (pending: boolean) => void }) {
+  const { tx, errorText } = useLocale();
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -22,7 +24,7 @@ export function PhotoUpload({ api, orderId, type, disabled, onUploaded, onPendin
     if (!selected || running.current || disabled) return;
     running.current = true; setBusy(true); setError(''); setFile(null);
     try { const compressed = await compressPhoto(selected); if (active.current) setFile(compressed); }
-    catch (error) { if (active.current) setError(error instanceof Error ? error.message : 'Не удалось подготовить фото.'); }
+    catch (error) { if (active.current) setError(error instanceof Error ? errorText(error) : tx("Не удалось подготовить фото.")); }
     finally { running.current = false; if (active.current) setBusy(false); }
   }
   async function upload() {
@@ -31,15 +33,15 @@ export function PhotoUpload({ api, orderId, type, disabled, onUploaded, onPendin
     try {
       const photo = await uploadPhoto(api, orderId, file, type);
       if (active.current) { setPhotos(previous => [...previous, photo]); setFile(null); onUploaded(photo); }
-    } catch (error) { if (active.current) setError(error instanceof Error ? error.message : 'Не удалось загрузить фото.'); }
+    } catch (error) { if (active.current) setError(error instanceof Error ? errorText(error) : tx("Не удалось загрузить фото.")); }
     finally { running.current = false; if (active.current) setBusy(false); }
   }
-  return <section className="photo-upload" aria-label={`Фото ${type === 'before' ? 'до' : 'после'}`}>
-    <label>Фото {type === 'before' ? 'до работы' : 'после работы'}<input type="file" accept="image/*" capture="environment" disabled={disabled || busy} onChange={event => { const selected = event.target.files?.[0]; event.target.value = ''; void choose(selected); }} /></label>
-    {preview && file && <figure><img src={preview} alt="Предпросмотр выбранного фото" /><figcaption>{Math.ceil(file.size / 1024)} КБ · подготовлено к загрузке</figcaption></figure>}
-    {file && <button type="button" disabled={disabled || busy} onClick={() => void upload()}>{busy ? 'Загружаем…' : error ? 'Повторить загрузку фото' : 'Загрузить фото'}</button>}
-    {busy && <p role="status">Подготавливаем и загружаем фотографию…</p>}
+  return <section className="photo-upload" aria-label={(tx("Фото ") + (type === 'before' ? tx('до') : tx('после')))}>
+    <label>{tx("Фото ")}{type === 'before' ? tx("до работы") : tx("после работы")}<input type="file" accept="image/*" capture="environment" disabled={disabled || busy} onChange={event => { const selected = event.target.files?.[0]; event.target.value = ''; void choose(selected); }} /></label>
+    {preview && file && <figure><img src={preview} alt={tx("Предпросмотр выбранного фото")} /><figcaption>{Math.ceil(file.size / 1024)}{tx(" КБ · подготовлено к загрузке")}</figcaption></figure>}
+    {file && <button type="button" disabled={disabled || busy} onClick={() => void upload()}>{busy ? tx("Загружаем…") : error ? tx("Повторить загрузку фото") : tx("Загрузить фото")}</button>}
+    {busy && <p role="status">{tx("Подготавливаем и загружаем фотографию…")}</p>}
     {error && <p role="alert">{error}</p>}
-    {photos.map(photo => <figure key={photo.id}><img src={photo.read_url} alt={`Загруженное фото ${type === 'before' ? 'до' : 'после'}`} /><figcaption>Загружено</figcaption></figure>)}
+    {photos.map(photo => <figure key={photo.id}><img src={photo.read_url} alt={(tx("Загруженное фото ") + (type === 'before' ? tx('до') : tx('после')))} /><figcaption>{tx("Загружено")}</figcaption></figure>)}
   </section>;
 }

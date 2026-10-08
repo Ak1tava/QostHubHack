@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 
 export type Locale = 'ru' | 'kk';
 export type Theme = 'light' | 'dark';
+export const LocaleContext = createContext<{ locale: Locale; setLocale: (locale: Locale) => void } | null>(null);
 const ru = {
   close: 'Закрыть', pending: 'Подождите…', why: 'Почему?', offline: 'Нет связи',
   offlineDetail: 'Действия доступны после восстановления связи. Изменения не отправлены.',
@@ -65,13 +66,15 @@ const kk: Record<keyof typeof ru, string> = {
 export type MessageKey = keyof typeof ru;
 export function translate(locale: Locale, key: MessageKey) { return (locale === 'kk' ? kk : ru)[key]; }
 
-// Preferences belong to the preview until the existing screens adopt the dictionary in T17.
-function readPreference<T extends string>(key: string, options: readonly T[], fallback: T): T {
+export function readPreference<T extends string>(key: string, options: readonly T[], fallback: T): T {
   try { const value = localStorage.getItem(key); return options.includes(value as T) ? value as T : fallback; }
   catch { return fallback; }
 }
 export function useUiPreferences() {
-  const [locale, setLocale] = useState<Locale>(() => readPreference('naryadai.ui-kit.locale', ['ru', 'kk'], 'ru'));
+  const shared = useContext(LocaleContext);
+  const [previewLocale, setPreviewLocale] = useState<Locale>(() => readPreference('naryadai.ui-kit.locale', ['ru', 'kk'], 'ru'));
+  const locale = shared?.locale ?? previewLocale;
+  const setLocale = shared?.setLocale ?? setPreviewLocale;
   const [theme, setTheme] = useState<Theme>(() => readPreference('naryadai.ui-kit.theme', ['light', 'dark'], 'light'));
   useEffect(() => {
     try { localStorage.setItem('naryadai.ui-kit.locale', locale); localStorage.setItem('naryadai.ui-kit.theme', theme); }

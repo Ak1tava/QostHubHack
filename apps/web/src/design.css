@@ -20,6 +20,9 @@
 .account-person strong { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 28ch; }
 .account-person small { color: var(--muted); font-size: 11px; }
 .account button { font-size: 13px; margin: 0; }
+.language-selector { display: flex; flex-shrink: 0; gap: 4px; margin-left: auto; }
+.language-selector button { min-width: 44px; min-height: 44px; margin: 0; padding: 8px; font-size: 12px; }
+.language-selector button[aria-pressed="true"] { color: var(--primary-fg); background: var(--primary-bg); border-color: var(--primary-bg); }
 .app-content { margin: 0 auto; padding: 32px 36px 38px; width: 100%; min-width: 0; max-width: 90rem; }
 .app-content > [role="alert"] { overflow-wrap: anywhere; }
 .login-shell .header-brand { display: block; }
@@ -154,6 +157,9 @@ meter::-moz-meter-bar { background: var(--ok-solid); }
   .app-nav { display: flex; position: fixed; inset: auto 0 0; z-index: 10; justify-content: space-around; gap: 6px; padding: 8px 8px max(10px, env(safe-area-inset-bottom)); background: var(--surface); backdrop-filter: blur(12px); border-top: 1px solid var(--border); }
   .app-nav a { flex: 1; min-width: 0; padding: 7px 4px; font-size: 11px; text-align: center; flex-direction: column; gap: 4px; }
   .app-header { padding: 10px 16px; min-height: 66px; gap: 8px; }
+  .app-header { flex-wrap: wrap; }
+  .app-header .account { flex-basis: 100%; margin-left: 0; justify-content: flex-end; }
+  .app-header .account-person { margin-right: auto; }
   .header-brand { display: block; }
   .header-caption { display: none; }
   .app-header .app-brand { padding: 0; gap: 8px; }

@@ -1,3 +1,4 @@
+import { useLocale } from '../../ui/locale';
 import { TemplateRequirements } from './TemplateRequirements';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
@@ -19,6 +20,7 @@ type WorkerAction = keyof typeof names;
 const photoStatuses = new Set(['ISSUED', 'ACCEPTED', 'QUEUED', 'IN_PROGRESS', 'PAUSED', 'REWORK']);
 
 export function ExecutionPage({ api, user, orderId }: { api: ApiClient; user: UserView; orderId: string }) {
+  const { tx, errorText } = useLocale();
   const detail = useQuery(useCallback((signal: AbortSignal) => api.request<WorkOrderDetail>('/api/v1/work-orders/{order_id}', { params: { order_id: orderId }, signal }), [api, orderId]));
   const [action, setAction] = useState<WorkerAction | null>(null);
   const [reason, setReason] = useState('');
@@ -38,23 +40,23 @@ export function ExecutionPage({ api, user, orderId }: { api: ApiClient; user: Us
     if (await command.run(body)) { setAction(null); setReason(''); changed(); }
   }
   return <section className="page details-page">
-    <Link to="/my-orders">← Мои наряды</Link>
-    {detail.loading && <p role="status">Загружаем наряд…</p>}
-    {detail.error && <p role="alert">{detail.error.message} <button onClick={detail.reload}>Обновить</button></p>}
+    <Link to="/my-orders">{tx("← Мои наряды")}</Link>
+    {detail.loading && <p role="status">{tx("Загружаем наряд…")}</p>}
+    {detail.error && <p role="alert">{errorText(detail.error)} <button onClick={detail.reload}>{tx("Обновить")}</button></p>}
     {order && <>
-      <div className="page-heading"><h2>Наряд {order.number}</h2><span className={`badge priority-${order.priority}`}>{priorities[order.priority]}</span></div>
-      <p className="badge">{statuses[order.status]}{order.is_overdue ? ' · Просрочен' : ''}</p>{order.template_snapshot && <TemplateRequirements template={order.template_snapshot} />}
+      <div className="page-heading"><h2>{tx("Наряд ")}{order.number}</h2><span className={`badge priority-${order.priority}`}>{tx(priorities[order.priority])}</span></div>
+      <p className="badge">{tx(statuses[order.status])}{order.is_overdue ? tx(" · Просрочен") : ''}</p>{order.template_snapshot && <TemplateRequirements template={order.template_snapshot} />}
       <p id={`problem-${order.id}`} className="full-description">{order.description}</p>
-      <p>Срок: {displayTime(order.due_at, timezone)} ({timezone})</p>
-      <p><Link to={`/equipment/${order.equipment_id}`}>Оборудование и история нарядов</Link></p>
-      {order.brigade_id && <p>{responsible ? 'Ответственный бригады' : 'Наряд бригады · просмотр'}</p>}
-      {responsible && <div className="choices" aria-label="Действия исполнителя">{(Object.keys(names) as WorkerAction[]).filter(name => order.allowed_actions?.includes(name)).map(name => <button key={name} disabled={command.busy || command.pending || submissionLocked} onClick={() => { setAction(name); setReason(''); }}>{names[name]}</button>)}</div>}
-      {action && <form className="action-form" onSubmit={apply}><h3>{names[action]}</h3>
-        <fieldset className="form-fields" disabled={command.busy || command.pending || !allowed}>{(action === 'reject' || action === 'pause') && <label>Причина<textarea name="reason" required maxLength={4000} value={reason} onChange={event => setReason(event.target.value)} rows={2} /></label>}</fieldset>
-        {command.error && <p role="alert">{command.error.message}{command.error instanceof ApiError && command.error.status === 409 ? '. Данные перечитаны; проверьте действие.' : ''}</p>}
-        {command.pending && <p role="status">Результат неизвестен. Повтор подтвердит ту же команду.</p>}
-        <button className="primary" type="submit" disabled={command.busy || submissionLocked || (!command.pending && !valid)}>{command.busy ? 'Сохраняем…' : command.pending ? 'Повторить действие' : 'Применить'}</button>
-        {!command.pending && <button type="button" disabled={command.busy} onClick={() => setAction(null)}>Вернуться</button>}
+      <p>{tx("Срок: ")}{displayTime(order.due_at, timezone)} ({timezone})</p>
+      <p><Link to={`/equipment/${order.equipment_id}`}>{tx("Оборудование и история нарядов")}</Link></p>
+      {order.brigade_id && <p>{responsible ? tx("Ответственный бригады") : tx("Наряд бригады · просмотр")}</p>}
+      {responsible && <div className="choices" aria-label={tx("Действия исполнителя")}>{(Object.keys(names) as WorkerAction[]).filter(name => order.allowed_actions?.includes(name)).map(name => <button key={name} disabled={command.busy || command.pending || submissionLocked} onClick={() => { setAction(name); setReason(''); }}>{tx(names[name])}</button>)}</div>}
+      {action && <form className="action-form" onSubmit={apply}><h3>{tx(names[action])}</h3>
+        <fieldset className="form-fields" disabled={command.busy || command.pending || !allowed}>{(action === 'reject' || action === 'pause') && <label>{tx("Причина")}<textarea name="reason" required maxLength={4000} value={reason} onChange={event => setReason(event.target.value)} rows={2} /></label>}</fieldset>
+        {command.error && <p role="alert">{errorText(command.error)}{command.error instanceof ApiError && command.error.status === 409 ? tx(". Данные перечитаны; проверьте действие.") : ''}</p>}
+        {command.pending && <p role="status">{tx("Результат неизвестен. Повтор подтвердит ту же команду.")}</p>}
+        <button className="primary" type="submit" disabled={command.busy || submissionLocked || (!command.pending && !valid)}>{command.busy ? tx("Сохраняем…") : command.pending ? tx("Повторить действие") : tx("Применить")}</button>
+        {!command.pending && <button type="button" disabled={command.busy} onClick={() => setAction(null)}>{tx("Вернуться")}</button>}
       </form>}
       {responsible && photoStatuses.has(order.status) && <PhotoUpload api={api} orderId={order.id} type="before" disabled={command.busy || command.pending || submissionLocked} onUploaded={detail.reload} />}
       {responsible && <SubmissionForm api={api} order={order} disabled={command.busy || command.pending} reload={detail.reload} onSubmitted={changed} onLockChange={setSubmissionLocked} />}
@@ -62,7 +64,7 @@ export function ExecutionPage({ api, user, orderId }: { api: ApiClient; user: Us
       <IssuancePhotos photos={order.issuance_photos} />
       <NotificationDeliveryPanel api={api} user={user} orderId={order.id} />
       <ReviewPanel order={order} />
-      <section aria-label="История наряда"><h3>История</h3><ol className="history">{order.events?.map(item => <li key={item.id}><strong>{names[item.action as WorkerAction] ?? item.action}</strong><time dateTime={item.occurred_at}>{displayTime(item.occurred_at, timezone)}</time>{item.reason && <p>{item.reason}</p>}</li>)}</ol></section>
+      <section aria-label={tx("История наряда")}><h3>{tx("История")}</h3><ol className="history">{order.events?.map(item => <li key={item.id}><strong>{names[item.action as WorkerAction] ? tx(names[item.action as WorkerAction]) : item.action}</strong><time dateTime={item.occurred_at}>{displayTime(item.occurred_at, timezone)}</time>{item.reason && <p>{item.reason}</p>}</li>)}</ol></section>
     </>}
   </section>;
 }

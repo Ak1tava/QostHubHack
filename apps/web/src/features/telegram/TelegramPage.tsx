@@ -1,3 +1,4 @@
+import { useLocale } from '../../ui/locale';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { components } from '../../../../../packages/contracts/api.generated';
 import { ApiClient, ApiError } from '../../lib/api';
@@ -15,6 +16,7 @@ export function telegramError(error: unknown): string {
 }
 
 export function TelegramPage({ api }: { api: ApiClient }) {
+  const { tx } = useLocale();
   const status = useQuery(useCallback((signal: AbortSignal) => api.request<LinkStatus>('/api/v1/telegram/status', { signal }), [api]), 'refresh');
   const [link, setLink] = useState<LinkToken | null>(null);
   const [busy, setBusy] = useState(false);
@@ -45,14 +47,14 @@ export function TelegramPage({ api }: { api: ApiClient }) {
     finally { running.current = false; setBusy(false); }
   }
   return <section className="page form-page">
-    <h2>Telegram</h2><p>Уведомления приходят в Telegram. Принятие и закрытие наряда выполняются в приложении.</p>
-    {status.loading && <p role="status">Проверяем привязку…</p>}
-    {status.data && <p role="status">{status.data.linked ? 'Привязан' : 'Не привязан'}</p>}
+    <h2>Telegram</h2><p>{tx("Уведомления приходят в Telegram. Принятие и закрытие наряда выполняются в приложении.")}</p>
+    {status.loading && <p role="status">{tx("Проверяем привязку…")}</p>}
+    {status.data && <p role="status">{status.data.linked ? tx("Привязан") : tx("Не привязан")}</p>}
     {(error || status.error) && <p role="alert">{error || telegramError(status.error)}</p>}
     <div className="choices">
-      {status.data && <button type="button" disabled={busy} onClick={() => void change(status.data!.linked ? 'unlink' : 'link-token')}>{status.data.linked ? 'Отвязать Telegram' : link ? 'Получить новую ссылку' : 'Привязать Telegram'}</button>}
-      <button type="button" disabled={busy || status.loading} onClick={status.reload}>Проверить привязку</button>
+      {status.data && <button type="button" disabled={busy} onClick={() => void change(status.data!.linked ? 'unlink' : 'link-token')}>{status.data.linked ? tx("Отвязать Telegram") : link ? tx("Получить новую ссылку") : tx("Привязать Telegram")}</button>}
+      <button type="button" disabled={busy || status.loading} onClick={status.reload}>{tx("Проверить привязку")}</button>
     </div>
-    {link && !status.data?.linked && <p><a className="button primary" href={link.url} target="_blank" rel="noreferrer">Открыть бота</a> Нажмите «Запустить» в Telegram, затем проверьте привязку здесь. Ссылка одноразовая, действует 10 минут.</p>}
+    {link && !status.data?.linked && <p><a className="button primary" href={link.url} target="_blank" rel="noreferrer">{tx("Открыть бота")}</a>{tx(" Нажмите «Запустить» в Telegram, затем проверьте привязку здесь. Ссылка одноразовая, действует 10 минут.")}</p>}
   </section>;
 }

@@ -1,0 +1,23 @@
+# T17 — языки интерфейса
+
+Владелец: A / Codex frontend; ветка `codex/t17-ui-language`, база `3ad12a4`.
+Локальный статус REVIEW; реестр и интеграцию обновляет основной агент.
+
+Реализован общий LocaleProvider на инфраструктуре T19: русский по умолчанию, видимый RU/Қазақша, сохранение `naryadai.locale` после render, защита от отказа storage, html lang. UI-kit использует тот же контекст; отдельная theme preference сохранена.
+
+Основные экраны, навигация, выдача/исполнение/отчёт/решение мастера, отчёты/аналитика, оборудование/Telegram, статусы, пустые состояния и известные API errors локализованы явными UI call sites. Неизвестные ошибки и details, имена/описания/документы, объяснения и ограничения ИИ/аналитики сохраняются буквально. Фиксированные шаблоны переводятся только по известному id/version=1 и checklist ids; initial_description не изменяется. Язык речи наследует UI до ручного выбора; переключение UI не сбрасывает поля или черновики.
+
+## Фактические проверки (2026-10-08)
+
+- RED: `node node_modules/vitest/vitest.mjs run src/ui/locale.test.tsx` — ошибка отсутствующего `./locale`, до реализации.
+- `node node_modules/vitest/vitest.mjs run` — 22 файла, **133/133 PASS**, exit 0. Пять новых тестов: RU default, persistence/input retention/remount, denied/invalid storage, voice override, known/unknown errors и ограничение template translation.
+- `node apps/web/node_modules/typescript/bin/tsc --noEmit --project apps/web/tsconfig.json` — PASS, exit 0.
+- `node apps/web/node_modules/typescript/bin/tsc --noEmit --project apps/web/tsconfig.e2e.json` — PASS, exit 0.
+- `node node_modules/vite/bin/vite.js build` из apps/web — PASS, exit 0; 101 модуля, generateSW, 11 precache entries.
+- `git -c core.autocrlf=false diff --check` — PASS, exit 0.
+
+Vitest/build запускались с разрешением для дочерних процессов: sandbox давал spawn EPERM. Зависимости используются через junction на существующие `.worktrees/t12-t15/apps/web/node_modules`; manifests/lock/контракты не менялись. Исходные root deps не содержали qrcode, поэтому первая typecheck завершилась TS2307 до подключения полного каталога.
+
+После полной Vitest/build проверки изменена только подпись заголовка колонки (тот же tx, что select/aria-label) и убраны пустые строки; typecheck/diff check повторены. Браузерные T17 E2E, mobile long KK labels, визуальное ревью и общий production acceptance выполняет основной агент после интеграции; здесь не заявляются PASS. Казахская терминология требует человеческого ревью. Платные API и Telegram не вызывались этим агентом.
+
+Код: `apps/web/src/ui/locale.tsx`, `appMessages.ts`, `locale.test.tsx`, подключённые экраны и `design.css`.

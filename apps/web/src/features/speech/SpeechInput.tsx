@@ -1,3 +1,4 @@
+import { useLocale } from '../../ui/locale';
 import { useEffect, useRef, useState } from 'react';
 import type { components } from '../../../../../packages/contracts/api.generated';
 import { ApiError, type ApiClient } from '../../lib/api';
@@ -28,7 +29,9 @@ function speechError(error: unknown): string {
 export function SpeechInput({ api, value, onChange, maxLength, disabled = false }: {
   api: ApiClient; value: string; onChange: (value: string) => void; maxLength: number; disabled?: boolean;
 }) {
-  const [language, setLanguage] = useState<Language>('ru');
+  const { tx, locale } = useLocale();
+  const [language, setLanguage] = useState<Language>(locale);
+  const languageEdited = useRef(false);
   const [phase, setPhase] = useState<Phase>('idle');
   const [draft, setDraft] = useState('');
   const [mock, setMock] = useState(false);
@@ -41,6 +44,9 @@ export function SpeechInput({ api, value, onChange, maxLength, disabled = false 
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const canRecord = typeof MediaRecorder !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
   const busy = phase === 'permission' || phase === 'recording' || phase === 'transcribing';
+  useEffect(() => {
+    if (!languageEdited.current && !busy && phase !== 'draft') setLanguage(locale);
+  }, [locale, busy, phase]);
 
   function releaseMicrophone() {
     if (timer.current !== null) clearTimeout(timer.current);
@@ -66,12 +72,12 @@ export function SpeechInput({ api, value, onChange, maxLength, disabled = false 
 
   async function transcribe(file: File) {
     stopWork(); setDraft(''); setMock(false); setError(''); setPhase('idle'); setAudio(null);
-    if (!file.size || file.size > MAX_BYTES) { setError('Выберите непустое аудио не больше 10 МБ и не длиннее 60 секунд.'); return; }
+    if (!file.size || file.size > MAX_BYTES) { setError(tx("Выберите непустое аудио не больше 10 МБ и не длиннее 60 секунд.")); return; }
     if (!file.type) {
       const type = AUDIO_EXTENSIONS[file.name.slice(file.name.lastIndexOf('.')).toLowerCase()];
       if (type) file = new File([file], file.name, { type, lastModified: file.lastModified });
     }
-    if (!AUDIO_TYPES.includes(file.type.split(';')[0].toLowerCase())) { setError('Выберите аудиофайл WebM, MP4, M4A, MP3, WAV или OGG.'); return; }
+    if (!AUDIO_TYPES.includes(file.type.split(';')[0].toLowerCase())) { setError(tx("Выберите аудиофайл WebM, MP4, M4A, MP3, WAV или OGG.")); return; }
     setAudio(file); setPhase('transcribing');
     const token = generation.current;
     const controller = new AbortController(); request.current = controller;
@@ -81,11 +87,11 @@ export function SpeechInput({ api, value, onChange, maxLength, disabled = false 
         method: 'POST', body, signal: controller.signal,
       });
       if (token !== generation.current || controller.signal.aborted) return;
-      if (!result.text.trim()) { setError('Речь не обнаружена. Запишите ещё раз или введите текст вручную.'); setPhase('idle'); return; }
+      if (!result.text.trim()) { setError(tx("Речь не обнаружена. Запишите ещё раз или введите текст вручную.")); setPhase('idle'); return; }
       setDraft(result.text); setMock(result.is_mock); setPhase('draft');
     } catch (failure) {
       if (token !== generation.current || controller.signal.aborted) return;
-      setError(speechError(failure)); setPhase('idle');
+      setError(tx(speechError(failure))); setPhase('idle');
     } finally { if (request.current === controller) request.current = null; }
   }
 
@@ -103,12 +109,12 @@ export function SpeechInput({ api, value, onChange, maxLength, disabled = false 
       active.ondataavailable = event => {
         if (token !== generation.current) return;
         bytes += event.data.size;
-        if (bytes > MAX_BYTES) { stopWork(); setPhase('idle'); setError('Запись превысила 10 МБ. Запишите более короткое сообщение.'); return; }
+        if (bytes > MAX_BYTES) { stopWork(); setPhase('idle'); setError(tx("Запись превысила 10 МБ. Запишите более короткое сообщение.")); return; }
         chunks.push(event.data);
       };
       active.onerror = () => {
         if (token !== generation.current) return;
-        stopWork(); setPhase('idle'); setError('Запись прервалась. Повторите или выберите аудиофайл.');
+        stopWork(); setPhase('idle'); setError(tx("Запись прервалась. Повторите или выберите аудиофайл."));
       };
       active.onstop = () => {
         if (token !== generation.current) return;
@@ -124,8 +130,8 @@ export function SpeechInput({ api, value, onChange, maxLength, disabled = false 
       if (token !== generation.current) return;
       stopWork(); setPhase('idle');
       setError(failure instanceof DOMException && failure.name === 'NotAllowedError'
-        ? 'Доступ к микрофону запрещён. Разрешите его в браузере или выберите аудиофайл.'
-        : 'Микрофон или запись недоступны. Используйте HTTPS, выберите аудиофайл или введите текст вручную.');
+        ? tx("Доступ к микрофону запрещён. Разрешите его в браузере или выберите аудиофайл.")
+        : tx("Микрофон или запись недоступны. Используйте HTTPS, выберите аудиофайл или введите текст вручную."));
     }
   }
 
@@ -133,33 +139,33 @@ export function SpeechInput({ api, value, onChange, maxLength, disabled = false 
     const text = draft.trim();
     if (!text || disabled) return;
     const appended = value ? `${value}\n\n${text}` : text;
-    if (appended.length > maxLength) { setError(`Текст превышает лимит ${maxLength} символов. Сократите черновик перед вставкой.`); return; }
+    if (appended.length > maxLength) { setError((tx("Текст превышает лимит ") + (maxLength) + tx(" символов. Сократите черновик перед вставкой."))); return; }
     onChange(appended); cancel();
   }
 
-  return <section aria-label="Голосовой ввод" className="speech-input">
-    <p className="muted">Голосовой ввод · до 60 секунд и 10 МБ. Проверьте текст перед вставкой; можно писать вручную.</p>
-    <label>Язык речи<select aria-label="Язык речи" value={language} disabled={disabled || busy || phase === 'draft'} onChange={event => setLanguage(event.target.value === 'kk' ? 'kk' : 'ru')}>
-      <option value="ru">Русский</option><option value="kk">Қазақша</option>
+  return <section aria-label={tx("Голосовой ввод")} className="speech-input">
+    <p className="muted">{tx("Голосовой ввод · до 60 секунд и 10 МБ. Проверьте текст перед вставкой; можно писать вручную.")}</p>
+    <label>{tx("Язык речи")}<select aria-label={tx("Язык речи")} value={language} disabled={disabled || busy || phase === 'draft'} onChange={event => { languageEdited.current = true; setLanguage(event.target.value === 'kk' ? 'kk' : 'ru'); }}>
+      <option value="ru">{tx("Русский")}</option><option value="kk">{tx("Қазақша")}</option>
     </select></label>
     <div className="form-row">
-      {phase === 'recording' ? <button type="button" disabled={disabled} onClick={() => { const active = recorder.current; if (active?.state === 'recording') active.stop(); }}>Остановить запись</button>
-        : <button type="button" disabled={disabled || busy || !canRecord} onClick={() => void record()}>Записать голос</button>}
-      <label>Выбрать аудио<input type="file" aria-label="Аудиофайл" accept="audio/webm,audio/mp4,audio/x-m4a,audio/mpeg,audio/wav,audio/x-wav,audio/ogg,.webm,.mp4,.m4a,.mp3,.wav,.ogg" disabled={disabled || busy} onChange={event => {
+      {phase === 'recording' ? <button type="button" disabled={disabled} onClick={() => { const active = recorder.current; if (active?.state === 'recording') active.stop(); }}>{tx("Остановить запись")}</button>
+        : <button type="button" disabled={disabled || busy || !canRecord} onClick={() => void record()}>{tx("Записать голос")}</button>}
+      <label>{tx("Выбрать аудио")}<input type="file" aria-label={tx("Аудиофайл")} accept="audio/webm,audio/mp4,audio/x-m4a,audio/mpeg,audio/wav,audio/x-wav,audio/ogg,.webm,.mp4,.m4a,.mp3,.wav,.ogg" disabled={disabled || busy} onChange={event => {
         const file = event.target.files?.[0]; event.target.value = ''; if (file) void transcribe(file);
       }} /></label>
     </div>
-    {!canRecord && <p className="muted">Запись в этом браузере недоступна. Выберите аудиофайл или введите текст вручную.</p>}
-    {phase === 'permission' && <p role="status">Ожидаем разрешение микрофона…</p>}
-    {phase === 'recording' && <p role="status">Идёт запись. Она остановится автоматически.</p>}
-    {phase === 'transcribing' && <p role="status">Распознаём речь…</p>}
+    {!canRecord && <p className="muted">{tx("Запись в этом браузере недоступна. Выберите аудиофайл или введите текст вручную.")}</p>}
+    {phase === 'permission' && <p role="status">{tx("Ожидаем разрешение микрофона…")}</p>}
+    {phase === 'recording' && <p role="status">{tx("Идёт запись. Она остановится автоматически.")}</p>}
+    {phase === 'transcribing' && <p role="status">{tx("Распознаём речь…")}</p>}
     {phase === 'draft' && <>
-      {mock && <p role="status">Тестовая расшифровка — проверьте и исправьте текст.</p>}
-      <label>Черновик расшифровки<textarea aria-label="Черновик расшифровки" value={draft} disabled={disabled} onChange={event => { setDraft(event.target.value); setError(''); }} rows={4} /></label>
-      <button type="button" disabled={disabled || !draft.trim()} onClick={insert}>Вставить</button>
+      {mock && <p role="status">{tx("Тестовая расшифровка — проверьте и исправьте текст.")}</p>}
+      <label>{tx("Черновик расшифровки")}<textarea aria-label={tx("Черновик расшифровки")} value={draft} disabled={disabled} onChange={event => { setDraft(event.target.value); setError(''); }} rows={4} /></label>
+      <button type="button" disabled={disabled || !draft.trim()} onClick={insert}>{tx("Вставить")}</button>
     </>}
     {error && <p role="alert">{error}</p>}
-    {error && audio && <button type="button" disabled={disabled || busy} onClick={() => void transcribe(audio)}>Повторить распознавание</button>}
-    {(busy || phase === 'draft' || error) && <button type="button" disabled={disabled} onClick={cancel}>Отмена</button>}
+    {error && audio && <button type="button" disabled={disabled || busy} onClick={() => void transcribe(audio)}>{tx("Повторить распознавание")}</button>}
+    {(busy || phase === 'draft' || error) && <button type="button" disabled={disabled} onClick={cancel}>{tx("Отмена")}</button>}
   </section>;
 }
