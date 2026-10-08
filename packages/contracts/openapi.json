@@ -725,6 +725,52 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "LanguageButton": {
+        "properties": {
+          "text": {
+            "enum": [
+              "RU",
+              "KZ"
+            ],
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "LanguageButton",
+        "type": "object"
+      },
+      "LanguageKeyboard": {
+        "properties": {
+          "is_persistent": {
+            "title": "Is Persistent",
+            "type": "boolean"
+          },
+          "keyboard": {
+            "items": {
+              "items": {
+                "$ref": "#/components/schemas/LanguageButton"
+              },
+              "type": "array"
+            },
+            "title": "Keyboard",
+            "type": "array"
+          },
+          "resize_keyboard": {
+            "title": "Resize Keyboard",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "keyboard",
+          "resize_keyboard",
+          "is_persistent"
+        ],
+        "title": "LanguageKeyboard",
+        "type": "object"
+      },
       "LinkStatus": {
         "properties": {
           "linked": {
@@ -2001,9 +2047,53 @@
       },
       "WebhookResult": {
         "properties": {
+          "chat_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chat Id"
+          },
+          "method": {
+            "anyOf": [
+              {
+                "const": "sendMessage",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method"
+          },
+          "reply_markup": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LanguageKeyboard"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "result": {
             "title": "Result",
             "type": "string"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
           }
         },
         "required": [

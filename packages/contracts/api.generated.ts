@@ -719,6 +719,23 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** LanguageButton */
+        LanguageButton: {
+            /**
+             * Text
+             * @enum {string}
+             */
+            text: "RU" | "KZ";
+        };
+        /** LanguageKeyboard */
+        LanguageKeyboard: {
+            /** Is Persistent */
+            is_persistent: boolean;
+            /** Keyboard */
+            keyboard: components["schemas"]["LanguageButton"][][];
+            /** Resize Keyboard */
+            resize_keyboard: boolean;
+        };
         /** LinkStatus */
         LinkStatus: {
             /** Linked */
@@ -1238,8 +1255,15 @@ export interface components {
         };
         /** WebhookResult */
         WebhookResult: {
+            /** Chat Id */
+            chat_id?: number | null;
+            /** Method */
+            method?: "sendMessage" | null;
+            reply_markup?: components["schemas"]["LanguageKeyboard"] | null;
             /** Result */
             result: string;
+            /** Text */
+            text?: string | null;
         };
         /** WorkCodeView */
         WorkCodeView: {
