@@ -1,15 +1,18 @@
 """Separate synthetic judge cohort, tested against server permissions."""
 
 import importlib
+import os
+import subprocess
 from datetime import date
-from uuid import UUID
+from pathlib import Path
+from uuid import UUID, uuid4
 
 import pytest
 from conftest import sign_in
 from sqlalchemy import func, select
 
 from app.modules.auth.models import User, UserArea
-from app.modules.work_orders.models import AIReview, OutboxEvent, WorkOrder
+from app.modules.work_orders.models import AIReview, OutboxEvent, WorkOrder, Photo, WorkOrderEvent
 from work_order_helpers import headers, seed_order
 
 PASSWORDS = {"master": "judge-master-test-only", "worker": "judge-worker-test-only"}
@@ -47,7 +50,181 @@ def test_repeat_preserves_passwords_and_user_actions(database, tmp_path):
     reviews = db.scalars(select(AIReview)).all()
     assert reviews and all(r.verdict == "human_review" and r.model == "t18-synthetic-test-provider" for r in reviews)
     assert all("MOCK" in r.result["limitations"][0] for r in reviews)
-    assert list(tmp_path.rglob("before.png")) and list(tmp_path.rglob("after.png"))
+    photos = db.scalars(select(Photo)).all()
+    assert {p.type for p in photos} == {'before', 'after'}
+    assert all((tmp_path / f'{p.id}.png').is_file() for p in photos)
+
+
+def test_future_legacy_seed_keys_use_private_storage_contract(tmp_path):
+    from app.modules.photos.storage import FileSystemPhotoStorage
+    dataset = module().build_judge_dataset('jury-2026', date(2026, 10, 8))
+    storage = FileSystemPhotoStorage(tmp_path)
+    for photo in dataset['photos']:
+        assert photo['storage_key'] == f"{photo['id']}.png"
+        assert storage.path(photo['storage_key']).parent == tmp_path
+
+
+def legacy_photos(database, tmp_path):
+    setup(database, tmp_path)
+    db = database['session']
+    db.commit()
+    photos = db.scalars(select(Photo)).all()
+    originals = {}
+    for photo in photos:
+        source = tmp_path / photo.storage_key
+        content = source.read_bytes()
+        old = f't18/jury-2026/{photo.work_order_id}/{photo.type}.png'
+        path = tmp_path / old
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if not path.exists():
+            path.write_bytes(content)
+        if source != path:
+            source.unlink()
+        photo.storage_key = old
+        originals[photo.id] = (old, content)
+    db.commit()
+    return photos, originals
+
+
+def test_repeat_repairs_legacy_photo_http_and_preserves_judge_actions_and_uploads(client, database, tmp_path, monkeypatch):
+    from app.core.config import settings
+    monkeypatch.setattr(settings, 'photo_storage_path', tmp_path)
+    photos, originals = legacy_photos(database, tmp_path)
+    db = database['session']
+    worker = db.scalar(select(User).where(User.login == 'judge-jury-2026-worker'))
+    master = db.scalar(select(User).where(User.login == 'judge-jury-2026-master'))
+    password_hashes = (master.password_hash, worker.password_hash)
+    token = sign_in(client, worker.login, PASSWORDS['worker'])
+    issued = next(o for o in client.get('/api/v1/work-orders').json()['items'] if o['status'] == 'ISSUED')
+    response = client.post(f"/api/v1/work-orders/{issued['id']}/actions",
+        json=dict(action='accept', expected_version=issued['version']), headers=headers(token))
+    assert response.status_code == 200, response.text
+    db.expire_all()
+    order = db.get(WorkOrder, UUID(issued['id']))
+    state = (order.status, order.version, order.assignment_version)
+    history = [(e.id, e.action, e.payload) for e in db.scalars(select(WorkOrderEvent).where(WorkOrderEvent.work_order_id == order.id))]
+    uploaded = Photo(id=uuid4(), work_order_id=order.id, submission_id=None,
+        uploaded_by=worker.id, type='after', storage_key=f'{uuid4()}.png', mime_type='image/png',
+        content_hash='preserve-user-hash')
+    uploaded_path = tmp_path / uploaded.storage_key
+    uploaded_path.write_bytes(b'user-uploaded-bytes')
+    db.add(uploaded)
+    db.commit()
+    sign_in(client, master.login, PASSWORDS['master'])
+    assert client.get(f'/api/v1/photos/{photos[0].id}').status_code == 404
+    assert setup(database, tmp_path) == 'repaired'
+    db.commit()
+    for photo in photos:
+        response = client.get(f'/api/v1/photos/{photo.id}')
+        assert response.status_code == 200, response.text
+        assert response.content == originals[photo.id][1]
+        assert (tmp_path / originals[photo.id][0]).read_bytes() == response.content
+    assert (master.password_hash, worker.password_hash) == password_hashes
+    assert (order.status, order.version, order.assignment_version) == state
+    assert [(e.id, e.action, e.payload) for e in db.scalars(select(WorkOrderEvent).where(WorkOrderEvent.work_order_id == order.id))] == history
+    assert uploaded_path.read_bytes() == b'user-uploaded-bytes'
+    assert db.get(Photo, uploaded.id).storage_key == uploaded.storage_key
+    assert setup(database, tmp_path) == 'unchanged'
+    db.commit()
+
+
+def test_legacy_upgrade_rollback_keeps_originals_and_removes_only_new_copies(database, tmp_path):
+    photos, originals = legacy_photos(database, tmp_path)
+    db = database['session']
+    existing_copy = tmp_path / f'{photos[0].id}.png'
+    existing_copy.write_bytes(originals[photos[0].id][1])
+    assert setup(database, tmp_path) == 'repaired'
+    assert all((tmp_path / f'{p.id}.png').is_file() for p in photos)
+    db.rollback()
+    assert existing_copy.read_bytes() == originals[photos[0].id][1]
+    for photo in photos:
+        assert db.get(Photo, photo.id).storage_key == originals[photo.id][0]
+        assert (tmp_path / originals[photo.id][0]).read_bytes() == originals[photo.id][1]
+        if photo.id != photos[0].id:
+            assert not (tmp_path / f'{photo.id}.png').exists()
+
+
+@pytest.mark.parametrize('problem', ['source-hash', 'row-hash', 'unknown-key', 'destination'])
+def test_legacy_upgrade_refuses_changed_source_or_collision_without_writes(database, tmp_path, problem):
+    photos, originals = legacy_photos(database, tmp_path)
+    photo = photos[-1]
+    db = database['session']
+    if problem == 'source-hash':
+        (tmp_path / photo.storage_key).write_bytes(b'changed-bytes')
+    elif problem == 'row-hash':
+        photo.content_hash = 'changed-row-hash'
+    elif problem == 'unknown-key':
+        photo.storage_key = 't18/untrusted/source.png'
+    else:
+        (tmp_path / f'{photo.id}.png').write_bytes(b'other-user-bytes')
+    db.commit()
+    before = {p.relative_to(tmp_path): p.read_bytes() for p in tmp_path.rglob('*.png')}
+    with pytest.raises(ValueError, match='Фото|фото'):
+        setup(database, tmp_path)
+    db.rollback()
+    assert {p.relative_to(tmp_path): p.read_bytes() for p in tmp_path.rglob('*.png')} == before
+    assert all(db.get(Photo, p.id).storage_key == originals[p.id][0] for p in photos[:-1])
+
+
+def test_legacy_upgrade_copy_failure_cleans_new_files_and_preserves_originals(database, tmp_path, monkeypatch):
+    from app.modules.photos.storage import FileSystemPhotoStorage
+    photos, originals = legacy_photos(database, tmp_path)
+    save = FileSystemPhotoStorage.save
+    copies = []
+    def fail_second_copy(storage, key, content):
+        copies.append(key)
+        if len(copies) == 2:
+            raise OSError('Synthetic disk failure')
+        save(storage, key, content)
+    monkeypatch.setattr(FileSystemPhotoStorage, 'save', fail_second_copy)
+    with pytest.raises(OSError, match='disk failure'):
+        setup(database, tmp_path)
+    database['session'].rollback()
+    assert not list(tmp_path.glob('*.png'))
+    for photo in photos:
+        assert photo.storage_key == originals[photo.id][0]
+        assert (tmp_path / photo.storage_key).read_bytes() == originals[photo.id][1]
+
+
+def test_legacy_upgrade_rejects_symlink_ancestor_even_inside_photo_root(database, tmp_path):
+    legacy_photos(database, tmp_path)
+    source = tmp_path / 't18'
+    actual = tmp_path / 'original-t18'
+    assert source.resolve().is_relative_to(tmp_path.resolve())
+    source.rename(actual)
+    try:
+        source.symlink_to(actual, target_is_directory=True)
+    except OSError:
+        result = subprocess.run(['cmd', '/c', 'mklink', '/J', str(source), str(actual)],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            creationflags=subprocess.CREATE_NO_WINDOW) if os.name == 'nt' else None
+        if result is None or result.returncode:
+            actual.rename(source)
+            pytest.skip('Creating directory links is unavailable on this platform')
+    try:
+        with pytest.raises(ValueError, match='ссылки'):
+            setup(database, tmp_path)
+        database['session'].rollback()
+        assert not list(tmp_path.glob('*.png'))
+    finally:
+        if source.is_symlink():
+            source.unlink()
+        else:
+            source.rmdir()  # Junction itself, never its target.
+        actual.rename(source)
+
+
+def test_new_legacy_seed_photo_http200(client, database, tmp_path, monkeypatch):
+    from app.core.config import settings
+    monkeypatch.setattr(settings, 'photo_storage_path', tmp_path)
+    setup(database, tmp_path)
+    db = database['session']
+    db.commit()
+    sign_in(client, 'judge-jury-2026-master', PASSWORDS['master'])
+    for photo in db.scalars(select(Photo)):
+        response = client.get(f'/api/v1/photos/{photo.id}')
+        assert response.status_code == 200, response.text
+        assert response.content == module()._png()
 
 
 @pytest.mark.parametrize("role", ["master", "worker"])

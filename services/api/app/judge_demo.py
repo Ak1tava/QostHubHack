@@ -18,7 +18,8 @@ from app.modules.auth.models import User, UserArea
 from app.modules.ai_review.schemas import (
     Finding, ImageEvidence, ProviderOutcome, ReviewInput, ReviewResult, StagePlan,
 )
-from app.modules.work_orders.models import AIReview
+from app.modules.work_orders.models import AIReview, Photo
+from app.modules.photos.storage import FileSystemPhotoStorage
 from app.seed_demo import TABLES, _png, build_dataset, validate_target
 from app.prepared_judge_demo import PreparedJudgeProvider, prepare_dataset, prepared_png, save_prepared_reviews
 
@@ -139,13 +140,73 @@ def build_judge_dataset(cohort: str, as_of: date) -> dict:
                     item["occurred_at"] = now
                     item["payload"]["shift_id"] = str(shift["id"])
                     item["payload"]["after"]["due_at"] = order["due_at"].isoformat()
-        dataset["photos"].append(dict(id=uuid5(namespace, f"before:{n}"), work_order_id=order["id"], submission_id=None, uploaded_by=master["id"], type="before", storage_key=f"t18/{cohort}/{order['id']}/before.png", mime_type="image/png", content_hash=hashlib.sha256(_png()).hexdigest(), received_at=order["created_at"]))
+        dataset["photos"].append(dict(id=uuid5(namespace, f"before:{n}"), work_order_id=order["id"], submission_id=None, uploaded_by=master["id"], type="before", storage_key=f"{uuid5(namespace, f'before:{n}')}.png", mime_type="image/png", content_hash=hashlib.sha256(_png()).hexdigest(), received_at=order["created_at"]))
     for photo in dataset["photos"]:
-        photo["storage_key"] = f"t18/{cohort}/{photo['work_order_id']}/{photo['type']}.png"
+        photo["storage_key"] = f"{photo['id']}.png"
     for code in dataset["work_codes"]:
         code["code"] = f"T18-{cohort}-" + code["code"].rsplit("-", 1)[-1]
     dataset["ai_reviews"] = [_saved_review(namespace, dataset, s) for s in dataset["submissions"]]
     return dataset
+
+
+def _repair_legacy_photos(db: Session, dataset: dict, cohort: str, photo_root: Path) -> bool:
+    """Copy only verified old seed files; retain originals and all unrelated rows/files."""
+    photo_root = photo_root.absolute()
+    storage = FileSystemPhotoStorage(photo_root)
+    moves = []
+    for expected in dataset['photos']:
+        photo = db.get(Photo, expected['id'])
+        key = expected['storage_key']
+        try:
+            target = storage.path(key)
+        except FileNotFoundError as error:
+            raise ValueError('Фото судей: недопустимый путь назначения') from error
+        if photo.storage_key == key:
+            if not target.is_file():
+                raise ValueError('Фото судей отсутствуют; восстановите резервную копию')
+            continue
+        legacy_key = f"t18/{cohort}/{expected['work_order_id']}/{expected['type']}.png"
+        if (photo.storage_key != legacy_key or photo.content_hash != expected['content_hash']
+                or any(getattr(photo, field) != expected[field]
+                       for field in ('work_order_id', 'submission_id', 'type', 'uploaded_by', 'mime_type'))):
+            raise ValueError('Фото судей изменены; setup не переписывает пользовательские данные')
+        source = photo_root / legacy_key
+        for ancestor in (source, *source.parents):
+            if ancestor.is_symlink() or getattr(ancestor, 'is_junction', lambda: False)():
+                raise ValueError('Фото судей: ссылки в старом пути запрещены')
+            if ancestor == photo_root:
+                break
+        if not source.resolve().is_relative_to(storage.root) or not source.is_file():
+            raise ValueError('Фото судей отсутствуют или выходят из каталога')
+        content = source.read_bytes()
+        if hashlib.sha256(content).hexdigest() != expected['content_hash']:
+            raise ValueError('Фото судей: исходный hash не совпадает')
+        existed = target.exists()
+        if existed and (not target.is_file() or hashlib.sha256(target.read_bytes()).hexdigest() != expected['content_hash']):
+            raise ValueError('Фото судей: коллизия назначения, файл не перезаписывается')
+        moves.append((photo, key, target, content, existed))
+    if not moves:
+        return False
+    created = []
+
+    def cleanup(session):
+        for path in created:
+            path.unlink(missing_ok=True)
+        created.clear()
+
+    event.listen(db, 'after_rollback', cleanup, once=True)
+    event.listen(db, 'after_commit', lambda session: created.clear(), once=True)
+    try:
+        for photo, key, target, content, existed in moves:
+            if not existed:
+                storage.save(key, content)
+                created.append(target)
+        for photo, key, target, content, existed in moves:
+            photo.storage_key = key
+    except Exception:
+        cleanup(db)
+        raise
+    return True
 
 
 def setup_judge_demo(db: Session, *, cohort: str, as_of: date, master_password: str, worker_password: str, photo_root: Path, scenario_set: str = "legacy-v1") -> str:
@@ -175,6 +236,7 @@ def setup_judge_demo(db: Session, *, cohort: str, as_of: date, master_password: 
                 key = tuple(row[c.name] for c in model.__table__.primary_key.columns)
                 if db.get(model, key) is None:
                     raise ValueError("Частичный набор судей; setup не восстанавливает изменённые данные")
+        repaired = _repair_legacy_photos(db, dataset, cohort, photo_root) if scenario_set == 'legacy-v1' else False
         if any(not (photo_root / p["storage_key"]).is_file() for p in dataset["photos"]):
             raise ValueError("Фото судей отсутствуют; восстановите резервную копию")
         if scenario_set == "prepared-v2":
@@ -182,7 +244,7 @@ def setup_judge_demo(db: Session, *, cohort: str, as_of: date, master_password: 
             for report in dataset["submissions"]:
                 if not db.scalar(select(AIReview.id).where(AIReview.submission_id == report["id"])) or not db.scalar(select(ReviewJob.id).where(ReviewJob.submission_id == report["id"])):
                     raise ValueError("Частичный набор судей; setup не восстанавливает изменённые данные")
-        return "unchanged"
+        return "repaired" if repaired else "unchanged"
     # Reject collisions before any row or file is created.
     for name, model in tables.items():
         for row in dataset[name]:
