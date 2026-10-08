@@ -61,7 +61,7 @@ export function App() {
     {loading ? <p role="status">{tx("Проверяем вход…")}</p> : user ? <Routes key={user.id}>
       <Route path="/" element={<Navigate to={user.role === 'worker' ? '/my-orders' : '/shift'} replace />} />
       <Route path="/my-orders" element={<MyOrdersPage key={user.id} api={authStore.api} user={user} />} />
-      <Route path="/shift" element={user.role !== 'worker' ? <ShiftPage api={authStore.api} user={user} /> : <Navigate to="/my-orders" replace />} />
+      <Route path="/shift" element={user.role !== 'worker' ? <ShiftPage api={authStore.api} user={user} judgeMode={!!judgeProfiles?.length} /> : <Navigate to="/my-orders" replace />} />
       <Route path="/orders/new" element={<CreateOrderPage api={authStore.api} user={user} />} />
       <Route path="/equipment/:id" element={<EquipmentRoute user={user} />} />
       <Route path="/orders/:id" element={<OrderRoute user={user} />} />
