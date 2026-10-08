@@ -425,6 +425,56 @@ def test_lost_lease_keeps_usage_without_overwriting_reclaimed_job(client,databas
     assert db.get(WorkOrder,UUID(order['id'])).status=='AI_REVIEW'
 
 
+def test_attempt_limit_after_three_discarded_successes_has_no_provider_origin(client, database):
+    from app.modules.ai_review.schemas import ProviderOutcome, ReviewResult
+    from app.modules.ai_review.views import review_source
+    from app.workers.reviews import process_once
+    submitted(client, database)
+    now = [datetime.now(timezone.utc)]
+    def lose_lease():
+        now[0] += timedelta(seconds=181)
+    provider = Provider(callback=lose_lease, outcomes=[ProviderOutcome(
+        result=ReviewResult(verdict='human_review', score=None, findings=[],
+                            missing_evidence=[], limitations=[]),
+        response_id=f'resp_discarded_{i}', is_mock=False) for i in range(3)])
+    assert process_once(database['engine'], provider=provider, clock=lambda: now[0])  # prepare
+    for _ in range(3):
+        assert process_once(database['engine'], provider=provider, clock=lambda: now[0])
+    db = database['session']
+    db.expire_all()
+    assert count_rows(db, AIReview) == 0
+    assert process_once(database['engine'], provider=provider, clock=lambda: now[0])
+    db.expire_all()
+    review, job = db.scalar(select(AIReview)), db.scalar(select(ReviewJob))
+    assert len(provider.calls) == job.attempts == len(review.usage['calls']) == 3
+    assert job.status == 'completed' and review.verdict == 'human_review'
+    assert all(call['status'] == 'completed' and call['response_id'] and not call['error_code']
+               for call in review.usage['calls'])
+    assert any(f['code'] == 'attempt_limit' for f in review.result['findings'])
+    assert review_source(review) == 'unknown'
+    assert review.usage['final_outcome']['call_id'] is None
+    assert review.usage['final_outcome']['error_code'] == 'attempt_limit'
+
+
+@pytest.mark.parametrize('valid_result', [True, False])
+def test_final_provider_origin_requires_used_result_not_only_successful_response(client, database, valid_result):
+    from app.modules.ai_review.schemas import ProviderOutcome, ReviewResult
+    from app.modules.ai_review.views import review_source
+    submitted(client, database)
+    outcome = ProviderOutcome(result=ReviewResult(
+        verdict='human_review' if valid_result else 'accepted',
+        score=None if valid_result else 4, findings=[], missing_evidence=[], limitations=[]),
+        response_id='resp_final_result', is_mock=False)
+    provider = Provider(outcomes=[outcome])
+    drive(database, provider)
+    review = database['session'].scalar(select(AIReview))
+    assert len(provider.calls) == 1 and review.verdict == 'human_review'
+    assert review_source(review) == ('provider' if valid_result else 'unknown')
+    final = review.usage['final_outcome']
+    assert final['response_id'] == outcome.response_id
+    assert final['call_id'] == (review.usage['calls'][0]['call_id'] if valid_result else None)
+
+
 def test_expiring_lease_during_prepare_rolls_back_final_business_writes(client,database,monkeypatch):
     import app.workers.reviews as worker
     order,_=submitted(client,database,work_type='emergency')

@@ -119,7 +119,7 @@ def _reset_or_discard(db, order, job, report, claim, clock):
     return True
 
 
-def _save_final(db, order, job, report, claim, clock, result, plan=None):
+def _save_final(db, order, job, report, claim, clock, result, plan=None, *, outcome=None, call_id=None):
     from app.modules.ai_review.rules import RULES_VERSION
     if not _has_lease(job, claim, clock()):
         db.rollback()
@@ -131,12 +131,17 @@ def _save_final(db, order, job, report, claim, clock, result, plan=None):
     review = db.scalar(select(AIReview).where(AIReview.submission_id == report.id))
     if review is None:
         calls = job.calls or []
+        is_mock = outcome.is_mock if outcome is not None else any(c.get('is_mock', False) for c in calls)
+        final_outcome = dict(call_id=call_id,
+                             response_id=outcome.response_id if outcome is not None else None,
+                             error_code=outcome.error_code if outcome is not None else None,
+                             is_mock=is_mock)
         review = AIReview(submission_id=report.id, order_version=order.version,
                           assignment_version=order.assignment_version, verdict=result.verdict,
                           result=result.model_dump(mode='json'), model=plan.model if plan else 'rules',
                           prompt_version=plan.prompt_version if plan else 'rules-v1',
                           latency_ms=sum(call.get('latency_ms') or 0 for call in calls),
-                          usage={'calls': calls, 'is_mock': any(c.get('is_mock', False) for c in calls),
+                          usage={'calls': calls, 'is_mock': is_mock, 'final_outcome': final_outcome,
                                  'rules_version': RULES_VERSION, 'snapshot_restarts': job.snapshot_restarts})
         db.add(review)
         db.flush()
@@ -218,7 +223,8 @@ def process_once(engine, *, provider=None, api_key=None, clock=utcnow):
         previous = ProviderOutcome.model_validate(job.stage_outputs['primary']) if job.stage == 'escalation' else None
         if job.attempts >= 3:
             outcome = ProviderOutcome(result=None, error_code='attempt_limit')
-            _save_final(db, order, job, report, claim, clock, finalize_result(review_input, rules, outcome), plan)
+            _save_final(db, order, job, report, claim, clock,
+                        finalize_result(review_input, rules, outcome), plan, outcome=outcome)
             db.commit()
             return True
         current_input, images = read_images(db, report, review_input, settings.photo_storage_path)
@@ -279,8 +285,12 @@ def process_once(engine, *, provider=None, api_key=None, clock=utcnow):
             job.stage = 'escalation'
             _finish_or_rollback(db, claim, clock(), status='pending', next_attempt_at=clock())
         else:
-            result = finalize_result(review_input, rules, outcome)
-            _save_final(db, order, job, report, claim, clock, result, plan)
+            diagnostics = {}
+            result = finalize_result(review_input, rules, outcome, diagnostics=diagnostics)
+            # Rejected provider output produces a server fallback, even if the request succeeded.
+            final_call_id = call_id if not diagnostics['rejection_reasons'] else None
+            _save_final(db, order, job, report, claim, clock, result, plan,
+                        outcome=outcome, call_id=final_call_id)
         db.commit()
     return True
 

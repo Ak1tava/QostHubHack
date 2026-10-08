@@ -9,12 +9,34 @@ from app.modules.work_orders.schemas import AIReviewView, MasterDecisionView
 def review_source(review):
     """Describe stored provenance, without treating a failed request as GPT analysis."""
     usage = review.usage if isinstance(review.usage, dict) else {}
-    if usage.get("is_mock") is True:
-        return "prepared" if review.model == "t18-prepared-demo-provider-v2" else "mock"
     if review.model == "rules":
         return "rules"
+    if usage.get("is_mock") is True:
+        return "prepared" if review.model == "t18-prepared-demo-provider-v2" else "mock"
     calls = usage.get("calls")
-    last = calls[-1] if isinstance(calls, list) and calls else None
+    if "final_outcome" in usage:
+        final = usage["final_outcome"]
+        if (not isinstance(final, dict) or final.get("is_mock") is not False
+                or final.get("error_code", "unknown") is not None
+                or not isinstance(final.get("call_id"), str) or not final["call_id"].strip()
+                or not isinstance(calls, list)):
+            return "unknown"
+        matches = [call for call in calls if isinstance(call, dict)
+                   and call.get("call_id") == final["call_id"]]
+        if len(matches) != 1 or final.get("response_id") != matches[0].get("response_id"):
+            return "unknown"
+        last = matches[0]
+    else:
+        # Older records cannot link their final result to a call. These server-only fallback
+        # codes are never part of a legitimate provider result (ProviderFinding forbids them).
+        result = getattr(review, "result", None)
+        findings = result.get("findings", []) if isinstance(result, dict) else []
+        fallback_codes = {"attempt_limit", "invalid_provider_evidence",
+                          "completion_unverified", "provider_unavailable"}
+        if isinstance(findings, list) and any(isinstance(f, dict) and f.get("code") in fallback_codes
+                                              for f in findings):
+            return "unknown"
+        last = calls[-1] if isinstance(calls, list) and calls else None
     if (isinstance(last, dict) and last.get("status") == "completed"
             and last.get("is_mock") is False and last.get("error_code") is None
             and last.get("model") == review.model
