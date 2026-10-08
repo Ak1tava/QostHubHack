@@ -32,7 +32,9 @@
 
 Независимое ревью: RU-ASR и prepared-provider без P1/P2. На runtime/интеграции найдены и исправлены импорт Docker worker, подтверждение готовности после locks/frozen, восстановление managed tunnel со сменой Host и Telegram seed-events. Для последнего получен RED (12 необработанных событий вместо0), затем GREEN; обычное событие реального restart продолжает создавать уведомления. Абсолютный expiry не добавлялся: утверждённый план и сохранённая конфигурация задают денежный потолок, `max-seconds` относится к одному процессу.
 
-Настоящий Windows venv redirector дополнительно проверяется до выпуска. Новые live ASR/AI, restart, isolated restore, запись, main и CI ещё не объявлены пройденными.
+Настоящий Windows venv redirector подтвердил разные PID запускающего процесса и интерпретатора. Исправление `24c91e2` отслеживает проверенный direct child и wrapper отдельно, сохраняет проверку readiness token/PID и безопасную остановку обеих identities. Реальный скрытый subprocess start→ready→stop прошёл; узкое независимое ревью одобрено.
+
+Финальный повтор той же целевой команды judge/native/tunnel/budget на `24c91e2`: **91 passed**, 26,18с, включая PostgreSQL и Windows-процессы. Новые live ASR/AI, restart стенда, isolated restore, запись, main и CI ещё не объявлены пройденными.
 
 ## Границы приёмки
 
