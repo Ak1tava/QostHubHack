@@ -1,0 +1,92 @@
+{
+  "dataset": "t15_new_candidates_v1",
+  "frozen_on": "2026-10-08",
+  "frozen_before_tuning": true,
+  "tuning_performed": false,
+  "paid_calls_performed": false,
+  "used_holdout": false,
+  "grouping": "publisher/source family; all photos and repair stages from one publisher remain in one split",
+  "registry_sha256": "6b4cedb57dcb6884cbc7ca88163badd070ffa678d3f37e6fbf331693e06a3ea8",
+  "groups": {
+    "martin": {
+      "split": "dev",
+      "case_ids": [
+        "T15-001",
+        "T15-002",
+        "T15-003",
+        "T15-004",
+        "T15-005",
+        "T15-006",
+        "T15-007",
+        "T15-008",
+        "T15-009",
+        "T15-010"
+      ]
+    },
+    "cobond": {
+      "split": "eval",
+      "case_ids": [
+        "T15-011",
+        "T15-012"
+      ]
+    },
+    "banks": {
+      "split": "eval",
+      "case_ids": [
+        "T15-013",
+        "T15-014",
+        "T15-015",
+        "T15-016",
+        "T15-017",
+        "T15-018",
+        "T15-019",
+        "T15-020",
+        "T15-021",
+        "T15-022",
+        "T15-023",
+        "T15-024",
+        "T15-025",
+        "T15-026"
+      ]
+    },
+    "hse": {
+      "split": "eval",
+      "case_ids": [
+        "T15-027",
+        "T15-028",
+        "T15-029",
+        "T15-030",
+        "T15-031",
+        "T15-032",
+        "T15-033",
+        "T15-034"
+      ]
+    },
+    "belzona": {
+      "split": "dev",
+      "case_ids": [
+        "T15-035",
+        "T15-036",
+        "T15-037",
+        "T15-038",
+        "T15-039",
+        "T15-040"
+      ]
+    },
+    "nsk": {
+      "split": "dev",
+      "case_ids": [
+        "T15-041",
+        "T15-042",
+        "T15-043",
+        "T15-044",
+        "T15-045",
+        "T15-046",
+        "T15-047",
+        "T15-048",
+        "T15-049",
+        "T15-050"
+      ]
+    }
+  }
+}
