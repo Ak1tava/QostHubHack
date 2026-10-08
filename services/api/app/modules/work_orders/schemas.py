@@ -3,12 +3,47 @@ from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, StrictBool, model_validator
 
 from app.modules.ai_review.schemas import ReviewResult
 from app.modules.photos.schemas import PhotoView
 
 WorkOrderPriority = Literal["emergency", "high", "normal", "planned"]
+TemplateId = Literal["visible_leak", "visible_element"]
+
+
+class TemplateChecklistItem(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    id: str = Field(min_length=1, max_length=64)
+    label: str = Field(min_length=1, max_length=1000)
+    required: bool = True
+
+
+class TemplatePhotoRequirements(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    before: int = Field(ge=0, le=5)
+    after: int = Field(ge=0, le=20)
+
+
+class WorkOrderTemplate(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    id: TemplateId
+    version: int = Field(gt=0)
+    title: str
+    initial_description: str
+    instructions: list[str]
+    checklist: list[TemplateChecklistItem]
+    photo_requirements: TemplatePhotoRequirements
+
+
+class WorkOrderTemplateList(BaseModel):
+    items: list[WorkOrderTemplate]
+
+
+class TemplateAnswer(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    id: str = Field(min_length=1, max_length=64)
+    checked: StrictBool
 
 WorkOrderStatus = Literal[
     "ISSUED",
@@ -45,6 +80,7 @@ class WorkOrderCreate(BaseModel):
     responsible_id: UUID | None = None
     priority: WorkOrderPriority = "normal"
     due_at: AwareDatetime
+    template_id: TemplateId | None = None
 
     @model_validator(mode="after")
     def assignment_is_complete(self):
@@ -122,6 +158,7 @@ class WorkOrderView(BaseModel):
     created_at: datetime
     is_overdue: bool
     allowed_actions: list[str] = Field(default_factory=list)
+    template_snapshot: WorkOrderTemplate | None = None
 
 
 class WorkOrderEventView(BaseModel):
@@ -159,6 +196,7 @@ class SubmissionCreate(BaseModel):
     no_materials_used: bool = False
     after_photo_ids: list[UUID] = Field(default_factory=list, max_length=20)
     comment: str | None = Field(default=None, max_length=4000)
+    template_answers: list[TemplateAnswer] = Field(default_factory=list, max_length=20)
 
     @model_validator(mode="after")
     def evidence_is_consistent(self):
@@ -185,9 +223,11 @@ class SubmissionView(BaseModel):
     comment: str | None
     submitted_at: datetime
     missing_evidence: list[str] = Field(default_factory=list)
+    template_answers: list[TemplateAnswer] = Field(default_factory=list)
 
 
 class WorkOrderDetail(WorkOrderView):
+    before_photo_count: int = Field(default=0, ge=0)
     events: list[WorkOrderEventView] = Field(default_factory=list)
     issuance_photos: list[PhotoView] = Field(default_factory=list)
     submission: SubmissionView | None = None

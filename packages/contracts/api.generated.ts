@@ -1086,6 +1086,8 @@ export interface components {
              * @default false
              */
             no_materials_used: boolean;
+            /** Template Answers */
+            template_answers?: components["schemas"]["TemplateAnswer"][];
             /** Work Description */
             work_description: string;
         };
@@ -1140,6 +1142,8 @@ export interface components {
              * Format: date-time
              */
             submitted_at: string;
+            /** Template Answers */
+            template_answers?: components["schemas"]["TemplateAnswer"][];
             /** Work Description */
             work_description: string;
             /**
@@ -1152,6 +1156,32 @@ export interface components {
              * Format: uuid
              */
             worker_id: string;
+        };
+        /** TemplateAnswer */
+        TemplateAnswer: {
+            /** Checked */
+            checked: boolean;
+            /** Id */
+            id: string;
+        };
+        /** TemplateChecklistItem */
+        TemplateChecklistItem: {
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /**
+             * Required
+             * @default true
+             */
+            required: boolean;
+        };
+        /** TemplatePhotoRequirements */
+        TemplatePhotoRequirements: {
+            /** After */
+            after: number;
+            /** Before */
+            before: number;
         };
         /** UserView */
         UserView: {
@@ -1237,6 +1267,8 @@ export interface components {
             priority: "emergency" | "high" | "normal" | "planned";
             /** Responsible Id */
             responsible_id?: string | null;
+            /** Template Id */
+            template_id?: ("visible_leak" | "visible_element") | null;
             /**
              * Work Type
              * @enum {string}
@@ -1259,6 +1291,11 @@ export interface components {
             assignee_id: string | null;
             /** Assignment Version */
             assignment_version: number;
+            /**
+             * Before Photo Count
+             * @default 0
+             */
+            before_photo_count: number;
             /** Brigade Id */
             brigade_id: string | null;
             /**
@@ -1314,6 +1351,7 @@ export interface components {
              */
             status: "ISSUED" | "ACCEPTED" | "QUEUED" | "REJECTED" | "IN_PROGRESS" | "PAUSED" | "SUBMITTED" | "AI_REVIEW" | "REWORK" | "CLOSED" | "CANCELLED";
             submission?: components["schemas"]["SubmissionView"] | null;
+            template_snapshot?: components["schemas"]["WorkOrderTemplate"] | null;
             /** Version */
             version: number;
             /**
@@ -1364,6 +1402,25 @@ export interface components {
             offset: number;
             /** Total */
             total: number;
+        };
+        /** WorkOrderTemplate */
+        WorkOrderTemplate: {
+            /** Checklist */
+            checklist: components["schemas"]["TemplateChecklistItem"][];
+            /**
+             * Id
+             * @enum {string}
+             */
+            id: "visible_leak" | "visible_element";
+            /** Initial Description */
+            initial_description: string;
+            /** Instructions */
+            instructions: string[];
+            photo_requirements: components["schemas"]["TemplatePhotoRequirements"];
+            /** Title */
+            title: string;
+            /** Version */
+            version: number;
         };
         /** WorkOrderView */
         WorkOrderView: {
@@ -1425,6 +1482,7 @@ export interface components {
              * @enum {string}
              */
             status: "ISSUED" | "ACCEPTED" | "QUEUED" | "REJECTED" | "IN_PROGRESS" | "PAUSED" | "SUBMITTED" | "AI_REVIEW" | "REWORK" | "CLOSED" | "CANCELLED";
+            template_snapshot?: components["schemas"]["WorkOrderTemplate"] | null;
             /** Version */
             version: number;
             /**

@@ -55,6 +55,7 @@ class WorkOrder(Base):
     number: Mapped[str] = mapped_column(String(64), unique=True)
     work_type: Mapped[str] = mapped_column(String(16))
     description: Mapped[str] = mapped_column(Text)
+    template_snapshot: Mapped[dict | None] = mapped_column(JSON(none_as_null=True), nullable=True)
     area_id: Mapped[UUID] = mapped_column(ForeignKey("areas.id"), index=True)
     equipment_id: Mapped[UUID] = mapped_column(ForeignKey("equipment.id"), index=True)
     assignee_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"), index=True)
@@ -113,6 +114,7 @@ class Submission(Base):
         Boolean, default=False, server_default=false()
     )
     comment: Mapped[str | None] = mapped_column(Text)
+    template_answers: Mapped[list] = mapped_column(JSON, default=list, server_default="[]")
     submitted_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow
     )

@@ -1635,6 +1635,14 @@
             "title": "No Materials Used",
             "type": "boolean"
           },
+          "template_answers": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateAnswer"
+            },
+            "maxItems": 20,
+            "title": "Template Answers",
+            "type": "array"
+          },
           "work_description": {
             "maxLength": 10000,
             "minLength": 1,
@@ -1762,6 +1770,13 @@
             "title": "Submitted At",
             "type": "string"
           },
+          "template_answers": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateAnswer"
+            },
+            "title": "Template Answers",
+            "type": "array"
+          },
           "work_description": {
             "title": "Work Description",
             "type": "string"
@@ -1790,6 +1805,78 @@
           "submitted_at"
         ],
         "title": "SubmissionView",
+        "type": "object"
+      },
+      "TemplateAnswer": {
+        "additionalProperties": false,
+        "properties": {
+          "checked": {
+            "title": "Checked",
+            "type": "boolean"
+          },
+          "id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "checked"
+        ],
+        "title": "TemplateAnswer",
+        "type": "object"
+      },
+      "TemplateChecklistItem": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "required": {
+            "default": true,
+            "title": "Required",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "label"
+        ],
+        "title": "TemplateChecklistItem",
+        "type": "object"
+      },
+      "TemplatePhotoRequirements": {
+        "additionalProperties": false,
+        "properties": {
+          "after": {
+            "maximum": 20.0,
+            "minimum": 0.0,
+            "title": "After",
+            "type": "integer"
+          },
+          "before": {
+            "maximum": 5.0,
+            "minimum": 0.0,
+            "title": "Before",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "before",
+          "after"
+        ],
+        "title": "TemplatePhotoRequirements",
         "type": "object"
       },
       "UserView": {
@@ -2020,6 +2107,21 @@
             ],
             "title": "Responsible Id"
           },
+          "template_id": {
+            "anyOf": [
+              {
+                "enum": [
+                  "visible_leak",
+                  "visible_element"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Id"
+          },
           "work_type": {
             "enum": [
               "planned",
@@ -2088,6 +2190,12 @@
           },
           "assignment_version": {
             "title": "Assignment Version",
+            "type": "integer"
+          },
+          "before_photo_count": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Before Photo Count",
             "type": "integer"
           },
           "brigade_id": {
@@ -2241,6 +2349,16 @@
               }
             ]
           },
+          "template_snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkOrderTemplate"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "version": {
             "title": "Version",
             "type": "integer"
@@ -2379,6 +2497,60 @@
         "title": "WorkOrderList",
         "type": "object"
       },
+      "WorkOrderTemplate": {
+        "additionalProperties": false,
+        "properties": {
+          "checklist": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateChecklistItem"
+            },
+            "title": "Checklist",
+            "type": "array"
+          },
+          "id": {
+            "enum": [
+              "visible_leak",
+              "visible_element"
+            ],
+            "title": "Id",
+            "type": "string"
+          },
+          "initial_description": {
+            "title": "Initial Description",
+            "type": "string"
+          },
+          "instructions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Instructions",
+            "type": "array"
+          },
+          "photo_requirements": {
+            "$ref": "#/components/schemas/TemplatePhotoRequirements"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "version": {
+            "exclusiveMinimum": 0.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "title",
+          "initial_description",
+          "instructions",
+          "checklist",
+          "photo_requirements"
+        ],
+        "title": "WorkOrderTemplate",
+        "type": "object"
+      },
       "WorkOrderView": {
         "properties": {
           "allowed_actions": {
@@ -2507,6 +2679,16 @@
             ],
             "title": "Status",
             "type": "string"
+          },
+          "template_snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkOrderTemplate"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "version": {
             "title": "Version",
