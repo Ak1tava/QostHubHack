@@ -215,6 +215,27 @@ def test_prepared_setup_three_results_and_repeat_preserves_legacy(database, tmp_
     assert original_ids <= set(db.scalars(select(WorkOrder.id)))
 
 
+def test_prepared_seed_suppresses_notifications_but_real_actions_resume_them(client, database, tmp_path):
+    from datetime import datetime, timezone
+    from app.modules.telegram.models import Notification
+    from app.workers.notifications import process_outbox
+
+    setup(database, tmp_path, scenario_set='prepared-v2')
+    db = database['session']
+    db.commit()
+    assert process_outbox(db, datetime.now(timezone.utc)) == 0
+    assert db.scalar(select(func.count()).select_from(Notification)) == 0
+    db.commit()
+
+    token = sign_in(client, 'judge-jury-2026-prepared-v2-worker', PASSWORDS['worker'])
+    order = next(o for o in client.get('/api/v1/work-orders').json()['items'] if o['status'] == 'REWORK')
+    response = client.post(f"/api/v1/work-orders/{order['id']}/actions",
+        json=dict(action='restart', expected_version=order['version']), headers=headers(token))
+    assert response.status_code == 200, response.text
+    assert process_outbox(db, datetime.now(timezone.utc)) == 1
+    assert db.scalar(select(func.count()).select_from(Notification)) > 0
+
+
 def test_prepared_access_photos_closure_and_new_revision_use_real_worker(client, database, tmp_path, monkeypatch):
     from app.core.config import settings
     from app.modules.ai_review.jobs_models import ReviewJob

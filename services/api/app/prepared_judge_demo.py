@@ -154,7 +154,9 @@ def save_prepared_reviews(db, dataset, photo_root):
         if not _save_final(db, order, job, report, (job.id, token),
                            lambda: datetime.now(timezone.utc), result, plan):
             raise ValueError("Демонстрационная проверка потеряла lease")
-        # Receipt only for this seed's submit: later real submissions reach the real worker.
+        # Suppress only seed events; later user actions reach both normal consumers.
+        from app.modules.telegram.models import NotificationReceipt
         for outbox in db.scalars(select(OutboxEvent).where(OutboxEvent.work_order_id == order.id)):
             db.add(ReviewReceipt(outbox_id=outbox.id, consumed_at=now))
+            db.add(NotificationReceipt(outbox_id=outbox.id, processed_at=now))
     db.flush()

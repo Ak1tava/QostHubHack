@@ -18,7 +18,7 @@ export const statusCatalog = {
     PAUSED: { ru: 'Приостановлен', kk: 'Кідіртілген', tone: 'busy', column: 'Пауза' },
     SUBMITTED: { ru: 'Отчёт отправлен', kk: 'Есеп жіберілді', tone: 'queue', column: 'На приёмке' },
     AI_REVIEW: { ru: 'Проверка ИИ', kk: 'ЖИ тексеруі', tone: 'queue', column: 'Проверка' },
-    REWORK: { ru: 'На доработке', kk: 'Қайта пысықтауда', tone: 'danger', column: 'Доработка' },
+    REWORK: { ru: 'На доработке', kk: 'Түзетілуде', tone: 'danger', column: 'Доработка' },
     CLOSED: { ru: 'Закрыт', kk: 'Жабылған', tone: 'ok', column: 'Закрыты' },
     CANCELLED: { ru: 'Отменён', kk: 'Күші жойылған', tone: 'off', column: 'Отменены' },
   } satisfies Record<OrderStatus, Entry>,
@@ -37,7 +37,7 @@ export const statusCatalog = {
   verdict: {
     accepted: { ru: 'Замечаний не найдено', kk: 'Ескертулер табылмады', tone: 'ok' },
     accepted_with_notes: { ru: 'Есть замечания', kk: 'Ескертулер бар', tone: 'busy' },
-    requires_rework: { ru: 'Требуется доработка', kk: 'Қайта пысықтау қажет', tone: 'danger' },
+    requires_rework: { ru: 'Требуется доработка', kk: 'Түзету қажет', tone: 'danger' },
     human_review: { ru: 'Требуется проверка мастера', kk: 'Шебердің тексеруі қажет', tone: 'queue' },
   } satisfies Record<Verdict, Entry>,
 };

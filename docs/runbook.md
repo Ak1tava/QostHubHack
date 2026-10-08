@@ -222,54 +222,16 @@ docker compose -f compose.yaml -f compose.tunnel.yaml exec api .venv/bin/python 
 
 Два iPhone через один host tunnel могут иметь общий серверный IP и общую квоту входа/CSRF. Не подменяйте заголовки и не отключайте rate limit; при 429 дождитесь указанного `Retry-After`. Первую живую приёмку выполнить на двух iPhone; Android остаётся отдельным обязательным замером.
 
-## T10: live AI worker с суммарным лимитом $2
+## Текущий демонстрационный runtime и бюджет
 
-Обычный `ai-worker` должен быть остановлен, включая нативные процессы вне Compose. В tunnel overlay он исключён из обычного `up` профилем `unbudgeted-ai`; этот профиль на живой бюджетной приёмке не включать. `--ordinary-worker-stopped` подтверждает проверку оператором, но не останавливает сторонний процесс автоматически. После проверки readiness и оплаты запускается только один foreground consumer:
+Воспроизводимые native-команды `start`, `stop`, `status`, изоляция секретов и подключение локального Whisper описаны в [mvp-native-runtime.md](mvp-native-runtime.md). Для текущего HTTPS-стенда PostgreSQL и существующий Quick Tunnel сохраняются; обычный `ai-worker` работает без ключа, платные вызовы разрешены только budgeted consumer.
 
-```sh
-docker compose stop ai-worker
-docker compose -f compose.yaml -f compose.tunnel.yaml build ai-demo-worker
-docker compose -f compose.yaml -f compose.tunnel.yaml run --rm --no-deps ai-demo-worker
-```
+Совокупный потолок **$10** включает прежние расходы и сохраняется при перезапуске. Используется исходный `budget.json` вместе с `frozen.json` и audit-файлами; нельзя создавать новый ledger, заменять его восстановленной копией или обнулять расходы. `max-seconds` ограничивает один процесс; это не новый денежный бюджет и не абсолютный срок авторизации. Неизвестный расход сохраняет резерв и требует разбора перед продолжением.
 
-Лимит всего запуска и его перезапусков — $2; ledger/frozen config/OS lock хранятся в `live_budget`. Дополнительно берётся PostgreSQL advisory lock. До каждого paid I/O сохраняется полный консервативный резерв; output caps совпадают с существующим provider. Неизвестный расход после ошибки/crash остаётся зарезервированным; повторный старт с неразрешённой записью требует аудита и отказывается от новых вызовов. Ошибка provider, неизвестная цена или недостаточный резерв останавливают consumer; автоматического перехода к обычному worker нет. Ledger не удалять, volume не пересоздавать ради нового лимита, лимит на restart не увеличивать. Цены берутся из существующей таблицы T07 с зафиксированной датой, неизвестная модель запрещена. Мастер принимает работу независимо от доступности ИИ.
+В Compose используется существующий каталог `LIVE_BUDGET_DIR`, bind mount не создаёт отсутствующий путь. Перед включением `live-ai` остановить прежний consumer; профиль `unbudgeted-ai` на живом стенде не включать. Точные команды и ограничения — в инструкции runtime.
 
-Нативный эквивалент (правильные env и PRIVATE photo path настраивает оператор):
+## Резервное копирование и изолированное восстановление
 
-```sh
-cd services/api
-uv run python -m app.workers.budgeted_reviews --live --ordinary-worker-stopped --ledger ../../.tooling/t10-live/budget.json --budget-usd 2 --max-seconds 600
-```
+Текущая [процедура backup/restore](mvp-native-runtime.md#offline-backuprestore) останавливает writers и consumers, копирует БД, приватные фотографии и все budget/audit JSON, затем восстанавливает новую БД и отдельные каталоги. Сверяются SQL counts и SHA256 файлов; исходный ledger не меняется. В восстановленной среде ключ OpenAI и Telegram пусты, consumers и webhook отключены. Дампы и сессии остаются вне Git.
 
-PhotoService хеширует сохранённые санитизированные байты. Старые загрузки, где хеш относился к исходнику до удаления EXIF/пережатия, могут потребовать повторной загрузки; проверка целостности не обходится автоматически.
-
-## T10: резервная копия и восстановление отдельно
-
-На время согласованной копии остановите все consumers и API, чтобы БД, фото и бюджет представляли один снимок. Резервная копия внутренняя: DB содержит данные сессий/привязок, её не публикуют и не коммитят. Используйте ignored `artifacts/backup/`.
-
-```sh
-docker compose stop api worker ai-worker
-docker compose exec db pg_dump -U qosthub -Fc -f /tmp/qosthub.dump qosthub_demo
-docker compose cp db:/tmp/qosthub.dump artifacts/backup/qosthub.dump
-docker compose run --no-deps --name qosthub-photo-backup --entrypoint tar api -C /workspace/data/photos -czf /tmp/photos.tgz .
-docker cp qosthub-photo-backup:/tmp/photos.tgz artifacts/backup/photos.tgz
-docker rm qosthub-photo-backup
-docker compose -f compose.yaml -f compose.tunnel.yaml run --no-deps --name qosthub-budget-backup --entrypoint tar ai-demo-worker -C /workspace/data/live-budget -czf /tmp/live-budget.tgz .
-docker cp qosthub-budget-backup:/tmp/live-budget.tgz artifacts/backup/live-budget.tgz
-docker rm qosthub-budget-backup
-```
-
-Создайте папку копии заранее. Foreground budgeted worker остановите до снимка и убедитесь, что он завершился; `.env` в архивы не включается. Затем верните API/notification worker с актуальным tunnel overlay; обычный AI consumer остаётся выключен.
-
-Для пробного восстановления используйте проект `qosthub-restore`, `compose.restore.yaml` и локальную `.env.restore` с отдельным стендом. Его порты 55433/8001/5174, подсеть `172.30.43.0/24`, volumes отдельные; consumers отключены, чтобы не повторять Telegram/paid calls. Не подключайте к нему volumes рабочего проекта.
-
-```sh
-docker compose -p qosthub-restore --env-file .env.restore -f compose.yaml -f compose.restore.yaml up -d db
-docker compose -p qosthub-restore --env-file .env.restore -f compose.yaml -f compose.restore.yaml cp artifacts/backup/qosthub.dump db:/tmp/qosthub.dump
-docker compose -p qosthub-restore --env-file .env.restore -f compose.yaml -f compose.restore.yaml exec db pg_restore -U qosthub --exit-on-error -d qosthub_demo /tmp/qosthub.dump
-docker compose -p qosthub-restore --env-file .env.restore -f compose.yaml -f compose.restore.yaml build api web
-docker compose -p qosthub-restore --env-file .env.restore -f compose.yaml -f compose.restore.yaml run --rm --no-deps --volume ./artifacts/backup:/backup:ro --entrypoint tar api -C /workspace/data/photos -xzf /backup/photos.tgz
-docker compose -p qosthub-restore --env-file .env.restore -f compose.yaml -f compose.restore.yaml up -d --wait api web
-```
-
-Архив монтируется read-only в restore-контейнер; `/tmp` другого контейнера не разделяется автоматически. Сверьте число нарядов/решений, открытие сохранённых приватных фото, компонент рейтинга и новую загрузку. Запуск `migrate` использует актуальный код и сохранённый alembic head; восстановленный ledger хранится отдельно для аудита, его копию не превращают во второй платный запуск. Запишите SHA/среду/фактический результат в `docs/verification.md`. Документация этих команд сама по себе не подтверждает восстановление.
+Историческая приёмка T10 сохранена в [verification.md](verification.md); актуальный SHA, команды и фактические результаты — [MVP-finalization-verification.md](MVP-finalization-verification.md). Наличие инструкции само по себе не означает успешное восстановление.

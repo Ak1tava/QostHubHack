@@ -1,12 +1,12 @@
-# T16: локальный Whisper для русского и казахского
+# T16: локальный Whisper для русского
 
-Реализация на ветке `codex/t13-t16-delivery`, база `main 3af3261`. Backend: `services/api/app/modules/speech/`; клиент: `apps/web/src/features/speech/`. Интеграция/публичные статусы определяются `plans.md`.
+Текущий контракт завершения MVP: только русская речь, интерфейс RU/KZ. Backend: `services/api/app/modules/speech/`; клиент: `apps/web/src/features/speech/`. Вызов faster-whisper всегда получает `language="ru", task="transcribe"`; переключателя языка речи нет. Интеграция/публичные статусы определяются `plans.md`.
 
 Голос создаёт редактируемый черновик для описания нового наряда мастером и выполненных работ исполнителем. Пользователь отдельно вставляет текст в форму. Распознавание не отправляет форму, не сохраняет наряд и не меняет его статус.
 
 ## Контракт и ограничения
 
-`POST /api/v1/speech/transcriptions`: multipart `file`, `language=ru|kk`; действующая cookie-session и `Origin`/`X-CSRF-Token`. Разрешены только активные `master` и `worker`. Ответ `SpeechTranscription`: `text`, `language`, `model="large-v3-turbo"`, `duration_seconds`, `is_mock`. Fake допускается только через тестовую подмену зависимости; production inference возвращает `is_mock=false`.
+`POST /api/v1/speech/transcriptions`: multipart `file`, только `language=ru`; действующая cookie-session и `Origin`/`X-CSRF-Token`. Разрешены только активные `master` и `worker`. `kk` возвращает `422 speech_invalid_language` до обращения к provider. Ответ `SpeechTranscription`: `text`, `language="ru"`, `model="large-v3-turbo"`, `duration_seconds`, `is_mock`. Fake допускается только через тестовую подмену зависимости; production inference возвращает `is_mock=false`.
 
 Сервер принимает максимум **10 MiB и 60 секунд**. Поддержаны `audio/webm`, `audio/mp4`, `audio/x-m4a`, `audio/mpeg`, `audio/wav`, `audio/x-wav`, `audio/ogg`, включая MIME с codec-параметрами. PyAV проверяет настоящий контейнер, наличие аудио и декодированную длительность; неподдержанный контейнер/видео отклоняется. Проверка останавливается при первом превышении 60 секунд. Пустой файл/речь и повреждённое аудио дают ошибку. Передаваемые пути и URL не используются; FFmpeg запрещены внешние файловые/сетевые протоколы.
 
@@ -65,7 +65,9 @@ docker compose -f compose.yaml -f compose.speech.yaml up -d --build
 
 `infra/speech.Dockerfile` устанавливает locked optional extra `speech`. В Compose веса read-only, `/tmp` — ограниченный tmpfs, контейнер работает без root, порт 8016 не публикуется на хост. У API/ASR совпадает Bearer; стандартный профиль CPU/int8. CUDA не требуется для принятого native smoke и не проверена как способ production-запуска.
 
-## Фактические проверки 2026-10-08
+## Исторические проверки исходной RU/KK-версии
+
+Ниже сохранены результаты первоначальной реализации `codex/t13-t16-delivery`. Они не означают поддержку казахской речи в текущем релизе. Актуальные проверки RU-only и публичного стенда — [MVP-finalization-verification.md](MVP-finalization-verification.md); воспроизводимый запуск — [mvp-native-runtime.md](mvp-native-runtime.md).
 
 Последняя целевая backend-проверка: **48 PASS, 6,83 с**. Runtime `services/api/.venv` (Python 3.12.14), отдельная PostgreSQL `qosthub_test_t16_20261008` на loopback-порту 55460. Команда из корня worktree:
 
