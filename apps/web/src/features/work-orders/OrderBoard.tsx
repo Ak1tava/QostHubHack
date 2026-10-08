@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { ApiClient } from '../../lib/api';
 import { displayTime } from '../../lib/time';
 import { useQuery } from '../../lib/useQuery';
+import { PriorityChip } from '../../ui/components';
 import { priorities, statuses, type Equipment, type Named, type ShiftMember, type WorkOrder, type WorkOrderList } from './data';
 
 type Props = { api: ApiClient; catalogs: { areas: Named[]; equipment: Equipment[]; brigades: Named[] }; members: ShiftMember[]; timezone: string;
@@ -34,7 +35,7 @@ export function OrderBoard({ api, catalogs, members, timezone, query, filter, se
     <div className="order-board">{Object.entries(statuses).filter(([value]) => !status || value === status).map(([value, label]) => <section className={`order-column ${(status || column) === value ? 'is-selected' : ''}`} key={value} aria-label={label}>
       <h4>{label} <span className="muted">{orders.data?.items.filter(order => order.status === value).length ?? 0}</span></h4>
       {orders.data?.items.filter(order => order.status === value).map(order => <Link className={`order-card ${order.is_overdue ? 'overdue' : ''}`} to={`/orders/${order.id}`} key={order.id}>
-        <strong>{order.number}</strong><span className={`badge priority-${order.priority}`}>{priorities[order.priority]}</span>
+        <strong>{order.number}</strong><PriorityChip priority={order.priority} />
         <span className="order-description">{order.description}</span><span>{areaNames.get(order.area_id)} · {equipmentNames.get(order.equipment_id)}</span>
         <span>{names.get(order.assignee_id ?? order.responsible_id ?? '') ?? 'Назначенный исполнитель'}{order.brigade_id ? ' · бригада' : ''}</span>
         <span>До {displayTime(order.due_at, timezone)}{order.is_overdue ? ' · Просрочен' : ''}</span>

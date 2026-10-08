@@ -1,12 +1,15 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter } from 'react-router';
+import { BrowserRouter, Route, Routes } from 'react-router';
 import { App } from './App';
+import { UiKitPage } from './ui/UiKitPage';
 import './styles.css';
 import './design.css';
+import './ui/tokens.css';
+import './ui/components.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter><App /></BrowserRouter>
+    <BrowserRouter><Routes><Route path="/ui-kit" element={<UiKitPage />} /><Route path="*" element={<App />} /></Routes></BrowserRouter>
   </StrictMode>,
 );

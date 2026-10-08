@@ -1,6 +1,6 @@
 import type { WorkOrderDetail } from './data';
+import { StatusBadge } from '../../ui/components';
 
-const verdicts = { accepted: 'Замечаний не найдено', accepted_with_notes: 'Есть замечания', requires_rework: 'Требуется доработка', human_review: 'Требуется проверка мастера' };
 const reviewStates = { pending: 'Ожидает проверки', running: 'Проверка выполняется', blocked: 'Проверка недоступна. Требуется решение мастера.', discarded: 'Предыдущая проверка устарела', completed: 'Проверка завершена' };
 
 export function ReviewPanel({ order }: { order: WorkOrderDetail }) {
@@ -20,7 +20,7 @@ export function ReviewPanel({ order }: { order: WorkOrderDetail }) {
     {order.review_status && <p role="status">{reviewStates[order.review_status]}</p>}
     {review && result && <>
       {review.is_mock && <p className="badge">MOCK · демонстрационный результат</p>}
-      <p><strong>{verdicts[result.verdict]}</strong>{result.score != null ? ` · Оценка ${result.score}/5` : ' · Оценка не выставлена'}</p>
+      <p><StatusBadge domain="verdict" status={result.verdict} />{result.score != null ? ` · Оценка ${result.score}/5` : ' · Оценка не выставлена'}</p>
       <ul>{result.findings.map((finding, index) => <li key={index}><p className="full-description">{finding.message}</p>{finding.evidence_refs.length > 0 && <ul aria-label="Доказательства">{finding.evidence_refs.map((ref, position) => <li key={position}>{evidence(ref)}</li>)}</ul>}</li>)}</ul>
       {!!result.missing_evidence.length && <p>Недостающие доказательства: {result.missing_evidence.join(', ')}</p>}
       {result.limitations.map((limitation, index) => <p className="full-description" key={index}>{limitation}</p>)}
