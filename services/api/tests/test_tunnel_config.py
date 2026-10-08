@@ -31,12 +31,13 @@ def test_tunnel_rejects_other_hosts_and_overwrites_only_trusted_proxy_headers():
     assert 'FORWARDED_ALLOW_IPS: 172.30.42.10' in (ROOT / 'compose.yaml').read_text(encoding='utf-8')
 
 
-def test_ordinary_ai_worker_disabled_and_persistent_budget_and_private_seed_mounted():
+def test_ordinary_ai_worker_unpaid_and_existing_budget_and_private_seed_mounted():
     overlay = (ROOT / 'compose.tunnel.yaml').read_text(encoding='utf-8')
+    assert 'OPENAI_API_KEY: ""' in overlay
     assert 'profiles: ["unbudgeted-ai"]' in overlay
-    assert 'app.workers.budgeted_reviews' in overlay
-    assert '--ordinary-worker-stopped' in overlay
-    assert 'live_budget:/workspace/data/live-budget' in overlay
+    assert '--existing-budget-worker' in overlay
+    assert 'LIVE_AI_LEDGER_DIR:?' in overlay
+    assert 'create_host_path: false' in overlay
     assert 'photo_data:/workspace/data/photos:ro' in overlay
     assert './data/demo:/workspace/data/demo:ro' in overlay
     assert 'DEMO_AS_OF' in overlay

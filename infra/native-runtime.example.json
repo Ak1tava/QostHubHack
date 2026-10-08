@@ -1,0 +1,20 @@
+{
+  "repo": "C:/path/to/qoshackhub",
+  "state_dir": "C:/path/to/qoshackhub/.tooling/native-runtime",
+  "env_file": "C:/path/to/existing/ignored/environment.json",
+  "python": "C:/path/to/existing/venv/Scripts/python.exe",
+  "postgres_bin": "C:/path/to/portable/postgres/bin",
+  "postgres_data": "C:/path/to/existing/postgres-data",
+  "manage_postgres": false,
+  "postgres_port": 55486,
+  "api_port": 8036,
+  "web_port": 5214,
+  "asr_port": 8016,
+  "nginx": "C:/path/to/portable/nginx/nginx.exe",
+  "nginx_mime_types": "C:/path/to/portable/nginx/conf/mime.types",
+  "cloudflared": "C:/path/to/portable/cloudflared.exe",
+  "model_path": "C:/path/to/prepared/whisper-large-v3-turbo",
+  "photo_path": "C:/path/to/existing/private/photos",
+  "ledger": "C:/path/to/original/mobile/budget.json",
+  "ready_timeout_seconds": 60
+}

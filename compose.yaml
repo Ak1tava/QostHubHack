@@ -74,6 +74,8 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
+      # This consumer is deliberately offline, even when .env contains a paid key.
+      OPENAI_API_KEY: ""
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL with host db in root .env}
       PHOTO_STORAGE_PATH: /workspace/data/photos
     command: ["/workspace/services/api/.venv/bin/python", "-m", "app.workers.reviews"]

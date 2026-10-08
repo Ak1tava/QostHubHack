@@ -9,8 +9,10 @@ services:
       PUBLIC_BASE_URL: https://${TUNNEL_HOSTNAME}
       SESSION_COOKIE_SECURE: "true"
   ai-worker:
+    # Base Compose retains the keyless CI worker; the tunnel excludes it by default.
     profiles: ["unbudgeted-ai"]
     environment:
+      OPENAI_API_KEY: ""
       PUBLIC_BASE_URL: https://${TUNNEL_HOSTNAME}
       SESSION_COOKIE_SECURE: "true"
   web:
@@ -33,10 +35,17 @@ services:
       PHOTO_STORAGE_PATH: /workspace/data/photos
       PUBLIC_BASE_URL: https://${TUNNEL_HOSTNAME}
       SESSION_COOKIE_SECURE: "true"
-    command: ["/workspace/services/api/.venv/bin/python", "-m", "app.workers.budgeted_reviews", "--live", "--ordinary-worker-stopped", "--ledger", "/workspace/data/live-budget/budget.json", "--budget-usd", "2", "--max-seconds", "600"]
+    # Stop the ordinary ai-worker before explicitly enabling this profile.
+    # The entrypoint refuses missing/exhausted/unresolved ledgers; it never creates a budget.
+    command: ["/workspace/services/api/.venv/bin/python", "/workspace/infra/native_runtime.py", "--existing-budget-worker", "--ledger", "/workspace/data/live-budget/budget.json", "--budget-usd", "10"]
     volumes:
       - photo_data:/workspace/data/photos:ro
-      - live_budget:/workspace/data/live-budget
+      - ./infra/native_runtime.py:/workspace/infra/native_runtime.py:ro
+      - type: bind
+        source: ${LIVE_AI_LEDGER_DIR:?Set LIVE_AI_LEDGER_DIR to the existing authorized budget directory}
+        target: /workspace/data/live-budget
+        bind:
+          create_host_path: false
     depends_on:
       db:
         condition: service_healthy
@@ -60,6 +69,3 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
-
-volumes:
-  live_budget:
