@@ -13,6 +13,7 @@ from app.modules.work_orders.realtime import router as events_router
 from app.modules.photos.router import router as photos_router
 from app.modules.telegram.router import router as telegram_router
 from app.modules.analytics.router import router as analytics_router
+from app.modules.speech.router import router as speech_router
 
 
 @asynccontextmanager
@@ -38,4 +39,5 @@ api_router.include_router(events_router)
 api_router.include_router(photos_router)
 api_router.include_router(telegram_router)
 api_router.include_router(analytics_router)
+api_router.include_router(speech_router)
 app.include_router(api_router)

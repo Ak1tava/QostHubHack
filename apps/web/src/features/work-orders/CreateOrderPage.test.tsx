@@ -20,12 +20,14 @@ let result: () => Promise<Response>;
 let secondArea: boolean;
 let photoAttempts: FormData[];
 let photoResult: () => Promise<Response>;
+let speechAttempts: number;
 
 beforeEach(() => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   container = document.createElement('div'); document.body.append(container); root = createRoot(container);
   commands = []; secondArea = false;
   photoAttempts = [];
+  speechAttempts = 0;
   photoResult = async () => json({ id: `photo-${photoAttempts.length}`, read_url: `/api/v1/photos/${photoAttempts.length}` }, 201);
   result = async () => json({ id: 'created' }, 201);
 });
@@ -35,6 +37,7 @@ async function render(query = `area_id=${area}&assignee_id=${workerId}`) {
   const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input), 'http://localhost');
     if (url.pathname.endsWith('/csrf')) return json({ csrf_token: 'test-csrf' });
+    if (url.pathname.endsWith('/speech/transcriptions')) { speechAttempts++; return json({ text: 'Дополнено голосом', language: 'ru', model: 'large-v3-turbo', duration_seconds: 1, is_mock: true }); }
     if (url.pathname.endsWith('/photos')) { photoAttempts.push(init!.body as FormData); return photoResult(); }
     if (init?.method === 'POST') {
       commands.push({ body: String(init.body), key: new Headers(init.headers).get('Idempotency-Key')! });
@@ -68,6 +71,20 @@ it('does not select inaccessible equipment from an untrusted QR query', async ()
   await describeWork();
   expect(button('Насос').getAttribute('aria-pressed')).toBe('false');
   expect(container.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(true);
+});
+
+it('adds reviewed speech as a paragraph to creation description without issuing an order', async () => {
+  await render(); await describeWork();
+  await act(async () => {
+    const input = container.querySelector<HTMLInputElement>('input[aria-label="Аудиофайл"]')!;
+    expect(input).not.toBeNull(); Object.defineProperty(input, 'files', { value: [new File(['audio'], 'speech.webm', { type: 'audio/webm' })] });
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  const before = container.querySelector<HTMLTextAreaElement>('[name="description"]')!.value;
+  expect(speechAttempts).toBe(1); expect(commands).toHaveLength(0);
+  await act(async () => button('Вставить').click());
+  expect(container.querySelector<HTMLTextAreaElement>('[name="description"]')!.value).toBe(`${before}\n\nДополнено голосом`);
+  expect(commands).toHaveLength(0);
 });
 async function choose(text: string) { await act(async () => button(text).click()); }
 async function describeWork() {
@@ -141,7 +158,7 @@ it('leaves a manually cleared deadline empty instead of silently restoring the i
 
 it('retains the issued order and successful photos when a later upload fails and retries only remaining photos', async () => {
   await render(); await choose('Насос'); await describeWork();
-  const input = container.querySelector<HTMLInputElement>('input[type="file"]');
+  const input = container.querySelector<HTMLInputElement>('input[type="file"][accept="image/*"]');
   expect(input).not.toBeNull();
   Object.defineProperty(input!, 'files', { value: [new File(['first'], 'first.jpg', { type: 'image/jpeg' }), new File(['second'], 'second.jpg', { type: 'image/jpeg' })] });
   await act(async () => input!.dispatchEvent(new Event('change', { bubbles: true })));

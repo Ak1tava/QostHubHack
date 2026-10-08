@@ -38,6 +38,12 @@ class Settings(BaseSettings):
     ai_review_snapshot_restarts: int = Field(default=2, ge=0, le=5)
     ai_review_poll_seconds: float = Field(default=1, ge=0.1)
     photo_storage_path: Path = REPO_ROOT / "data" / "photos"
+    speech_service_url: str | None = None
+    speech_service_token: SecretStr | None = None
+    speech_request_timeout_seconds: float = Field(default=90, gt=0, le=120)
+    speech_model_path: Path | None = None
+    speech_device: str = "cpu"
+    speech_compute_type: str = "int8"
 
 
 settings = Settings()

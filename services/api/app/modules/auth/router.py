@@ -38,7 +38,8 @@ def register_auth_handlers(app: FastAPI) -> None:
                 request.url.path.startswith("/api/v1/photos/") or
                 request.url.path.startswith("/api/v1/work-orders") or
                 request.url.path.startswith("/api/v1/reports/") or
-                request.url.path.startswith("/api/v1/analytics/")):
+                request.url.path.startswith("/api/v1/analytics/") or
+                request.url.path.startswith("/api/v1/speech/")):
             return await request_validation_exception_handler(request, exc)
         details = [
             {

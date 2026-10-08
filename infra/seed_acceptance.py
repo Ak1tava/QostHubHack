@@ -37,7 +37,7 @@ with Session(get_engine(), expire_on_commit=False) as db:
     if db.scalar(select(WorkCode.id).where(WorkCode.code == "T05-DEMO")) is None:
         db.add(WorkCode(code="T05-DEMO", name="Демо ремонт Т05"))
     db.commit()
-    for scenario in ("t04-browser", "t04-mobile", "t04-reconnect", "t04-deeplink", "t05-execution", "t05-retry", "t06-worker", "t07-review", "t08-report", "t10-lifecycle", "t10-permissions", "t11-qr"):
+    for scenario in ("t04-browser", "t04-mobile", "t04-reconnect", "t04-deeplink", "t05-execution", "t05-retry", "t06-worker", "t07-review", "t08-report", "t10-lifecycle", "t10-permissions", "t11-qr", "t16-speech"):
         create_demo_accounts(db, f"{prefix}-master-{scenario}", password, f"{prefix}-{scenario}", password)
         worker = db.scalar(select(User).where(User.login == f"{prefix}-{scenario}"))
         worker.display_name = f"Исполнитель {scenario}"

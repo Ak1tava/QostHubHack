@@ -22,6 +22,7 @@ def test_telegram_migration_follows_published_photo_revision_without_ambiguity()
 def test_prepared_telegram_button_opens_the_existing_pwa_order_route(monkeypatch):
     from app.core.config import settings
     from app.modules.auth.models import User
+    from app.modules.catalog.models import Area, Equipment
     from app.modules.telegram.models import Notification, TelegramBinding
     from app.modules.work_orders.models import WorkOrder
     from app.workers.notifications import _prepare
@@ -35,7 +36,11 @@ def test_prepared_telegram_button_opens_the_existing_pwa_order_route(monkeypatch
                        assignment_version=1, kind="new", status="LEASED", attempts=0,
                        lease_token=uuid4(), lease_until=now + timedelta(seconds=60))
     binding = TelegramBinding(user_id=worker.id, telegram_user_id=123, private_chat_id=123)
-    entities = {WorkOrder: order, Notification: job, User: worker, TelegramBinding: binding}
+    area = Area(id=uuid4(), name="Первый участок")
+    equipment = Equipment(id=uuid4(), name="Насос", area_id=area.id)
+    order.area_id, order.equipment_id = area.id, equipment.id
+    entities = {WorkOrder: order, Notification: job, User: worker, TelegramBinding: binding,
+                Area: area, Equipment: equipment}
 
     class PersistenceRows:
         """Only the external persistence boundary is replaced; preparation is real."""
@@ -53,3 +58,6 @@ def test_prepared_telegram_button_opens_the_existing_pwa_order_route(monkeypatch
     prepared = _prepare(PersistenceRows(), (job.id, job.lease_token), lambda: now)
     assert prepared is not None
     assert prepared[2] == f"https://synthetic.invalid/orders/{order.id}"
+    assert prepared[1].startswith("Новый наряд — WO-000001\n")
+    assert "Приоритет: Обычный" in prepared[1]
+    assert "Оборудование: Насос" in prepared[1]

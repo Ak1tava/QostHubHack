@@ -1,0 +1,26 @@
+# Opt-in local Whisper service: docker compose -f compose.yaml -f compose.speech.yaml up -d --build
+services:
+  api:
+    environment:
+      SPEECH_SERVICE_URL: http://speech:8016
+      SPEECH_SERVICE_TOKEN: ${SPEECH_SERVICE_TOKEN:?Set a random internal ASR token}
+  speech:
+    build:
+      context: .
+      dockerfile: infra/speech.Dockerfile
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    environment:
+      SPEECH_SERVICE_TOKEN: ${SPEECH_SERVICE_TOKEN:?Set a random internal ASR token}
+      SPEECH_MODEL_PATH: /models
+      SPEECH_DEVICE: cpu
+      SPEECH_COMPUTE_TYPE: int8
+    volumes:
+      - ${SPEECH_MODEL_DIR:?Set prepared Whisper model directory}:/models:ro
+    healthcheck:
+      test: ["CMD", "/workspace/services/api/.venv/bin/python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8016/health/ready', timeout=8)"]
+      interval: 10s
+      timeout: 10s
+      retries: 6

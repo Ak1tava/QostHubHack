@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { ApiClient, ApiError } from '../../lib/api';
 import { useCommand } from '../../lib/useCommand';
 import { PhotoUpload } from './PhotoUpload';
+import { SpeechInput } from '../speech/SpeechInput';
 import { submitOrder, useExecutionCatalogs, type SubmissionCreate, type WorkOrderDetail } from './data';
 
 export function SubmissionForm({ api, order, disabled, reload, onSubmitted, onLockChange }: { api: ApiClient; order: WorkOrderDetail; disabled: boolean; reload: () => void; onSubmitted: () => void; onLockChange?: (locked: boolean) => void }) {
@@ -31,6 +32,7 @@ export function SubmissionForm({ api, order, disabled, reload, onSubmitted, onLo
     <h3>Отчёт о выполнении</h3>
     <fieldset className="form-fields" disabled={locked}>
       <label>Выполненные работы<textarea name="work_description" value={description} onChange={event => setDescription(event.target.value)} required maxLength={8000} rows={4} /></label>
+      <SpeechInput api={api} value={description} onChange={setDescription} maxLength={8000} disabled={locked} />
       <label>Шифр неисправности<select name="fault_code_id" value={code} onChange={event => setCode(event.target.value)} required><option value="">Выберите</option>{catalogs.data?.codes.map(item => <option value={item.id} key={item.id}>{item.code} · {item.name}</option>)}</select></label>
       <label className="checkbox-label"><input type="checkbox" name="no_materials_used" checked={noMaterials} onChange={event => setNoMaterials(event.target.checked)} />Материалы не потребовались</label>
       {!noMaterials && <section aria-label="Материалы">{materials.map((material, index) => <div className="material-row" key={index}>

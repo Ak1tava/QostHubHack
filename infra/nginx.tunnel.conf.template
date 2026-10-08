@@ -24,6 +24,13 @@ server {
     proxy_set_header True-Client-IP "";
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection $connection_upgrade;
+    location = /api/v1/speech/transcriptions {
+        client_max_body_size 11m;
+        proxy_read_timeout 100s;
+        proxy_hide_header Cache-Control;
+        add_header Cache-Control "no-store" always;
+        proxy_pass http://api:8000;
+    }
     location ~ ^/(api|health)(/|$) {
         proxy_hide_header Cache-Control;
         add_header Cache-Control "no-store" always;

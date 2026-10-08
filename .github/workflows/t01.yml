@@ -18,6 +18,8 @@ jobs:
   acceptance:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
+    env:
+      COMPOSE_FILE: compose.yaml:compose.speech-test.yaml
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
@@ -39,7 +41,7 @@ jobs:
           npm --prefix apps/web ci --no-audit --no-fund
       - name: Install locked API dependencies
         working-directory: services/api
-        run: uv sync --locked
+        run: uv sync --locked --extra speech
       - name: Prepare disposable database and browser credentials
         id: prepare_env
         shell: python
@@ -48,14 +50,17 @@ jobs:
           import os, secrets
           password = secrets.token_urlsafe(32)
           pin = '00' + secrets.token_urlsafe(20)
+          speech_token = secrets.token_urlsafe(32)
           print(f'::add-mask::{password}')
           print(f'::add-mask::{pin}')
+          print(f'::add-mask::{speech_token}')
           Path('.env').write_text(
               f'POSTGRES_PASSWORD={password}\n'
               f'DATABASE_URL=postgresql+psycopg://qosthub:{password}@db:5432/qosthub_demo\n'
               'PUBLIC_BASE_URL=http://localhost:5173\nAPP_TIMEZONE=Asia/Qostanay\n'
               'SESSION_SECRET=\nTELEGRAM_BOT_TOKEN=\nTELEGRAM_WEBHOOK_SECRET=\n'
-              'OPENAI_API_KEY=\nAI_MODEL=\nSESSION_COOKIE_SECURE=false\n', encoding='utf-8',
+              'OPENAI_API_KEY=\nAI_MODEL=\nSESSION_COOKIE_SECURE=false\n'
+              f'SPEECH_SERVICE_TOKEN={speech_token}\n', encoding='utf-8',
           )
           with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as env:
               for key, name in [('TEST_DATABASE_URL', 'qosthub_test_ci'), ('MIGRATION_TEST_DATABASE_URL', 'qosthub_migration_test_ci')]:
@@ -100,13 +105,14 @@ jobs:
           docker compose config --quiet
           docker compose up --build -d --wait --wait-timeout 120
           docker compose exec -T api .venv/bin/alembic check
-      - name: Validate opt-in tunnel and isolated restore Compose configuration
+      - name: Validate opt-in tunnel, local Whisper and isolated restore Compose configuration
         env:
           TUNNEL_HOSTNAME: check.trycloudflare.com
           DEMO_AS_OF: '2026-10-08'
         run: |
           DEMO_PASSWORD="$E2E_PASSWORD" docker compose -f compose.yaml -f compose.tunnel.yaml config --quiet
           docker compose -f compose.yaml -f compose.restore.yaml config --quiet
+          SPEECH_SERVICE_TOKEN=compose-validation-only SPEECH_MODEL_DIR=/tmp/whisper-validation-model docker compose -f compose.yaml -f compose.speech.yaml config --quiet
       - name: Seed synthetic browser accounts
         run: services/api/.venv/bin/python infra/seed_acceptance.py
       - name: Nginx IP isolation and spoof rejection

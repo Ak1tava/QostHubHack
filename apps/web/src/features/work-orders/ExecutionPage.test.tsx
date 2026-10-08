@@ -21,6 +21,7 @@ function api() {
   return new ApiClient(async (input, init) => {
     const url = new URL(String(input), 'http://localhost');
     if (url.pathname.endsWith('/csrf')) return json({ csrf_token: 'csrf' });
+    if (url.pathname.endsWith('/speech/transcriptions')) return json({ text: 'Дополнение голосом', language: 'ru', model: 'large-v3-turbo', duration_seconds: 1, is_mock: true });
     if (url.pathname.endsWith('/notifications')) return json([]);
     if (url.pathname.endsWith('/shift')) return json({ timezone, items: [], as_of: '2026-10-04T10:00:00Z' });
     if (init?.method === 'POST') { requests.push({ body: String(init.body), key: new Headers(init.headers).get('Idempotency-Key')! }); return outcome(); }
@@ -36,6 +37,19 @@ async function fill(name: string, value: string) {
 }
 async function select(name: string, value: string) { await act(async () => { const field = container.querySelector<HTMLSelectElement>(`[name="${name}"]`)!; field.value = value; field.dispatchEvent(new Event('change', { bubbles: true })); }); }
 async function report() { await fill('work_description', 'Устранена течь'); await select('fault_code_id', 'code'); await act(async () => container.querySelector<HTMLInputElement>('[name="no_materials_used"]')!.click()); }
+
+it('inserts speech into worker report without changing status or submitting', async () => {
+  await render(); await report();
+  await act(async () => {
+    const input = container.querySelector<HTMLInputElement>('input[aria-label="Аудиофайл"]')!;
+    expect(input).not.toBeNull(); Object.defineProperty(input, 'files', { value: [new File(['audio'], 'report.webm', { type: 'audio/webm' })] });
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  expect(container.querySelector<HTMLTextAreaElement>('[name="work_description"]')!.value).toBe('Устранена течь');
+  await act(async () => button('Вставить').click());
+  expect(container.querySelector<HTMLTextAreaElement>('[name="work_description"]')!.value).toBe('Устранена течь\n\nДополнение голосом');
+  expect(requests).toHaveLength(0);
+});
 
 it('shows only allowed worker actions and requires a pause reason', async () => {
   await render(); expect(button('Принять')).toBeUndefined();
