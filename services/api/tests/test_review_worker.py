@@ -115,6 +115,9 @@ def test_real_pipeline_persists_result_and_never_closes(client, database):
     assert db.scalar(select(ReviewJob)).status == 'completed'
     assert provider.calls[0][1].model == 'gpt-6-luna'
     assert any('текст' in limit for limit in review.result['limitations'])
+    detail = client.get(f"{BASE}/{order['id']}").json()
+    assert detail['ai_review']['source'] == 'mock'
+    assert 'usage' not in detail['ai_review']
 
 
 def test_missing_emergency_photo_reworks_without_model_io(client, database):

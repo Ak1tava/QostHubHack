@@ -256,6 +256,7 @@ class AIReviewView(BaseModel):
     prompt_version: str
     created_at: datetime
     is_mock: bool
+    source: Literal["provider", "rules", "prepared", "mock", "unknown"]
 
 
 class MasterDecisionView(BaseModel):
