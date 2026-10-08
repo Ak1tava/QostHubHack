@@ -21,3 +21,7 @@ TDD: первоначальный `pytest tests/test_judge_demo.py -q -k unsafe_
 TDD RED: `pytest tests/test_budgeted_worker.py -q -k 'amendment or live_cap10'` → **8 FAIL**: cap2 и отсутствующие amendment функции. GREEN всей budget suite → **23 passed in 7.13s**. Финальная команда: `python -m pytest -p no:cacheprovider tests/test_budgeted_worker.py tests/test_review_worker.py tests/test_ai_eval_runner.py tests/test_ai_eval_recovery.py -q --tb=short` → **78 passed in 33.36s**, exit0. Включена CLI-проверка amendment-only без ключа/provider calls, реальные DB/file lock коллизии, исторические calls/config, crash recovery и сохранение generic eval ceiling. `git diff --check` → exit0.
 
 Производственный ledger не изменялся этим агентом; его фактическое повышение и live probe выполняет основной агент после интеграции. [Изменение бюджета](../services/api/app/workers/budgeted_reviews.py), [проверки](../services/api/tests/test_budgeted_worker.py).
+
+## Фактический живой режим после интеграции
+
+[Итоговая проверка T17–T19](T17-T19-verification.md): HTTPS/WSS/session/CSRF и внешний доступ PASS, подлинный gpt-6.1-sol ответ сохранён, Telegram webhook/consumer включены. Старый ledger повышен2→10 явной reviewed-командой без сброса; два settled calls,$0.0272591 учтено. Перезапуск сохранил данные/11 фото/ledger. Полный PostgreSQL1731/Vitest137/E2E36 PASS. Получателю нужно привязать свой Telegram в PWA; фактическая доставка ему до этого не заявляется.
