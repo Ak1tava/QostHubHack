@@ -1,3 +1,4 @@
+import { displayFixtureName, displayOrderNumber, displayOrderDescription } from '../../lib/displayFixture';
 import { useLocale } from '../../ui/locale';
 import { useCallback, useState } from 'react';
 import { Link } from 'react-router';
@@ -19,15 +20,15 @@ export function OrderBoard({ api, catalogs, members, timezone, query, filter, se
   const orders = useQuery(useCallback((signal: AbortSignal) => api.request<WorkOrderList>('/api/v1/work-orders', {
     query: { area_id: area, equipment_id: equipment, assignee_id: assignee, priority, status, offset, limit: 50 }, signal,
   }), [api, area, equipment, assignee, priority, status, offset]));
-  const names = new Map(members.map(member => [member.user.id, member.user.display_name]));
-  const equipmentNames = new Map(catalogs.equipment.map(item => [item.id, item.name]));
-  const areaNames = new Map(catalogs.areas.map(item => [item.id, item.name]));
+  const names = new Map(members.map(member => [member.user.id, displayFixtureName(member.user.display_name)]));
+  const equipmentNames = new Map(catalogs.equipment.map(item => [item.id, displayFixtureName(item.name)]));
+  const areaNames = new Map(catalogs.areas.map(item => [item.id, displayFixtureName(item.name)]));
   function page(nextOffset: number) { const next = new URLSearchParams(query); next.set('offset', String(nextOffset)); setQuery(next); }
   return <section aria-label={tx("Наряды смены")}>
     <h3>{tx("Наряды")}</h3>
     <div className="filters">
-      <label>{tx("Оборудование")}<select value={equipment} onChange={event => filter('equipment_id', event.target.value)}><option value="">{tx("Все")}</option>{catalogs.equipment.filter(item => !area || item.area_id === area).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-      <label>{tx("Исполнитель")}<select value={assignee} onChange={event => filter('assignee_id', event.target.value)}><option value="">{tx("Все")}</option>{members.filter(member => member.user.role === 'worker').map(member => <option key={member.user.id} value={member.user.id}>{member.user.display_name}</option>)}</select></label>
+      <label>{tx("Оборудование")}<select value={equipment} onChange={event => filter('equipment_id', event.target.value)}><option value="">{tx("Все")}</option>{catalogs.equipment.filter(item => !area || item.area_id === area).map(item => <option key={item.id} value={item.id}>{displayFixtureName(item.name)}</option>)}</select></label>
+      <label>{tx("Исполнитель")}<select value={assignee} onChange={event => filter('assignee_id', event.target.value)}><option value="">{tx("Все")}</option>{members.filter(member => member.user.role === 'worker').map(member => <option key={member.user.id} value={member.user.id}>{displayFixtureName(member.user.display_name)}</option>)}</select></label>
       <label>{tx("Приоритет")}<select value={priority} onChange={event => filter('priority', event.target.value)}><option value="">{tx("Все")}</option>{Object.entries(priorities).map(([value, label]) => <option key={value} value={value}>{tx(label)}</option>)}</select></label>
       <label>{tx("Статус")}<select value={status} onChange={event => filter('status', event.target.value)}><option value="">{tx("Все")}</option>{Object.entries(statuses).map(([value, label]) => <option key={value} value={value}>{tx(label)}</option>)}</select></label>
     </div>
@@ -37,8 +38,8 @@ export function OrderBoard({ api, catalogs, members, timezone, query, filter, se
     <div className="order-board">{Object.entries(statuses).filter(([value]) => !status || value === status).map(([value, label]) => <section className={`order-column ${(status || column) === value ? 'is-selected' : ''}`} key={value} aria-label={tx(label)}>
       <h4>{tx(label)} <span className="muted">{orders.data?.items.filter(order => order.status === value).length ?? 0}</span></h4>
       {orders.data?.items.filter(order => order.status === value).map(order => <Link className={`order-card ${order.is_overdue ? 'overdue' : ''}`} to={`/orders/${order.id}`} key={order.id}>
-        <strong>{order.number}</strong><PriorityChip priority={order.priority} />
-        <span className="order-description">{order.description}</span><span>{areaNames.get(order.area_id)} · {equipmentNames.get(order.equipment_id)}</span>
+        <strong>{displayOrderNumber(order.number)}</strong><PriorityChip priority={order.priority} />
+        <span className="order-description">{displayOrderDescription(order.description)}</span><span>{areaNames.get(order.area_id)} · {equipmentNames.get(order.equipment_id)}</span>
         <span>{names.get(order.assignee_id ?? order.responsible_id ?? '') ?? tx("Назначенный исполнитель")}{order.brigade_id ? tx(" · бригада") : ''}</span>
         <span>{tx("До ")}{displayTime(order.due_at, timezone)}{order.is_overdue ? tx(" · Просрочен") : ''}</span>
         {order.queue_position != null && <span>{tx("Позиция в очереди: ")}{order.queue_position}</span>}

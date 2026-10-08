@@ -1,3 +1,4 @@
+import { displayOrderNumber, displayOrderDescription } from '../../lib/displayFixture';
 import { useLocale } from '../../ui/locale';
 import { TemplateRequirements } from './TemplateRequirements';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
@@ -44,9 +45,10 @@ export function ExecutionPage({ api, user, orderId }: { api: ApiClient; user: Us
     {detail.loading && <p role="status">{tx("Загружаем наряд…")}</p>}
     {detail.error && <p role="alert">{errorText(detail.error)} <button onClick={detail.reload}>{tx("Обновить")}</button></p>}
     {order && <>
-      <div className="page-heading"><h2>{tx("Наряд ")}{order.number}</h2><span className={`badge priority-${order.priority}`}>{tx(priorities[order.priority])}</span></div>
+      <div className="page-heading"><h2>{tx("Наряд ")}{displayOrderNumber(order.number)}</h2><span className={`badge priority-${order.priority}`}>{tx(priorities[order.priority])}</span></div>
       <p className="badge">{tx(statuses[order.status])}{order.is_overdue ? tx(" · Просрочен") : ''}</p>{order.template_snapshot && <TemplateRequirements template={order.template_snapshot} />}
-      <p id={`problem-${order.id}`} className="full-description">{order.description}</p>
+      <ReviewPanel order={order} />
+      <p id={`problem-${order.id}`} className="full-description">{displayOrderDescription(order.description)}</p>
       <p>{tx("Срок: ")}{displayTime(order.due_at, timezone)} ({timezone})</p>
       <p><Link to={`/equipment/${order.equipment_id}`}>{tx("Оборудование и история нарядов")}</Link></p>
       {order.brigade_id && <p>{responsible ? tx("Ответственный бригады") : tx("Наряд бригады · просмотр")}</p>}
@@ -63,7 +65,6 @@ export function ExecutionPage({ api, user, orderId }: { api: ApiClient; user: Us
       {order.submission && <div id={`submission-${order.submission.id}`}><SavedSubmission api={api} submission={order.submission} template={order.template_snapshot} /></div>}
       <IssuancePhotos photos={order.issuance_photos} />
       <NotificationDeliveryPanel api={api} user={user} orderId={order.id} />
-      <ReviewPanel order={order} />
       <section aria-label={tx("История наряда")}><h3>{tx("История")}</h3><ol className="history">{order.events?.map(item => <li key={item.id}><strong>{names[item.action as WorkerAction] ? tx(names[item.action as WorkerAction]) : item.action}</strong><time dateTime={item.occurred_at}>{displayTime(item.occurred_at, timezone)}</time>{item.reason && <p>{item.reason}</p>}</li>)}</ol></section>
     </>}
   </section>;

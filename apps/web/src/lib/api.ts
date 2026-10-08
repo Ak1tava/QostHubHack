@@ -3,6 +3,9 @@ import type { components, paths } from '../../../../packages/contracts/api.gener
 export type UserView = components['schemas']['UserView'];
 export type LoginRequest = components['schemas']['LoginRequest'];
 type AuthResponse = components['schemas']['AuthResponse'];
+export type JudgeProfileCode = 'master' | 'worker-1' | 'worker-2';
+export type JudgeProfile = { code: JudgeProfileCode; display_name: string; role: UserView['role'] };
+type ApiPath = keyof paths | '/api/v1/auth/judge-profiles' | '/api/v1/auth/judge-login';
 type ErrorResponse = components['schemas']['ErrorResponse'];
 type Details = ErrorResponse['error']['details'];
 type RequestOptions = RequestInit & {
@@ -36,7 +39,8 @@ export class ApiClient {
     this.generation++;
   }
 
-  async request<T>(path: keyof paths, options: RequestOptions = {}): Promise<T> {
+  async request<T>(path: ApiPath, options: RequestOptions = {}): Promise<T> {
+    const generation = this.generation;
     const { params, query, ...requestOptions } = options;
     const pathname = path.replace(/\{([^}]+)\}/g, (placeholder, name: string) => params?.[name] === undefined ? placeholder : encodeURIComponent(params[name]));
     const search = new URLSearchParams();
@@ -52,7 +56,7 @@ export class ApiClient {
     try {
       response = await this.fetcher(url, { ...requestOptions, method, headers, credentials: 'same-origin', cache: 'no-store' });
     } catch { throw unavailable(); }
-    if (response.status === 401) {
+    if (response.status === 401 && generation === this.generation) {
       this.clear();
       this.onUnauthenticated();
     }
@@ -83,6 +87,7 @@ export class ApiClient {
   }
 
   async login(payload: LoginRequest): Promise<AuthResponse> {
+    this.generation++;
     const response = await this.request<AuthResponse>('/api/v1/auth/login', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
     });
@@ -94,6 +99,17 @@ export class ApiClient {
     const generation = this.generation;
     const response = await this.request<AuthResponse>('/api/v1/auth/me');
     if (generation !== this.generation) throw new ApiError(401, 'unauthenticated', 'Сессия истекла. Войдите снова.');
+    this.csrfToken = response.csrf_token;
+    return response;
+  }
+
+  judgeProfiles() { return this.request<{ profiles: JudgeProfile[] }>('/api/v1/auth/judge-profiles'); }
+
+  async judgeLogin(profile: JudgeProfileCode): Promise<AuthResponse> {
+    this.generation++;
+    const response = await this.request<AuthResponse>('/api/v1/auth/judge-login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ profile }),
+    });
     this.csrfToken = response.csrf_token;
     return response;
   }

@@ -1,4 +1,7 @@
 :root { line-height: 1.5; }
+.judge-profiles { display: grid; gap: .75rem; margin-bottom: 1.5rem; }
+.judge-profiles p { margin: 0; }
+.judge-profiles button { min-height: 3rem; }
 
 body {
   margin: 0;

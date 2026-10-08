@@ -1,3 +1,4 @@
+import { displayFixtureName, displayFaultCode } from '../../lib/displayFixture';
 import { localizedTemplate, useLocale } from '../../ui/locale';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { ApiClient, ApiError } from '../../lib/api';
@@ -35,16 +36,17 @@ export function SubmissionForm({ api, order, disabled, reload, onSubmitted, onLo
   }
   return <form className="action-form" onSubmit={submit}>
     <h3>{tx("Отчёт о выполнении")}</h3>
+    <p>{tx('После отправки отчёта ИИ сравнит заявку, описание работы и фото. Окончательное решение принимает мастер.')}</p>
     <fieldset className="form-fields" disabled={locked}>
       {template && <fieldset><legend>{tx("Чек-лист шаблона")}</legend>{template.checklist.map(item => <label className="checkbox-label" key={item.id}>
         <input type="checkbox" name={`template-${item.id}`} checked={answers[item.id] === true} onChange={event => setAnswers(previous => ({ ...previous, [item.id]: event.target.checked }))} />{item.label}{item.required ? tx(" · обязательно") : ''}
       </label>)}<p>{tx("Фото до: ")}{order.before_photo_count ?? 0} / {template.photo_requirements.before}{tx("; после: ")}{photoIds.length} / {template.photo_requirements.after}</p></fieldset>}
       <label>{tx("Выполненные работы")}<textarea name="work_description" value={description} onChange={event => setDescription(event.target.value)} required maxLength={8000} rows={4} /></label>
       <SpeechInput api={api} value={description} onChange={setDescription} maxLength={8000} disabled={locked} />
-      <label>{tx("Шифр неисправности")}<select name="fault_code_id" value={code} onChange={event => setCode(event.target.value)} required><option value="">{tx("Выберите")}</option>{catalogs.data?.codes.map(item => <option value={item.id} key={item.id}>{item.code} · {item.name}</option>)}</select></label>
+      <label>{tx("Шифр неисправности")}<select name="fault_code_id" value={code} onChange={event => setCode(event.target.value)} required><option value="">{tx("Выберите")}</option>{catalogs.data?.codes.map(item => <option value={item.id} key={item.id}>{displayFaultCode(item.code)} · {displayFixtureName(item.name)}</option>)}</select></label>
       <label className="checkbox-label"><input type="checkbox" name="no_materials_used" checked={noMaterials} onChange={event => setNoMaterials(event.target.checked)} />{tx("Материалы не потребовались")}</label>
       {!noMaterials && <section aria-label={tx("Материалы")}>{materials.map((material, index) => <div className="material-row" key={index}>
-        <label>{tx("Материал")}<select name={`material_id-${index}`} value={material.material_id} onChange={event => setMaterials(previous => previous.map((item, position) => position === index ? { ...item, material_id: event.target.value } : item))}><option value="">{tx("Выберите")}</option>{catalogs.data?.materials.map(item => <option key={item.id} value={item.id}>{item.name} · {item.unit}</option>)}</select></label>
+        <label>{tx("Материал")}<select name={`material_id-${index}`} value={material.material_id} onChange={event => setMaterials(previous => previous.map((item, position) => position === index ? { ...item, material_id: event.target.value } : item))}><option value="">{tx("Выберите")}</option>{catalogs.data?.materials.map(item => <option key={item.id} value={item.id}>{displayFixtureName(item.name)} · {item.unit}</option>)}</select></label>
         <label>{tx("Количество")}<input name={`quantity-${index}`} inputMode="decimal" value={material.quantity} onChange={event => setMaterials(previous => previous.map((item, position) => position === index ? { ...item, quantity: event.target.value.replace(',', '.') } : item))} required /></label>
         <button type="button" onClick={() => setMaterials(previous => previous.filter((_, position) => position !== index))}>{tx("Удалить материал")}</button>
       </div>)}<button type="button" onClick={() => setMaterials(previous => [...previous, { material_id: '', quantity: '' }])}>{tx("Добавить материал")}</button></section>}

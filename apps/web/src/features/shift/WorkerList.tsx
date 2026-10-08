@@ -1,3 +1,4 @@
+import { displayFixtureName } from '../../lib/displayFixture';
 import { useLocale } from '../../ui/locale';
 import { Link } from 'react-router';
 import type { ShiftMember } from '../work-orders/data';
@@ -9,7 +10,7 @@ export function WorkerList({ members, areaId, canCreate }: { members: ShiftMembe
   return <section aria-label={tx("Исполнители смены")}>
     <h3>{tx("Исполнители ")}<span className="muted">{workers.length}</span></h3>
     <div className="worker-grid">{workers.map(member => <article className="worker-card" key={member.user.id}>
-      <strong>{member.user.display_name}</strong>
+      <strong>{displayFixtureName(member.user.display_name)}</strong>
       <StatusBadge domain="availability" status={member.availability} />
       <span>{member.user.specialty ?? tx("Исполнитель")}{member.user.grade ? (" · " + (member.user.grade) + tx(" разряд")) : ''}</span>
       <span>{tx("В очереди: ")}{member.queue_count}</span>

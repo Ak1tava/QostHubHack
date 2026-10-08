@@ -49,12 +49,17 @@ it('shows the issued template and persisted checklist to the master', async () =
     if (path.includes('/catalog/')) return json({ items: [], total: 0 });
     if (path.includes('/shift')) return json({ items: [], timezone: 'Asia/Qostanay' });
     return json({ id: 'order', number: 'N-template', description: 'Течь', created_at: '2026-10-08T10:00:00Z', priority: 'normal', status: 'AI_REVIEW', master_id: user.id, due_at: '2026-10-08T12:00:00Z', allowed_actions: [], template_snapshot: leakTemplate,
-      submission: { id: 'report', revision: 1, work_description: 'Видимый участок восстановлен', no_materials_used: true, template_answers: leakTemplate.checklist.map(item => ({ id: item.id, checked: true })) } });
+      allowed_decisions: ['accept', 'rework'], submission: { id: 'report', revision: 1, work_description: 'Видимый участок восстановлен', no_materials_used: true, template_answers: leakTemplate.checklist.map(item => ({ id: item.id, checked: true })) } });
   });
   const container = document.createElement('div'); const root = createRoot(container);
   try {
     await act(async () => root.render(<MemoryRouter><OrderDetailsPage api={api} user={user} orderId="order" /></MemoryRouter>));
     expect(container.textContent).toContain('Устранение видимой течи · версия 1');
     expect(container.textContent).toContain('Место течи указано: Выполнено');
+    const review = container.querySelector('section[aria-label="ИИ-проверка работы"]')!;
+    const history = container.querySelector('section[aria-label="История наряда"]')!;
+    expect(review.compareDocumentPosition(history) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const decision = container.querySelector('form[aria-label="Приёмка мастером"]')!;
+    expect(decision.compareDocumentPosition(history) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   } finally { await act(async () => root.unmount()); }
 });

@@ -1,3 +1,4 @@
+import { displayFixtureName } from '../../lib/displayFixture';
 import { UiError } from '../../lib/uiError';
 import { localizedTemplate, useLocale } from '../../ui/locale';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
@@ -137,10 +138,10 @@ export function CreateOrderPage({ api, user }: { api: ApiClient; user: UserView 
     <form onSubmit={submit}>
       <fieldset disabled={command.busy || command.pending || photoBusy || !!createdOrder || !catalogs.data} className="form-fields">
         <fieldset className="choice-group"><legend>{tx("Участок")}</legend><div className="choices">
-          {catalogs.data?.areas.map(area => <button type="button" key={area.id} aria-pressed={areaId === area.id} onClick={() => changeArea(area.id)}>{area.name}</button>)}
+          {catalogs.data?.areas.map(area => <button type="button" key={area.id} aria-pressed={areaId === area.id} onClick={() => changeArea(area.id)}>{displayFixtureName(area.name)}</button>)}
         </div></fieldset>
         <fieldset className="choice-group"><legend>{tx("Оборудование")}</legend><div className="choices equipment-choices">
-          {catalogs.data?.equipment.filter(item => item.area_id === areaId).map(item => <button type="button" key={item.id} aria-pressed={equipmentId === item.id} onClick={() => setEquipmentId(item.id)}>{item.name}</button>)}
+          {catalogs.data?.equipment.filter(item => item.area_id === areaId).map(item => <button type="button" key={item.id} aria-pressed={equipmentId === item.id} onClick={() => setEquipmentId(item.id)}>{displayFixtureName(item.name)}</button>)}
           {!areaId && <p className="muted">{tx("Сначала выберите участок.")}</p>}
         </div></fieldset>
         <fieldset className="choice-group"><legend>{tx("Назначение")}</legend><div className="choices">
@@ -148,13 +149,13 @@ export function CreateOrderPage({ api, user }: { api: ApiClient; user: UserView 
           <button type="button" aria-pressed={mode === 'brigade'} onClick={() => { setMode('brigade'); setResponsibleId(''); }}>{tx("Бригада")}</button>
         </div></fieldset>
         {mode === 'worker' ? <label>{tx("Исполнитель")}<select name="assignee_id" value={assigneeId} onChange={event => setAssigneeId(event.target.value)} disabled={!areaId || !shift.data} required>
-          <option value="">{tx("Выберите исполнителя")}</option>{workers.map(member => <option key={member.user.id} value={member.user.id}>{member.user.display_name} · {tx(availability[member.availability])}{tx(" · очередь ")}{member.queue_count}</option>)}
+          <option value="">{tx("Выберите исполнителя")}</option>{workers.map(member => <option key={member.user.id} value={member.user.id}>{displayFixtureName(member.user.display_name)} · {tx(availability[member.availability])}{tx(" · очередь ")}{member.queue_count}</option>)}
         </select></label> : <>
           <label>{tx("Бригада")}<select name="brigade_id" value={brigadeId} onChange={event => { setBrigadeId(event.target.value); setResponsibleId(''); }} required>
-            <option value="">{tx("Выберите бригаду")}</option>{brigades.map(brigade => <option key={brigade.id} value={brigade.id}>{brigade.name}</option>)}
+            <option value="">{tx("Выберите бригаду")}</option>{brigades.map(brigade => <option key={brigade.id} value={brigade.id}>{displayFixtureName(brigade.name)}</option>)}
           </select></label>
           <label>{tx("Ответственный")}<select name="responsible_id" value={responsibleId} onChange={event => setResponsibleId(event.target.value)} required>
-            <option value="">{tx("Выберите ответственного")}</option>{eligible.map(member => <option key={member.user.id} value={member.user.id}>{member.user.display_name} · {tx(availability[member.availability])}</option>)}
+            <option value="">{tx("Выберите ответственного")}</option>{eligible.map(member => <option key={member.user.id} value={member.user.id}>{displayFixtureName(member.user.display_name)} · {tx(availability[member.availability])}</option>)}
           </select></label>
         </>}
         {selected && <p role="status" className={`notice availability-${selected.availability}`}>{tx(availability[selected.availability])}{tx(" · в очереди: ")}{selected.queue_count}{selected.availability !== 'free' ? tx(". Проверьте назначение и срок.") : ''}</p>}

@@ -153,7 +153,7 @@ it('switches master commands, selected command and known history while preservin
   await toggle();
   const labels = [...container.querySelectorAll('.choices button')].map(button => button.textContent);
   expect(labels).toEqual(['Қайта тағайындау', 'Болдырмау', 'Басымдықты өзгерту']);
-  expect(container.querySelector('.action-form h3')!.textContent).toBe('Болдырмау');
+  expect(container.querySelector('form.action-form h3')!.textContent).toBe('Болдырмау');
   expect(container.querySelector<HTMLTextAreaElement>('[name="reason"]')!.value).toBe('Причина без перевода');
   expect([...container.querySelectorAll('.history strong')].map(element => element.textContent)).toEqual(['Беру', 'Отменить']);
   expect(container.querySelector('.full-description')!.textContent).toBe('Отменить');

@@ -1,9 +1,10 @@
-import { ApiClient, ApiError, type LoginRequest, type UserView } from '../../lib/api';
+import { ApiClient, ApiError, type JudgeProfile, type JudgeProfileCode, type LoginRequest, type UserView } from '../../lib/api';
+import { events } from '../../lib/events';
 
-type AuthState = { user: UserView | null; loading: boolean; busy: boolean; error: ApiError | null };
+type AuthState = { user: UserView | null; loading: boolean; busy: boolean; error: ApiError | null; judgeProfiles: JudgeProfile[]; workspaceRevision: number };
 
 export class AuthStore {
-  private state: AuthState = { user: null, loading: true, busy: false, error: null };
+  private state: AuthState = { user: null, loading: true, busy: false, error: null, judgeProfiles: [], workspaceRevision: 0 };
   private listeners = new Set<() => void>();
   private restoring: Promise<void> | null = null;
   private revision = 0;
@@ -39,7 +40,7 @@ export class AuthStore {
         const response = await this.api.me();
         if (revision === this.revision) this.update({ user: response.user, error: null });
       } catch (error) {
-        if (!(error instanceof ApiError && error.status === 401)) this.fail(error);
+        if (revision === this.revision && !(error instanceof ApiError && error.status === 401)) this.fail(error);
       } finally {
         this.update({ loading: false });
         this.restoring = null;
@@ -54,7 +55,7 @@ export class AuthStore {
     this.update({ busy: true, error: null });
     try {
       const response = await this.api.login(payload);
-      if (revision === this.revision) this.update({ user: response.user });
+      if (revision === this.revision) this.update({ user: response.user, workspaceRevision: this.state.workspaceRevision + 1 });
     } catch (error) { this.fail(error); }
     finally { this.update({ busy: false, loading: false }); }
   }
@@ -65,9 +66,29 @@ export class AuthStore {
     this.update({ busy: true, error: null });
     try {
       await this.api.logout();
-      this.update({ user: null });
+      events.stop();
+      this.update({ user: null, workspaceRevision: this.state.workspaceRevision + 1 });
     } catch (error) { this.fail(error); }
     finally { this.update({ busy: false }); }
+  }
+
+  async loadJudgeProfiles() {
+    try { this.update({ judgeProfiles: (await this.api.judgeProfiles()).profiles }); }
+    catch (error) { if (!(error instanceof ApiError && error.status === 404)) this.fail(error); }
+  }
+
+  async judgeLogin(profile: JudgeProfileCode) {
+    if (this.state.busy) return;
+    const revision = ++this.revision;
+    const wasSignedIn = !!this.state.user;
+    events.stop();
+    this.update({ user: null, busy: true, error: null });
+    try {
+      if (wasSignedIn) await this.api.logout();
+      const response = await this.api.judgeLogin(profile);
+      if (revision === this.revision) this.update({ user: response.user, workspaceRevision: this.state.workspaceRevision + 1 });
+    } catch (error) { this.fail(error); }
+    finally { this.update({ busy: false, loading: false }); }
   }
 }
 

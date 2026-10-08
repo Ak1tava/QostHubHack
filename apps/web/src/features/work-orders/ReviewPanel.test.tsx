@@ -14,7 +14,7 @@ it('distinguishes waiting, blocked, human review and MOCK while rendering eviden
     await act(async () => root.render(<ReviewPanel order={{ ...base, review_status: 'blocked' } as unknown as WorkOrderDetail} />));
     expect(container.textContent).toContain('Проверка недоступна');
     await act(async () => root.render(<ReviewPanel order={{ ...base, review_status: 'completed', ai_review: { is_mock: true, model: 'test', prompt_version: 'v1', result: { verdict: 'human_review', score: null, findings: [{ code: 'visual', severity: 'warning', message: '<script>alert(1)</script>', evidence_refs: ['photo:photo', 'work_description', 'https://bad.test'] }], missing_evidence: [], limitations: ['Скрытые узлы не проверены'] } }, master_decision: { decision: 'rework', reason: 'Устранить течь', score: null } } as unknown as WorkOrderDetail} />));
-    expect(container.textContent).toContain('Требуется проверка мастера'); expect(container.textContent).toContain('MOCK');
+    expect(container.textContent).toContain('Требуется проверка мастера'); expect(container.textContent).toContain('Тестовый результат');
     expect(container.textContent).toContain('<script>alert(1)</script>'); expect(container.querySelector('script')).toBeNull();
     expect(container.textContent).toContain('Устранить течь'); expect(container.querySelector('a[href="https://bad.test"]')).toBeNull();
     expect(container.querySelector('a[href="/api/v1/photos/photo"]')).not.toBeNull();
@@ -28,14 +28,36 @@ it('labels prepared scenarios and links both photo phases without marking live r
   const base = { id: 'order', issuance_photos: [{ id: 'before' }], submission: { id: 'submission', after_photo_ids: ['after'] } };
   try {
     for (const verdict of ['accepted', 'requires_rework', 'human_review']) {
-      const review = { is_mock: true, model: 't18-prepared-demo-provider-v2', prompt_version: 't18-prepared-v2',
+      const review = { source: 'prepared', is_mock: true, model: 't18-prepared-demo-provider-v2', prompt_version: 't18-prepared-v2',
         result: { verdict, score: null, findings: [{ code: 'comparison', severity: 'info', message: 'Рисунки', evidence_refs: ['photo:before', 'photo:after'] }], missing_evidence: [], limitations: [] } };
       await act(async () => root.render(<ReviewPanel order={{ ...base, ai_review: review } as unknown as WorkOrderDetail} />));
-      expect(container.textContent).toContain('Подготовленный демонстрационный результат');
+      expect(container.querySelectorAll('.badge')).toHaveLength(1);
+      expect(container.textContent).toContain('Подготовленный результат');
       expect(container.querySelector('a[href="/api/v1/photos/before"]')?.textContent).toBe('Фото до работы');
       expect(container.querySelector('a[href="/api/v1/photos/after"]')?.textContent).toBe('Фото после работы');
-      await act(async () => root.render(<ReviewPanel order={{ ...base, ai_review: { ...review, is_mock: false, model: 'live' } } as unknown as WorkOrderDetail} />));
-      expect(container.textContent).not.toContain('Подготовленный демонстрационный результат');
+      await act(async () => root.render(<ReviewPanel order={{ ...base, ai_review: { ...review, source: 'provider', is_mock: false, model: 'live' } } as unknown as WorkOrderDetail} />));
+      expect(container.textContent).not.toContain('Подготовленный результат');
     }
   } finally { await act(async () => root.unmount()); container.remove(); }
+});
+
+it('explains when review begins before a report exists', async () => {
+  const container = document.createElement('div'); const root = createRoot(container);
+  try {
+    await act(async () => root.render(<ReviewPanel order={{ id: 'order' } as WorkOrderDetail} />));
+    expect(container.textContent).toContain('ИИ-проверка работы');
+    expect(container.textContent).toContain('после отправки отчёта');
+  } finally { await act(async () => root.unmount()); }
+});
+
+it.each([['rules', 'Проверка по правилам'], ['provider', 'Результат ИИ'], ['unknown', 'Источник не подтверждён']])('keeps %s provenance truthful and technical fields collapsed', async (source, label) => {
+  const container = document.createElement('div'); const root = createRoot(container);
+  try {
+    await act(async () => root.render(<ReviewPanel order={{ id: 'order', ai_review: { source, is_mock: false, model: 'gpt-test', prompt_version: 'v1', result: { verdict: 'human_review', score: null, findings: [], missing_evidence: ['Нужен ракурс'], limitations: ['Скрытые узлы не проверены'] } } } as unknown as WorkOrderDetail} />));
+    expect(container.textContent).toContain(label);
+    expect(container.querySelector('details')?.open).toBe(false);
+    expect(container.querySelector('details')?.textContent).toContain('gpt-test');
+    expect(container.querySelector('details')?.textContent).not.toContain('Скрытые узлы');
+    expect(container.textContent).toContain('Следующее действие');
+  } finally { await act(async () => root.unmount()); }
 });

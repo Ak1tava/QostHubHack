@@ -1,3 +1,4 @@
+import { displayFixtureName, displayOrderNumber, displayOrderDescription } from '../../lib/displayFixture';
 import { useLocale } from '../../ui/locale';
 import { TemplateRequirements } from './TemplateRequirements';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
@@ -64,14 +65,16 @@ export function OrderDetailsPage({ api, user, orderId }: { api: ApiClient; user:
     {detail.loading && <p role="status">{tx("Загружаем наряд…")}</p>}
     {detail.error && <p role="alert">{errorText(detail.error)} <button onClick={detail.reload}>{tx("Обновить")}</button></p>}
     {order && <>
-      <div className="page-heading"><h2>{tx("Наряд ")}{order.number}</h2><span className={`badge priority-${order.priority}`}>{tx(priorities[order.priority])}</span></div>
+      <div className="page-heading"><h2>{tx("Наряд ")}{displayOrderNumber(order.number)}</h2><span className={`badge priority-${order.priority}`}>{tx(priorities[order.priority])}</span></div>
       <p className="badge">{tx(statuses[order.status])}{order.is_overdue ? tx(" · Просрочен") : ''}</p>
+      <ReviewPanel order={order} />
+      <MasterDecisionForm key={`${order.id}:${user.id}`} api={api} user={user} order={order} reload={detail.reload} onDecided={() => { detail.reload(); events.invalidate(); }} />
       {order.template_snapshot && <TemplateRequirements template={order.template_snapshot} />}
-      <p id={`problem-${order.id}`} className="full-description">{order.description}</p>
+      <p id={`problem-${order.id}`} className="full-description">{displayOrderDescription(order.description)}</p>
       <dl className="order-info">
-        <dt>{tx("Участок")}</dt><dd>{catalogs.data?.areas.find(area => area.id === order.area_id)?.name ?? tx("Загружаем…")}</dd>
-        <dt>{tx("Оборудование")}</dt><dd><Link to={`/equipment/${order.equipment_id}`}>{catalogs.data?.equipment.find(item => item.id === order.equipment_id)?.name ?? tx("Карточка оборудования")}</Link></dd>
-        <dt>{tx("Исполнитель")}</dt><dd>{shift.data?.items.find(member => member.user.id === (order.assignee_id ?? order.responsible_id))?.user.display_name ?? tx("Назначенный исполнитель")}{order.brigade_id ? (" · " + (catalogs.data?.brigades.find(brigade => brigade.id === order.brigade_id)?.name ?? tx('бригада'))) : ''}</dd>
+        <dt>{tx("Участок")}</dt><dd>{displayFixtureName(catalogs.data?.areas.find(area => area.id === order.area_id)?.name ?? tx("Загружаем…"))}</dd>
+        <dt>{tx("Оборудование")}</dt><dd><Link to={`/equipment/${order.equipment_id}`}>{displayFixtureName(catalogs.data?.equipment.find(item => item.id === order.equipment_id)?.name ?? tx("Карточка оборудования"))}</Link></dd>
+        <dt>{tx("Исполнитель")}</dt><dd>{displayFixtureName(shift.data?.items.find(member => member.user.id === (order.assignee_id ?? order.responsible_id))?.user.display_name ?? tx("Назначенный исполнитель"))}{order.brigade_id ? (" · " + displayFixtureName(catalogs.data?.brigades.find(brigade => brigade.id === order.brigade_id)?.name ?? tx('бригада'))) : ''}</dd>
         <dt>{tx("Тип")}</dt><dd>{order.work_type === 'emergency' ? tx("Аварийный") : tx("Плановый")}</dd>
         <dt>{tx("Срок")}</dt><dd>{displayTime(order.due_at, timezone)} ({timezone})</dd>
         <dt>{tx("Выдан")}</dt><dd>{displayTime(order.created_at, timezone)}</dd>
@@ -84,9 +87,9 @@ export function OrderDetailsPage({ api, user, orderId }: { api: ApiClient; user:
           {action === 'reprioritize' ? <label>{tx("Приоритет")}<select name="priority" value={priority} onChange={event => setPriority(event.target.value as typeof priority)}>{Object.entries(priorities).map(([value, label]) => <option key={value} value={value}>{tx(label)}</option>)}</select></label> : <label>{tx("Причина")}<textarea name="reason" value={reason} onChange={event => setReason(event.target.value)} maxLength={4000} required rows={2} /></label>}
           {action === 'reassign' && <>
             <label>{tx("Назначить")}<select value={mode} onChange={event => { setMode(event.target.value as typeof mode); setResponsible(''); }}><option value="worker">{tx("Исполнителю")}</option><option value="brigade">{tx("Бригаде")}</option></select></label>
-            {mode === 'worker' ? <label>{tx("Исполнитель")}<select value={assignee} onChange={event => setAssignee(event.target.value)} required><option value="">{tx("Выберите")}</option>{workers.map(member => <option key={member.user.id} value={member.user.id}>{member.user.display_name} · {tx(availability[member.availability])}</option>)}</select></label> : <>
-              <label>{tx("Бригада")}<select value={brigade} onChange={event => { setBrigade(event.target.value); setResponsible(''); }} required><option value="">{tx("Выберите")}</option>{catalogs.data?.brigades.filter(brigade => workers.some(member => member.user.brigade_id === brigade.id)).map(brigade => <option key={brigade.id} value={brigade.id}>{brigade.name}</option>)}</select></label>
-              <label>{tx("Ответственный")}<select value={responsible} onChange={event => setResponsible(event.target.value)} required><option value="">{tx("Выберите")}</option>{workers.filter(member => member.user.brigade_id === brigade).map(member => <option key={member.user.id} value={member.user.id}>{member.user.display_name}</option>)}</select></label>
+            {mode === 'worker' ? <label>{tx("Исполнитель")}<select value={assignee} onChange={event => setAssignee(event.target.value)} required><option value="">{tx("Выберите")}</option>{workers.map(member => <option key={member.user.id} value={member.user.id}>{displayFixtureName(member.user.display_name)} · {tx(availability[member.availability])}</option>)}</select></label> : <>
+              <label>{tx("Бригада")}<select value={brigade} onChange={event => { setBrigade(event.target.value); setResponsible(''); }} required><option value="">{tx("Выберите")}</option>{catalogs.data?.brigades.filter(brigade => workers.some(member => member.user.brigade_id === brigade.id)).map(brigade => <option key={brigade.id} value={brigade.id}>{displayFixtureName(brigade.name)}</option>)}</select></label>
+              <label>{tx("Ответственный")}<select value={responsible} onChange={event => setResponsible(event.target.value)} required><option value="">{tx("Выберите")}</option>{workers.filter(member => member.user.brigade_id === brigade).map(member => <option key={member.user.id} value={member.user.id}>{displayFixtureName(member.user.display_name)}</option>)}</select></label>
             </>}
             {selected && <p role="status">{tx(availability[selected.availability])}{tx(" · в очереди: ")}{selected.queue_count}</p>}
             {shift.error && <p role="alert">{errorText(shift.error)}</p>}
@@ -99,14 +102,12 @@ export function OrderDetailsPage({ api, user, orderId }: { api: ApiClient; user:
       </form>}
       <section aria-label={tx("История наряда")}><h3>{tx("История")}</h3><ol className="history">{order.events?.map(event => <li key={event.id}>
         <strong>{Object.hasOwn(historyNames, event.action) ? tx(historyNames[event.action]) : event.action}</strong><time dateTime={event.occurred_at}>{displayTime(event.occurred_at, timezone)}</time>
-        <span>{event.actor_id ? shift.data?.items.find(member => member.user.id === event.actor_id)?.user.display_name ?? tx("Сотрудник") : tx("Система")}</span>
+        <span>{event.actor_id ? displayFixtureName(shift.data?.items.find(member => member.user.id === event.actor_id)?.user.display_name ?? tx("Сотрудник")) : tx("Система")}</span>
         {event.reason && <p>{event.reason}</p>}
       </li>)}</ol></section>
       {order.submission && <div id={`submission-${order.submission.id}`}><SavedSubmission api={api} submission={order.submission} template={order.template_snapshot} /></div>}
       <IssuancePhotos photos={order.issuance_photos} />
       <NotificationDeliveryPanel api={api} user={user} orderId={order.id} />
-      <ReviewPanel order={order} />
-      <MasterDecisionForm key={`${order.id}:${user.id}`} api={api} user={user} order={order} reload={detail.reload} onDecided={() => { detail.reload(); events.invalidate(); }} />
     </>}
   </section>;
 }

@@ -8,7 +8,7 @@ vi.mock('./PwaUpdatePrompt', () => ({ PwaUpdatePrompt: () => null }));
 const { state } = vi.hoisted(() => ({ state: { user: { id: 'master', display_name: 'Мастер', role: 'master' as 'master' | 'worker' | 'manager' }, loading: false, busy: false, error: null } }));
 beforeEach(() => { state.user.role = 'master'; state.user.id = 'master'; });
 vi.mock('./features/auth/session', () => {
-  return { authStore: { getSnapshot: () => state, subscribe: () => () => {}, restore: vi.fn(),
+  return { authStore: { getSnapshot: () => state, subscribe: () => () => {}, restore: vi.fn(), loadJudgeProfiles: vi.fn(),
     api: { request: vi.fn().mockResolvedValue({ items: [], total: 0, offset: 0, limit: 50, as_of: new Date().toISOString(), timezone: 'Asia/Qostanay' }) } } };
 });
 
@@ -49,4 +49,15 @@ it.each(['worker', 'manager'] as const)('opens the role workspace directly for %
     expect(container.textContent).not.toContain('Вы вошли');
     if (role === 'worker') expect(nav.textContent).not.toContain('Панель смены');
   } finally { await act(async () => root.unmount()); container.remove(); }
+});
+
+it('resets a worker away from the former master shift route', async () => {
+  state.user.role = 'worker'; state.user.id = 'worker-2';
+  (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+  const container = document.createElement('div'); const root = createRoot(container);
+  try {
+    await act(async () => root.render(<MemoryRouter initialEntries={['/shift']}><App /></MemoryRouter>));
+    expect(container.querySelector('nav [aria-current="page"]')?.getAttribute('href')).toBe('/my-orders');
+    expect(container.textContent).not.toContain('Панель доступна мастеру.');
+  } finally { await act(async () => root.unmount()); }
 });

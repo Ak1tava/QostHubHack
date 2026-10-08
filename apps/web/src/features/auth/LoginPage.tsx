@@ -1,10 +1,11 @@
 import { useLocale } from '../../ui/locale';
 import { useEffect, useState, type FormEvent } from 'react';
-import { ApiError, type LoginRequest } from '../../lib/api';
+import { ApiError, type JudgeProfile, type JudgeProfileCode, type LoginRequest } from '../../lib/api';
 
-type Props = { busy: boolean; error: ApiError | null; onLogin: (payload: LoginRequest) => Promise<void> };
+type Props = { busy: boolean; error: ApiError | null; onLogin: (payload: LoginRequest) => Promise<void>; profiles?: JudgeProfile[]; onJudgeLogin?: (profile: JudgeProfileCode) => Promise<void> };
+const profileLabels: Record<JudgeProfileCode, string> = { master: 'Мастер', 'worker-1': 'Рабочий 1', 'worker-2': 'Рабочий 2' };
 
-export function LoginPage({ busy, error, onLogin }: Props) {
+export function LoginPage({ busy, error, onLogin, profiles = [], onJudgeLogin }: Props) {
   const { tx, errorText } = useLocale();
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
@@ -27,6 +28,10 @@ export function LoginPage({ busy, error, onLogin }: Props) {
 
   return <section className="auth-card" aria-labelledby="login-title">
     <h2 id="login-title">{tx("Вход")}</h2>
+    {!!profiles.length && <div className="judge-profiles" role="group" aria-label={tx('Выберите профиль')}>
+      <p>{tx('Выберите профиль')}</p>
+      {profiles.map(profile => <button className="primary" key={profile.code} type="button" disabled={busy || !!retryIn} onClick={() => void onJudgeLogin?.(profile.code)}>{tx(profileLabels[profile.code])}</button>)}
+    </div>}
     <p>{tx("Введите логин и пароль или ПИН.")}</p>
     <form onSubmit={submit}>
       <label htmlFor="login">{tx("Логин")}</label>

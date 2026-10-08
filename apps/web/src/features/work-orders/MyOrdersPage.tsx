@@ -1,3 +1,4 @@
+import { displayOrderNumber, displayOrderDescription } from '../../lib/displayFixture';
 import { useLocale } from '../../ui/locale';
 import { useCallback } from 'react';
 import { Link } from 'react-router';
@@ -25,7 +26,7 @@ export function MyOrdersPage({ api, user }: { api: ApiClient; user: UserView }) 
     {orders.error && <p role="alert">{errorText(orders.error)} <button onClick={orders.reload}>{tx("Обновить")}</button></p>}
     {orders.data?.length === 0 && <p>{tx("Назначенных нарядов нет.")}</p>}
     {orders.data?.map(order => <Link className={`order-card ${order.is_overdue ? 'overdue' : ''}`} key={order.id} to={`/orders/${order.id}/execute`}>
-      <strong>{tx("Наряд ")}{order.number}</strong><span>{order.description}</span>
+      <strong>{tx("Наряд ")}{displayOrderNumber(order.number)}</strong><span>{displayOrderDescription(order.description)}</span>
       <span className={`badge priority-${order.priority}`}>{tx(priorities[order.priority])}</span><span>{tx(statuses[order.status])}{order.is_overdue ? tx(" · Просрочен") : ''}</span>
       {order.queue_position != null && <span>{tx("Очередь: ")}{order.queue_position}</span>}
       {order.brigade_id && <span>{order.responsible_id === user.id ? tx("Ответственный бригады") : tx("Наряд бригады · просмотр")}</span>}

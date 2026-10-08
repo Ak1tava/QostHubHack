@@ -1,6 +1,7 @@
+import { displayFixtureName } from './lib/displayFixture';
 import { LanguageSelector, useLocale } from './ui/locale';
-import { useEffect, useSyncExternalStore } from 'react';
-import { Link, Navigate, Route, Routes, useParams } from 'react-router';
+import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { Link, Navigate, Route, Routes, useNavigate, useParams } from 'react-router';
 import { authStore } from './features/auth/session';
 import { LoginPage } from './features/auth/LoginPage';
 import { PwaUpdatePrompt } from './PwaUpdatePrompt';
@@ -36,8 +37,16 @@ function EquipmentRoute({ user }: { user: UserView }) {
 
 export function App() {
   const { tx, errorText } = useLocale();
-  const { user, loading, busy, error } = useSyncExternalStore(authStore.subscribe, authStore.getSnapshot);
-  useEffect(() => { void authStore.restore(); }, []);
+  const { user, loading, busy, error, judgeProfiles, workspaceRevision } = useSyncExternalStore(authStore.subscribe, authStore.getSnapshot);
+  const navigate = useNavigate();
+  const previousWorkspace = useRef(workspaceRevision);
+  useEffect(() => { void authStore.restore(); void authStore.loadJudgeProfiles(); }, []);
+  useEffect(() => {
+    if (workspaceRevision !== previousWorkspace.current) {
+      previousWorkspace.current = workspaceRevision;
+      navigate('/', { replace: true });
+    }
+  }, [workspaceRevision, navigate]);
   useEffect(() => {
     if (!user) return;
     events.start(() => { void authStore.restore(); });
@@ -46,13 +55,13 @@ export function App() {
   return <div className={user ? 'app-shell' : 'login-shell'}>
     <a className="skip-link" href="#content">{tx("Перейти к содержимому")}</a>
     {user && <AppNavigation user={user} />}
-    <div className="app-body"><header className="app-header"><div className="header-brand"><Brand /></div><span className="header-caption">{tx("Рабочее пространство")}</span><LanguageSelector />{user && <div className="account"><div className="account-person"><strong>{user.display_name}</strong><small>{tx(roleNames[user.role])}</small></div><button onClick={() => void authStore.logout()} disabled={busy}>{busy ? tx("Выходим…") : tx("Выйти")}</button></div>}</header>
+    <div className="app-body"><header className="app-header"><div className="header-brand"><Brand /></div><span className="header-caption">{tx("Рабочее пространство")}</span><LanguageSelector />{user && <div className="account"><div className="account-person"><strong>{displayFixtureName(user.display_name)}</strong><small>{tx(roleNames[user.role])}</small></div><button onClick={() => void authStore.logout()} disabled={busy}>{busy ? tx("Выходим…") : tx(judgeProfiles?.length ? "Сменить профиль" : "Выйти")}</button></div>}</header>
     <main className="app-content" id="content">
     {error && user && <p role="alert">{errorText(error)}</p>}
-    {loading ? <p role="status">{tx("Проверяем вход…")}</p> : user ? <Routes>
+    {loading ? <p role="status">{tx("Проверяем вход…")}</p> : user ? <Routes key={user.id}>
       <Route path="/" element={<Navigate to={user.role === 'worker' ? '/my-orders' : '/shift'} replace />} />
       <Route path="/my-orders" element={<MyOrdersPage key={user.id} api={authStore.api} user={user} />} />
-      <Route path="/shift" element={user.role !== 'worker' ? <ShiftPage api={authStore.api} user={user} /> : <p role="alert">{tx("Панель доступна мастеру.")}</p>} />
+      <Route path="/shift" element={user.role !== 'worker' ? <ShiftPage api={authStore.api} user={user} /> : <Navigate to="/my-orders" replace />} />
       <Route path="/orders/new" element={<CreateOrderPage api={authStore.api} user={user} />} />
       <Route path="/equipment/:id" element={<EquipmentRoute user={user} />} />
       <Route path="/orders/:id" element={<OrderRoute user={user} />} />
@@ -62,7 +71,7 @@ export function App() {
       <Route path="/analytics/anomalies" element={<AnomaliesPage key={user.id} api={authStore.api} user={user} />} />
       <Route path="/telegram" element={<TelegramPage key={user.id} api={authStore.api} />} />
       <Route path="*" element={<p>{tx("Страница не найдена. ")}<Link to="/">{tx("На главную")}</Link></p>} />
-    </Routes> : <LoginPage busy={busy} error={error} onLogin={payload => authStore.login(payload)} />}
+    </Routes> : <LoginPage busy={busy} error={error} profiles={judgeProfiles} onJudgeLogin={profile => authStore.judgeLogin(profile)} onLogin={payload => authStore.login(payload)} />}
     </main><PwaUpdatePrompt /></div>
   </div>;
 }

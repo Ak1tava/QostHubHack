@@ -1,3 +1,4 @@
+import { displayFixtureName } from '../../lib/displayFixture';
 import { useLocale } from '../../ui/locale';
 import { Link, useSearchParams } from 'react-router';
 import { ApiClient, type UserView } from '../../lib/api';
@@ -23,7 +24,7 @@ export function ShiftPage({ api, user }: { api: ApiClient; user: UserView }) {
     {catalogs.error && <p role="alert">{errorText(catalogs.error)} <button onClick={catalogs.reload}>{tx("Обновить справочники")}</button></p>}
     {shift.error && <p role="alert">{errorText(shift.error)} <button onClick={shift.reload}>{tx("Обновить смену")}</button></p>}
     <label className="area-filter">{tx("Участок")}<select value={areaId} onChange={event => filter('area_id', event.target.value)}>
-      <option value="">{tx("Все разрешённые участки")}</option>{catalogs.data?.areas.map(area => <option key={area.id} value={area.id}>{area.name}</option>)}
+      <option value="">{tx("Все разрешённые участки")}</option>{catalogs.data?.areas.map(area => <option key={area.id} value={area.id}>{displayFixtureName(area.name)}</option>)}
     </select></label>
     {shift.loading && <p role="status">{tx("Загружаем смену…")}</p>}
     {shift.data && <WorkerList members={shift.data.items} areaId={areaId} canCreate={user.role === 'master'} />}

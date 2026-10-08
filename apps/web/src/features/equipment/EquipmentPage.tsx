@@ -1,3 +1,4 @@
+import { displayFixtureName, displayOrderNumber, displayOrderDescription } from '../../lib/displayFixture';
 import { useLocale } from '../../ui/locale';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router';
@@ -25,8 +26,8 @@ function EquipmentQr({ card }: { card: EquipmentDetail }) {
   }, [card.public_url, card.name, card.id]);
   if (!card.public_url) return <p className="muted">{tx("QR доступен на HTTPS-стенде.")}</p>;
   return <section className="equipment-qr" aria-label={tx("QR оборудования")}>
-    <div className="equipment-label"><h3>{card.name}</h3><p className="equipment-id">{card.id}</p>
-      {images && <img src={images.qr} width="256" height="256" alt={`QR: ${card.name}`} />}
+    <div className="equipment-label"><h3>{displayFixtureName(card.name)}</h3><p className="equipment-id">{card.id}</p>
+      {images && <img src={images.qr} width="256" height="256" alt={`QR: ${displayFixtureName(card.name)}`} />}
       <p className="equipment-url"><a href={card.public_url}>{card.public_url}</a></p>
     </div>
     <p>{tx("Откройте QR обычной камерой телефона. Для просмотра нужен вход.")}</p>
@@ -49,13 +50,13 @@ export function EquipmentPage({ api, user, equipmentId }: { api: ApiClient; user
     {detail.loading && <p role="status">{tx("Загружаем оборудование…")}</p>}
     {detail.error && <p role="alert">{errorText(detail.error)} <button onClick={detail.reload}>{tx("Обновить")}</button></p>}
     {card && <>
-      <div className="page-heading"><div><p className="muted">{tx("Оборудование")}</p><h2>{card.name}</h2><p>{card.area.name}</p></div>
+      <div className="page-heading"><div><p className="muted">{tx("Оборудование")}</p><h2>{displayFixtureName(card.name)}</h2><p>{displayFixtureName(card.area.name)}</p></div>
         {user.role === 'master' && <Link className="button primary" to={`/orders/new?equipment_id=${card.id}&area_id=${card.area_id}`}>{tx("Создать наряд")}</Link>}
       </div>
       <div className="equipment-layout"><EquipmentQr card={card} />
         <section className="equipment-history" aria-labelledby="equipment-history-title"><h3 id="equipment-history-title">{tx("Последние 10 нарядов")}</h3>
           {card.recent_work_orders.length === 0 ? <p className="muted">{tx("Доступных нарядов пока нет.")}</p> : <ol className="equipment-orders">{card.recent_work_orders.map(order => <li key={order.id}>
-            <Link to={order.detail_url}><strong>{order.number}</strong><span className="badge">{tx(statuses[order.status])}</span><p>{order.description}</p><time dateTime={order.created_at}>{displayTime(order.created_at, card.timezone)}</time></Link>
+            <Link to={order.detail_url}><strong>{displayOrderNumber(order.number)}</strong><span className="badge">{tx(statuses[order.status])}</span><p>{displayOrderDescription(order.description)}</p><time dateTime={order.created_at}>{displayTime(order.created_at, card.timezone)}</time></Link>
           </li>)}</ol>}
         </section>
       </div>
