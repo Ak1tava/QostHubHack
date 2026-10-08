@@ -1,6 +1,6 @@
 # T12/T15: проверка реализации
 
-2026-10-08. Владелец A / Codex; база `cd9bc97`, проверенный code [`63bb120`](https://github.com/Ak1tava/QostHubHack/commit/63bb120). Изолированная ветка `codex/t12-t15`; пользователь разрешил интеграцию и push main после проверок.
+2026-10-08. Владелец A / Codex; база `cd9bc97`, проверенный code [`63bb120`](https://github.com/Ak1tava/QostHubHack/commit/63bb120). Ветка `codex/t12-t15` интегрирована в main fast-forward через `ededbe2`; пользователь разрешил интеграцию и push main после проверок. T12 DONE, T15 REVIEW с перечисленными ниже оставшимися данными.
 
 ## Результат
 
