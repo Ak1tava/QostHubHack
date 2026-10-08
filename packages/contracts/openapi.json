@@ -273,8 +273,7 @@
           },
           "language": {
             "enum": [
-              "ru",
-              "kk"
+              "ru"
             ],
             "title": "Language",
             "type": "string"
@@ -1601,10 +1600,7 @@
             "type": "boolean"
           },
           "language": {
-            "enum": [
-              "ru",
-              "kk"
-            ],
+            "const": "ru",
             "title": "Language",
             "type": "string"
           },

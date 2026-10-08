@@ -550,7 +550,7 @@ export interface components {
              * Language
              * @enum {string}
              */
-            language: "ru" | "kk";
+            language: "ru";
         };
         /** Body_upload_photo_api_v1_work_orders__order_id__photos_post */
         Body_upload_photo_api_v1_work_orders__order_id__photos_post: {
@@ -1086,9 +1086,9 @@ export interface components {
             is_mock: boolean;
             /**
              * Language
-             * @enum {string}
+             * @constant
              */
-            language: "ru" | "kk";
+            language: "ru";
             /**
              * Model
              * @default large-v3-turbo
