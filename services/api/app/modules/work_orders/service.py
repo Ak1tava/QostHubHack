@@ -14,7 +14,7 @@ from app.modules.auth.models import User, UserArea
 from app.modules.catalog.models import Equipment
 from app.modules.work_orders import events, queries
 from app.modules.work_orders.models import IdempotencyRecord, ORDER_NUMBER_SEQUENCE, WorkOrder
-from app.modules.work_orders.schemas import ActionCommand, WorkOrderCreate, WorkOrderView
+from app.modules.work_orders.schemas import ActionCommand, SubmissionCreate, WorkOrderCreate, WorkOrderView
 from app.modules.work_orders.state_machine import require_action_role, transition
 
 
@@ -73,8 +73,14 @@ class WorkOrderService:
     def _reserve(self, actor, path, command, key):
         if not key or not key.strip() or len(key) > 128:
             raise AuthError(422, "validation_error", "Требуется Idempotency-Key до 128 символов")
+        body = command.model_dump(mode="json")
+        # Preserve digests of receipts issued before templates were introduced.
+        if isinstance(command, WorkOrderCreate) and command.template_id is None:
+            body.pop("template_id")
+        if isinstance(command, SubmissionCreate) and not command.template_answers:
+            body.pop("template_answers")
         fingerprint = hashlib.sha256(json.dumps(
-            {"path": path, "body": command.model_dump(mode="json")},
+            {"path": path, "body": body},
             sort_keys=True, separators=(",", ":"), ensure_ascii=False,
         ).encode()).hexdigest()
         inserted = self.db.scalar(insert(IdempotencyRecord).values(
@@ -115,7 +121,10 @@ class WorkOrderService:
                 raise AuthError(422, "invalid_equipment", "Оборудование не относится к участку")
             number = self.db.scalar(ORDER_NUMBER_SEQUENCE.next_value())
             now = datetime.now(timezone.utc)
-            order = WorkOrder(**command.model_dump(), number=f"WO-{number:06d}",
+            from app.modules.work_orders import templates
+            saved_template = templates.snapshot(command.template_id) if command.template_id else None
+            order = WorkOrder(**command.model_dump(exclude={"template_id"}),
+                              template_snapshot=saved_template, number=f"WO-{number:06d}",
                               master_id=actor.id, status="ISSUED", version=1,
                               assignment_version=1, created_at=now)
             self.db.add(order)

@@ -171,3 +171,51 @@ def test_old_receipt_digest_replays_with_new_defaults(client, database, kind):
     database['session'].commit()
     retry = client.post(endpoint, json=body, headers=headers(token, 'old-receipt'))
     assert retry.status_code == 201, retry.text
+
+
+def test_saved_template_gaps_block_master_acceptance(client, database):
+    from app.modules.work_orders.models import MasterDecision
+    order = template_order(database)
+    db = database['session']
+    saved_order = db.get(WorkOrder, UUID(order['id']))
+    saved_order.status = 'AI_REVIEW'
+    report = Submission(work_order_id=saved_order.id, revision=1, assignment_version=1,
+                        worker_id=database['worker'].id, work_description='Видимая работа описана',
+                        work_code_id=UUID(payload(database)['fault_code_id']), no_materials_used=True,
+                        template_answers=[])
+    db.add(report)
+    db.commit()
+    token = sign_in(client, 'master')
+    detail = client.get(f"{BASE}/{order['id']}").json()
+    assert detail['submission']['missing_evidence'] == ['template_checklist', 'before_photo', 'after_photo']
+    body = dict(decision='accept', submission_id=str(report.id), expected_version=1,
+                assignment_version=1, reason='Осмотр мастером', score=None)
+    response = client.post(f"{BASE}/{order['id']}/decision", json=body, headers=headers(token))
+    assert response.status_code == 409, response.text
+    assert response.json()['error']['code'] == 'missing_evidence'
+    assert count_rows(db, MasterDecision) == 0
+
+
+def test_rework_keeps_first_revision_answers_immutable(client, database):
+    from work_order_helpers import succeed
+    order = template_order(database)
+    before_photo(database, order)
+    photo = add_photo(database, order)
+    checks = answers(template_snapshot())
+    body = payload(database, template_answers=checks, after_photo_ids=[str(photo.id)])
+    token = sign_in(client)
+    first = send(client, token, order, body, 'first-template')
+    assert first.status_code == 201, first.text
+    db = database['session']
+    saved = db.get(WorkOrder, UUID(order['id']))
+    saved.status = 'REWORK'
+    db.commit()
+    restarted = succeed(client, token, {'id': order['id'], 'version': 2}, 'restart')
+    second_photo = add_photo(database, order)
+    second = send(client, token, order, payload(database, expected_version=restarted['version'],
+        template_answers=list(reversed(checks)), after_photo_ids=[str(second_photo.id)]), 'second-template')
+    assert second.status_code == 201, second.text
+    assert second.json()['revision'] == 2
+    original = db.get(Submission, UUID(first.json()['id']), populate_existing=True)
+    assert original.template_answers == checks
+    assert db.get(Photo, photo.id, populate_existing=True).submission_id == original.id

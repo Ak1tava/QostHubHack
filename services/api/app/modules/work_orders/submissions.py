@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from app.core.security import AuthError
 from app.modules.auth.models import User
 from app.modules.catalog.models import Material, WorkCode
-from app.modules.work_orders import queries
+from app.modules.work_orders import queries, templates
 from app.modules.work_orders.internal import apply_internal
 from app.modules.work_orders.models import MaterialUsage, Photo, Submission
 from app.modules.work_orders.schemas import InternalActionCommand, SubmissionCreate, SubmissionView
@@ -39,11 +39,17 @@ class SubmissionService(WorkOrderService):
                 or p.submission_id is not None for p in photos
             ):
                 raise AuthError(422, "invalid_photos", "Требуются новые фото после работы, загруженные исполнителем этого наряда")
+            saved_answers = [answer.model_dump() for answer in payload.template_answers]
+            missing = templates.missing_evidence(order.template_snapshot, saved_answers,
+                                                  queries.before_photo_count(self.db, order), len(photos))
+            if missing:
+                raise AuthError(422, "missing_template_evidence", "Заполните обязательные пункты шаблона и приложите фото до и после работы")
             revision = (self.db.scalar(select(func.max(Submission.revision)).where(Submission.work_order_id == order.id)) or 0) + 1
             report = Submission(work_order_id=order.id, revision=revision,
                                 assignment_version=order.assignment_version, worker_id=actor.id,
                                 work_description=payload.work_description, work_code_id=payload.fault_code_id,
-                                no_materials_used=payload.no_materials_used, comment=payload.comment)
+                                no_materials_used=payload.no_materials_used, comment=payload.comment,
+                                template_answers=saved_answers)
             self.db.add(report)
             self.db.flush()
             self.db.add_all([MaterialUsage(submission_id=report.id, material_id=item.material_id, quantity=item.quantity)

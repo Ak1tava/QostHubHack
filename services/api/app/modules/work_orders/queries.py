@@ -54,6 +54,11 @@ def view(db, order, actor, *, busy=None, now=None):
     }), allowed_actions=commands)
 
 
+def before_photo_count(db, order):
+    return db.scalar(select(func.count(Photo.id)).where(Photo.work_order_id == order.id,
+                                                       Photo.type == "before"))
+
+
 def report_view(db, order, report):
     materials = list(db.scalars(select(MaterialUsage).where(MaterialUsage.submission_id == report.id)
                                .order_by(MaterialUsage.material_id)))
@@ -72,6 +77,10 @@ def report_view(db, order, report):
         missing.append("after_photo")
     if len(after) != len(photos):
         missing.append("invalid_photos")
+    from app.modules.work_orders.templates import missing_evidence
+    missing.extend(item for item in missing_evidence(
+        order.template_snapshot, report.template_answers or [], before_photo_count(db, order), len(after)
+    ) if item not in missing)
     return SubmissionView(
         id=report.id, work_order_id=order.id, revision=report.revision,
         assignment_version=report.assignment_version, worker_id=report.worker_id,
@@ -79,7 +88,7 @@ def report_view(db, order, report):
         no_materials_used=report.no_materials_used,
         materials=[{"material_id": m.material_id, "quantity": m.quantity} for m in materials],
         after_photo_ids=after, comment=report.comment, submitted_at=report.submitted_at.astimezone(timezone.utc),
-        missing_evidence=missing,
+        missing_evidence=missing, template_answers=report.template_answers or [],
     )
 
 
@@ -98,6 +107,7 @@ def get_order(db, order_id, actor):
                           .order_by(Photo.received_at, Photo.id))
     submission = report_view(db, order, report) if report else None
     return WorkOrderDetail(**view(db, order, actor).model_dump(),
+                           before_photo_count=before_photo_count(db, order),
                            events=[WorkOrderEventView.model_validate(e) for e in history],
                            issuance_photos=[photo_view(photo) for photo in issuance],
                            submission=submission,
