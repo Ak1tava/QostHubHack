@@ -1,6 +1,6 @@
 # T13 / T16 — проверка реализации 2026-10-08
 
-Ветка `codex/t13-t16-delivery`, база `origin/main 3af3261`. Владелец A / Codex; независимые backend/frontend/Telegram агенты, общие контракты и интеграция — последовательно. Срок пользователя: **2026-10-08 23:00 Asia/Qyzylorda**. До интеграции T13/T16 имеют статус REVIEW. Main и работающий публичный стенд этой работой не обновляются.
+Реализация `237f9bd`, [draft PR №12](https://github.com/Ak1tava/QostHubHack/pull/12). Ветка `codex/t13-t16-delivery`, база `origin/main 3af3261`. Владелец A / Codex; независимые backend/frontend/Telegram агенты, общие контракты и интеграция — последовательно. Срок пользователя: **2026-10-08 23:00 Asia/Qyzylorda**. До интеграции T13/T16 имеют статус REVIEW. Main и работающий публичный стенд этой работой не обновляются.
 
 ## Результат
 
@@ -33,6 +33,6 @@
 
 Независимое итоговое ревью одобрено после двух исправлений: MIME для разрешённых файлов без `File.type` и запас автоостановки для MP4/AAC. Для каждого есть RED → GREEN; явный неподдерживаемый MIME по расширению не переопределяется, реальный контейнер по-прежнему проверяет сервер. Новых существенных замечаний нет.
 
-Живые Telegram-отправки/webhook, платный OpenAI/holdout, production deployment и merge не выполнялись. Физические Safari/Chrome, микрофон/HTTPS/мобильная сеть, шум цеха, производственные термины и длинная речь требуют отдельной приёмки. Короткий настоящий RU/KK smoke подтверждает работоспособность модели, не её производственную точность. GitHub CI и ссылка на draft PR добавляются после публикации ветки.
+Живые Telegram-отправки/webhook, платный OpenAI/holdout, production deployment и merge не выполнялись. Физические Safari/Chrome, микрофон/HTTPS/мобильная сеть, шум цеха, производственные термины и длинная речь требуют отдельной приёмки. Короткий настоящий RU/KK smoke подтверждает работоспособность модели, не её производственную точность. GitHub CI выполняет полный Linux/Compose прогон, включая оба worker restart и сохранность приватных фото; актуальный результат — [PR №12 Checks](https://github.com/Ak1tava/QostHubHack/pull/12/checks). Локальный результат выше не подменяет статус CI.
 
 Локальные подробности: `.tooling/t13-t16/{pytest-integration.log,vitest-final.log,e2e-final.log,speech-e2e-agent.log,backend-aac-suite.log,proxy-speech.log,whisper-real-smoke.json,whisper-public-http-smoke.json}`. Эти файлы не публикуются; source/license сведения открытых записей приведены в T16-implementation.
