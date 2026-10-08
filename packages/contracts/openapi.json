@@ -28,6 +28,17 @@
           "result": {
             "$ref": "#/components/schemas/ReviewResult"
           },
+          "source": {
+            "enum": [
+              "provider",
+              "rules",
+              "prepared",
+              "mock",
+              "unknown"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
           "submission_id": {
             "format": "uuid",
             "title": "Submission Id",
@@ -52,7 +63,8 @@
           "model",
           "prompt_version",
           "created_at",
-          "is_mock"
+          "is_mock",
+          "source"
         ],
         "title": "AIReviewView",
         "type": "object"
@@ -722,6 +734,73 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "JudgeLoginRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "profile": {
+            "enum": [
+              "master",
+              "worker-1",
+              "worker-2"
+            ],
+            "title": "Profile",
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile"
+        ],
+        "title": "JudgeLoginRequest",
+        "type": "object"
+      },
+      "JudgeProfile": {
+        "properties": {
+          "code": {
+            "enum": [
+              "master",
+              "worker-1",
+              "worker-2"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "master",
+              "worker"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "display_name",
+          "role"
+        ],
+        "title": "JudgeProfile",
+        "type": "object"
+      },
+      "JudgeProfilesResponse": {
+        "properties": {
+          "profiles": {
+            "items": {
+              "$ref": "#/components/schemas/JudgeProfile"
+            },
+            "title": "Profiles",
+            "type": "array"
+          }
+        },
+        "required": [
+          "profiles"
+        ],
+        "title": "JudgeProfilesResponse",
         "type": "object"
       },
       "LanguageButton": {
@@ -3022,6 +3101,138 @@
           }
         },
         "summary": "Csrf",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/judge-login": {
+      "post": {
+        "operationId": "judge_login_api_v1_auth_judge_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JudgeLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Judge Login",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/judge-profiles": {
+      "get": {
+        "operationId": "judge_profiles_api_v1_auth_judge_profiles_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JudgeProfilesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Judge Profiles",
         "tags": [
           "auth"
         ]
