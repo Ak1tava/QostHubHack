@@ -705,3 +705,32 @@ def test_stop_checks_wrapper_identity_even_if_worker_already_exited(configuratio
     assert backend.stopped == ([] if wrapper_reused else ['launcher'])
     assert (101 in backend.running) is wrapper_reused
     assert control.status() == {}
+
+
+@pytest.mark.parametrize('failed_api', ['times', 'image'])
+@pytest.mark.parametrize('final_wait', [0, 258, 0xFFFFFFFF])
+def test_identity_query_failure_accepts_only_same_handle_confirmed_exit(failed_api, final_wait):
+    module = runtime()
+    backend = module.WindowsProcesses.__new__(module.WindowsProcesses)
+    waits = []
+    queries = []
+    statuses = iter((258, final_wait))
+    def wait(handle, timeout):
+        waits.append((handle, timeout))
+        return next(statuses)
+    def times(handle, *args):
+        queries.append(('times', handle))
+        return failed_api != 'times'
+    def image(handle, *args):
+        queries.append(('image', handle))
+        return False
+    backend.kernel = SimpleNamespace(WaitForSingleObject=wait,
+        GetProcessTimes=times, QueryFullProcessImageNameW=image)
+    if final_wait == 0:
+        assert backend._identity(789, 123) is None
+    else:
+        with pytest.raises(RuntimeError, match='Cannot verify process identity'):
+            backend._identity(789, 123)
+    assert waits == [(789, 0), (789, 0)]
+    assert queries == ([('times', 789)] if failed_api == 'times' else
+                       [('times', 789), ('image', 789)])
