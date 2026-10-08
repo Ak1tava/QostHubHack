@@ -31,6 +31,7 @@ class TelegramLinkToken(Base):
 class TelegramBinding(Base):
     __tablename__ = "telegram_bindings"
     __table_args__ = (
+        CheckConstraint("language IN ('ru','kk')", name="valid_language"),
         CheckConstraint(
             "telegram_user_id > 0 AND private_chat_id = telegram_user_id",
             name="private_identity",
@@ -41,6 +42,9 @@ class TelegramBinding(Base):
     )
     telegram_user_id: Mapped[int] = mapped_column(BigInteger, unique=True)
     private_chat_id: Mapped[int] = mapped_column(BigInteger, unique=True)
+    language: Mapped[str] = mapped_column(
+        String(2), nullable=False, default="ru", server_default="ru"
+    )
 
 
 class TelegramUpdate(Base):

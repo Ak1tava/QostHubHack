@@ -13,6 +13,7 @@ from alembic.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from sqlalchemy import MetaData, Table, create_engine, inspect, select, text
 from sqlalchemy.engine import make_url
+from sqlalchemy.exc import IntegrityError
 
 
 def test_empty_postgres_migration_roundtrip():
@@ -76,6 +77,10 @@ def test_empty_postgres_migration_roundtrip():
                 id=code_id, code="migration-repair", name="Migration repair",
             ))
             legacy_submissions = Table("submissions", MetaData(), autoload_with=connection)
+            legacy_bindings = Table("telegram_bindings", MetaData(), autoload_with=connection)
+            connection.execute(legacy_bindings.insert().values(
+                user_id=user_id, telegram_user_id=1234567, private_chat_id=1234567,
+            ))
             connection.execute(legacy_submissions.insert().values(
                 id=submission_id, work_order_id=order_id, revision=1,
                 assignment_version=1, worker_id=user_id, work_code_id=code_id,
@@ -83,6 +88,19 @@ def test_empty_postgres_migration_roundtrip():
                 submitted_at=captured_at,
             ))
             command.upgrade(config, "head")
+            assert connection.scalar(text("SELECT language FROM telegram_bindings")) == "ru"
+            connection.execute(text("UPDATE telegram_bindings SET language = 'kk'"))
+            assert connection.scalar(text("SELECT language FROM telegram_bindings")) == "kk"
+            with pytest.raises(IntegrityError):
+                with connection.begin_nested():
+                    connection.execute(text("UPDATE telegram_bindings SET language = 'en'"))
+            command.downgrade(config, "0006")
+            assert "language" not in {
+                column["name"] for column in inspect(connection).get_columns("telegram_bindings")
+            }
+            assert connection.scalar(text("SELECT telegram_user_id FROM telegram_bindings")) == 1234567
+            command.upgrade(config, "head")
+            assert connection.scalar(text("SELECT language FROM telegram_bindings")) == "ru"
             assert (
                 connection.scalar(text("SELECT version_num FROM alembic_version"))
                 == ScriptDirectory.from_config(config).get_current_head()
