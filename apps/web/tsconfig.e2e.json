@@ -2,7 +2,8 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "paths": {
-      "@playwright/test": ["./node_modules/@playwright/test"]
+      "@playwright/test": ["./node_modules/@playwright/test"],
+      "jsqr": ["./node_modules/jsqr"]
     }
   },
   "include": ["../../tests/e2e", "playwright.config.ts"]

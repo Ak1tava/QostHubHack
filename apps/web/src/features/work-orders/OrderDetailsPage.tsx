@@ -66,7 +66,7 @@ export function OrderDetailsPage({ api, user, orderId }: { api: ApiClient; user:
       <p id={`problem-${order.id}`} className="full-description">{order.description}</p>
       <dl className="order-info">
         <dt>Участок</dt><dd>{catalogs.data?.areas.find(area => area.id === order.area_id)?.name ?? 'Загружаем…'}</dd>
-        <dt>Оборудование</dt><dd>{catalogs.data?.equipment.find(item => item.id === order.equipment_id)?.name ?? 'Загружаем…'}</dd>
+        <dt>Оборудование</dt><dd><Link to={`/equipment/${order.equipment_id}`}>{catalogs.data?.equipment.find(item => item.id === order.equipment_id)?.name ?? 'Карточка оборудования'}</Link></dd>
         <dt>Исполнитель</dt><dd>{shift.data?.items.find(member => member.user.id === (order.assignee_id ?? order.responsible_id))?.user.display_name ?? 'Назначенный исполнитель'}{order.brigade_id ? ` · ${catalogs.data?.brigades.find(brigade => brigade.id === order.brigade_id)?.name ?? 'бригада'}` : ''}</dd>
         <dt>Тип</dt><dd>{order.work_type === 'emergency' ? 'Аварийный' : 'Плановый'}</dd>
         <dt>Срок</dt><dd>{displayTime(order.due_at, timezone)} ({timezone})</dd>

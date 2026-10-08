@@ -106,6 +106,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/equipment/{equipment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Equipment Detail */
+        get: operations["equipment_detail_api_v1_equipment__equipment_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/photos/{photo_id}": {
         parameters: {
             query?: never;
@@ -557,6 +574,52 @@ export interface components {
             sent_at: string | null;
             /** Status */
             status: string;
+        };
+        /** EquipmentDetail */
+        EquipmentDetail: {
+            area: components["schemas"]["NamedView"];
+            /**
+             * Area Id
+             * Format: uuid
+             */
+            area_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Public Url */
+            public_url: string | null;
+            /** Recent Work Orders */
+            recent_work_orders: components["schemas"]["EquipmentOrderView"][];
+            /** Timezone */
+            timezone: string;
+        };
+        /** EquipmentOrderView */
+        EquipmentOrderView: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Description */
+            description: string;
+            /** Detail Url */
+            detail_url: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Number */
+            number: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ISSUED" | "ACCEPTED" | "QUEUED" | "REJECTED" | "IN_PROGRESS" | "PAUSED" | "SUBMITTED" | "AI_REVIEW" | "REWORK" | "CLOSED" | "CANCELLED";
         };
         /** EquipmentView */
         EquipmentView: {
@@ -1594,6 +1657,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CatalogResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    equipment_detail_api_v1_equipment__equipment_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                equipment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EquipmentDetail"];
                 };
             };
             /** @description Unauthorized */

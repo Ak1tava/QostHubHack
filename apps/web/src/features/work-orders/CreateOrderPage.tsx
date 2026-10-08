@@ -10,8 +10,9 @@ export function CreateOrderPage({ api, user }: { api: ApiClient; user: UserView 
   const [query] = useSearchParams();
   const navigate = useNavigate();
   const catalogs = useCatalogs(api);
-  const [areaId, setAreaId] = useState(query.get('area_id') ?? '');
+  const [areaId, setAreaId] = useState(query.has('equipment_id') ? '' : query.get('area_id') ?? '');
   const [equipmentId, setEquipmentId] = useState('');
+  const equipmentInitialized = useRef(false);
   const [assigneeId, setAssigneeId] = useState(query.get('assignee_id') ?? '');
   const [mode, setMode] = useState<'worker' | 'brigade'>('worker');
   const [brigadeId, setBrigadeId] = useState('');
@@ -38,6 +39,14 @@ export function CreateOrderPage({ api, user }: { api: ApiClient; user: UserView 
   const selected = workers.find(member => member.user.id === (mode === 'worker' ? assigneeId : responsibleId));
   const command = useCommand(useCallback((body: CreateOrder, key: string) => createOrder(api, body, key), [api]));
 
+  useEffect(() => {
+    if (!catalogs.data || equipmentInitialized.current) return;
+    equipmentInitialized.current = true;
+    const equipment = catalogs.data.equipment.find(item => item.id === query.get('equipment_id'));
+    if (equipment && catalogs.data.areas.some(area => area.id === equipment.area_id)) {
+      setAreaId(equipment.area_id); setEquipmentId(equipment.id);
+    }
+  }, [catalogs.data, query]);
   useEffect(() => {
     if (!areaId && catalogs.data?.areas.length === 1) setAreaId(catalogs.data.areas[0].id);
   }, [areaId, catalogs.data]);

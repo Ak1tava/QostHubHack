@@ -13,6 +13,7 @@ import { ShiftReportPage } from './features/reports/ShiftReportPage';
 import { RatingPage } from './features/reports/RatingPage';
 import { AnomaliesPage } from './features/reports/AnomaliesPage';
 import { TelegramPage } from './features/telegram/TelegramPage';
+import { EquipmentPage } from './features/equipment/EquipmentPage';
 import type { UserView } from './lib/api';
 import { AppNavigation, Brand, roleNames } from './components/AppNavigation';
 
@@ -25,6 +26,11 @@ function OrderRoute({ user }: { user: UserView }) {
 function ExecutionRoute({ user }: { user: UserView }) {
   const { id } = useParams();
   return user.role === 'worker' ? <ExecutionPage key={`${user.id}:${id}`} api={authStore.api} user={user} orderId={id!} /> : <Navigate to={`/orders/${id}`} replace />;
+}
+
+function EquipmentRoute({ user }: { user: UserView }) {
+  const { id } = useParams();
+  return <EquipmentPage key={`${user.id}:${id}`} api={authStore.api} user={user} equipmentId={id!} />;
 }
 
 export function App() {
@@ -46,6 +52,7 @@ export function App() {
       <Route path="/my-orders" element={<MyOrdersPage key={user.id} api={authStore.api} user={user} />} />
       <Route path="/shift" element={user.role !== 'worker' ? <ShiftPage api={authStore.api} user={user} /> : <p role="alert">Панель доступна мастеру.</p>} />
       <Route path="/orders/new" element={<CreateOrderPage api={authStore.api} user={user} />} />
+      <Route path="/equipment/:id" element={<EquipmentRoute user={user} />} />
       <Route path="/orders/:id" element={<OrderRoute user={user} />} />
       <Route path="/orders/:id/execute" element={<ExecutionRoute user={user} />} />
       <Route path="/reports/shift" element={<ShiftReportPage key={user.id} api={authStore.api} user={user} />} />
