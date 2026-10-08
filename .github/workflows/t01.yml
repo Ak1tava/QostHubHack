@@ -115,7 +115,8 @@ jobs:
           TUNNEL_HOSTNAME: check.trycloudflare.com
           DEMO_AS_OF: '2026-10-08'
         run: |
-          DEMO_PASSWORD="$E2E_PASSWORD" docker compose -f compose.yaml -f compose.tunnel.yaml config --quiet
+          # Interpolation only: existing runner directory, no ledger creation or live consumer.
+          LIVE_AI_LEDGER_DIR="$RUNNER_TEMP" DEMO_PASSWORD="$E2E_PASSWORD" docker compose -f compose.yaml -f compose.tunnel.yaml config --quiet
           docker compose -f compose.yaml -f compose.restore.yaml config --quiet
           SPEECH_SERVICE_TOKEN=compose-validation-only SPEECH_MODEL_DIR=/tmp/whisper-validation-model docker compose -f compose.yaml -f compose.speech.yaml config --quiet
       - name: Seed synthetic browser accounts
