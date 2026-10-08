@@ -6,7 +6,7 @@ from uuid import uuid4
 import pytest
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import create_engine, inspect, select, text
+from sqlalchemy import MetaData, Table, create_engine, inspect, select, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import IntegrityError
 
@@ -35,7 +35,7 @@ def test_upgrade_rejects_legacy_score_without_reinterpreting_history():
         pytest.fail('Refusing migration reset outside qosthub_migration_test*')
     from app.modules.auth.models import User
     from app.modules.catalog.models import Area, Equipment, WorkCode
-    from app.modules.work_orders.models import MasterDecision, Submission, WorkOrder, utcnow
+    from app.modules.work_orders.models import MasterDecision, WorkOrder, utcnow
     engine = create_engine(url)
     config = Config(str(Path(__file__).resolve().parents[1] / 'alembic.ini'))
     try:
@@ -52,8 +52,10 @@ def test_upgrade_rejects_legacy_score_without_reinterpreting_history():
             connection.execute(WorkOrder.__table__.insert().values(id=order, number='SYN-1',
                 work_type='planned', description='Synthetic', area_id=area, equipment_id=equipment,
                 assignee_id=user, master_id=user, due_at=utcnow()))
-            connection.execute(Submission.__table__.insert().values(id=submission, work_order_id=order,
-                revision=1, worker_id=user, work_description='Synthetic', work_code_id=code))
+            legacy_submissions = Table('submissions', MetaData(), autoload_with=connection)
+            connection.execute(legacy_submissions.insert().values(id=submission, work_order_id=order,
+                revision=1, assignment_version=1, worker_id=user, work_description='Synthetic',
+                work_code_id=code, no_materials_used=False, submitted_at=utcnow()))
             connection.execute(MasterDecision.__table__.insert().values(id=decision, work_order_id=order,
                 submission_id=submission, master_id=user, decision='accept', score=100))
             with pytest.raises(RuntimeError, match='1..5'):

@@ -13,8 +13,11 @@ async function login(page: Page, master: boolean, name = scenario) {
 async function action(page: Page, label: string, reason?: string) {
   await page.getByRole('button', { name: label, exact: true }).click();
   if (reason) await page.getByLabel('Причина', { exact: true }).fill(reason);
+  const applied = page.waitForResponse(response => response.url().endsWith('/actions') && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Применить', exact: true }).click();
+  expect((await applied).status()).toBe(200);
   await expect(page.getByRole('button', { name: 'Применить', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'История наряда', exact: true }).locator('li').last().locator('strong')).toHaveText(label);
 }
 async function syntheticPhoto(page: Page, salt: number) {
   const encoded = await page.evaluate(seed => {

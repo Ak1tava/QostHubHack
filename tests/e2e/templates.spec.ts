@@ -12,8 +12,11 @@ async function login(page: Page, master: boolean) {
 }
 async function action(page: Page, name: string) {
   await page.getByRole('button', { name, exact: true }).click();
+  const applied = page.waitForResponse(response => response.url().endsWith('/actions') && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Применить', exact: true }).click();
+  expect((await applied).status()).toBe(200);
   await expect(page.getByRole('button', { name: 'Применить', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'История наряда', exact: true }).locator('li').last().locator('strong')).toHaveText(name);
 }
 async function photo(page: Page, type: 'до' | 'после') {
   const encoded = await page.evaluate(() => {
@@ -35,10 +38,10 @@ test('template refuses partial evidence and persists the complete checklist for 
   await login(page, true);
   await page.locator('.worker-card').filter({ hasText: `Исполнитель ${scenario}` }).getByRole('link', { name: 'Выдать', exact: true }).click();
   await page.getByRole('button', { name: 'Демо насос Т04', exact: true }).click();
-  await expect(page.getByLabel('Шаблон', { exact: true })).toHaveValue('');
-  await page.getByLabel('Шаблон', { exact: true }).selectOption('visible_leak');
+  await expect(page.getByRole('combobox', { name: 'Шаблон', exact: true })).toHaveValue('');
+  await page.getByRole('combobox', { name: 'Шаблон', exact: true }).selectOption('visible_leak');
   const description = `T12 синтетическая течь ${crypto.randomUUID().slice(0, 8)}`;
-  await page.getByLabel('Описание работ', { exact: true }).fill(description);
+  await page.getByRole('textbox', { name: 'Описание работ', exact: true }).fill(description);
   await page.getByRole('button', { name: 'Выдать наряд', exact: true }).click();
   await expect(page).toHaveURL(/\/orders\/[0-9a-f-]+$/);
   const id = new URL(page.url()).pathname.split('/').at(-1)!;
@@ -59,8 +62,8 @@ test('template refuses partial evidence and persists the complete checklist for 
     expect(partial.status()).toBe(422);
     const unchanged = await (await worker.request.get(`/api/v1/work-orders/${id}`)).json();
     expect(unchanged.submission).toBeNull(); expect(unchanged.version).toBe(current.version);
-    await worker.getByLabel('Выполненные работы', { exact: true }).fill('Видимый участок восстановлен');
-    await codes.selectOption(code); await worker.getByLabel('Материалы не потребовались').check();
+    await worker.getByRole('textbox', { name: 'Выполненные работы', exact: true }).fill('Видимый участок восстановлен');
+    await codes.selectOption(code); await worker.getByRole('checkbox', { name: 'Материалы не потребовались' }).check();
     const submit = worker.getByRole('button', { name: 'Передать на проверку', exact: true });
     await expect(submit).toBeDisabled();
     for (const item of current.template_snapshot.checklist) await worker.locator(`input[name="template-${item.id}"]`).check();

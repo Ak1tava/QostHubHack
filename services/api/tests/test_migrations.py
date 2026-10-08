@@ -11,7 +11,7 @@ from alembic.autogenerate import compare_metadata
 from alembic.config import Config
 from alembic.migration import MigrationContext
 from alembic.script import ScriptDirectory
-from sqlalchemy import create_engine, inspect, select, text
+from sqlalchemy import MetaData, Table, create_engine, inspect, select, text
 from sqlalchemy.engine import make_url
 
 
@@ -70,12 +70,28 @@ def test_empty_postgres_migration_roundtrip():
                 storage_key=f"{photo_id}.png", mime_type="image/png", content_hash="a" * 64,
                 captured_at=captured_at, perceptual_hash="b" * 16,
             ))
+            command.upgrade(config, "0005")
+            code_id, submission_id = uuid4(), uuid4()
+            connection.execute(catalog_models.WorkCode.__table__.insert().values(
+                id=code_id, code="migration-repair", name="Migration repair",
+            ))
+            legacy_submissions = Table("submissions", MetaData(), autoload_with=connection)
+            connection.execute(legacy_submissions.insert().values(
+                id=submission_id, work_order_id=order_id, revision=1,
+                assignment_version=1, worker_id=user_id, work_code_id=code_id,
+                work_description="Legacy report", no_materials_used=True,
+                submitted_at=captured_at,
+            ))
             command.upgrade(config, "head")
             assert (
                 connection.scalar(text("SELECT version_num FROM alembic_version"))
                 == ScriptDirectory.from_config(config).get_current_head()
             )
             assert connection.scalar(select(models.ORDER_NUMBER_SEQUENCE.next_value())) == 42
+            assert connection.scalar(select(models.WorkOrder.template_snapshot)
+                                     .where(models.WorkOrder.id == order_id)) is None
+            assert connection.scalar(select(models.Submission.template_answers)
+                                     .where(models.Submission.id == submission_id)) == []
             assert set(Base.metadata.tables) <= set(
                 inspect(connection).get_table_names()
             )
@@ -88,6 +104,8 @@ def test_empty_postgres_migration_roundtrip():
             assert {"telegram_bindings", "telegram_link_tokens", "telegram_updates",
                     "notifications", "notification_receipts"} <= set(inspect(connection).get_table_names())
             command.downgrade(config, "0003")
+            assert "template_snapshot" not in {column["name"] for column in inspect(connection).get_columns("work_orders")}
+            assert "template_answers" not in {column["name"] for column in inspect(connection).get_columns("submissions")}
             assert connection.scalar(select(models.Photo.content_hash).where(models.Photo.id == photo_id)) == "a" * 64
             assert "notifications" not in inspect(connection).get_table_names()
             command.upgrade(config, "head")

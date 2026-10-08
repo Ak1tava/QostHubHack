@@ -98,6 +98,11 @@ jobs:
           git diff --exit-code -- packages/contracts
           npm --prefix apps/web run test -- --run
           npm --prefix apps/web run build
+      - name: Validate T15 candidate registry and validator regressions
+        timeout-minutes: 2
+        run: |
+          node evals/t15/validate.mjs
+          node --test evals/t15/test-validator.mjs
       - name: Install Chromium
         run: npm --prefix apps/web exec -- playwright install --with-deps chromium
       - name: Build and start production stack with migration service
@@ -121,6 +126,10 @@ jobs:
         run: python infra/verify_stack.py
       - name: Production browser auth and PWA acceptance
         run: npm --prefix apps/web run test:e2e -- --retries=0
+      - name: Isolate worker acceptance login budget from browser acceptance
+        env:
+          E2E_BASE_URL: http://localhost:5173
+        run: DATABASE_URL="$PHOTO_ACCEPTANCE_DATABASE_URL" services/api/.venv/bin/python infra/reset_acceptance_throttles.py
       - name: Persisted notification worker and restart acceptance
         env:
           E2E_BASE_URL: http://localhost:5173
