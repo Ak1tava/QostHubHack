@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import re
+import secrets
 import socket
 import subprocess
 import sys
@@ -124,6 +125,22 @@ def render_nginx(config, hostname):
             'access_log off;\n' + server + '\n}\n')
 
 
+def consumer_confirmed(directory, name, record):
+    try:
+        value = json.loads((Path(directory) / f'{name}.ready.json').read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return False
+    return bool(record.get('readiness_token') and value == {
+        'pid': record['identity']['pid'], 'token': record['readiness_token'], 'service': name})
+
+
+def publish_consumer_ready(config, name, token):
+    if not token:
+        raise RuntimeError('Consumer startup token unavailable')
+    write_json(Path(config['state_dir']) / f'{name}.ready.json',
+        {'pid': os.getpid(), 'token': token, 'service': name})
+
+
 class WindowsProcesses:
     """PID + creation stamp + executable identity; termination uses the same open handle."""
     def __init__(self):
@@ -208,6 +225,19 @@ class WindowsProcesses:
 
     def wait(self, name, config, env):
         timeout = config.get('ready_timeout_seconds', 60)
+        if name in ('reviews', 'notifications'):
+            state = json.loads((Path(config['state_dir']) / 'processes.json').read_text())
+            record = state[name]
+            deadline = time.monotonic() + timeout
+            while True:
+                identity = record.get('identity')
+                if not identity or self.identity(identity['pid']) != identity:
+                    raise RuntimeError(f'{name} startup exited before readiness')
+                if consumer_confirmed(config['state_dir'], name, record):
+                    return
+                if time.monotonic() >= deadline:
+                    raise RuntimeError(f'{name} readiness unconfirmed; inspect private logs')
+                time.sleep(.1)
         if name == 'tunnel':
             log = Path(config['state_dir']) / 'tunnel.log'
             deadline = time.monotonic() + timeout
@@ -282,8 +312,12 @@ class Controller:
         return bool(identity and self.backend.identity(identity['pid']) == identity)
 
     def status(self):
-        return {name: 'running' if self.owned(record) else 'stale'
-                for name, record in self.state().items()}
+        result = {}
+        for name, record in self.state().items():
+            result[name] = 'stale' if not self.owned(record) else (
+                'starting' if name in ('reviews', 'notifications') and not
+                consumer_confirmed(self.state_dir, name, record) else 'running')
+        return result
 
     def preflight(self, names):
         config = self.config
@@ -355,6 +389,9 @@ class Controller:
                         self.backend.wait(name, self.config, load_environment(self.config, name))
                         continue
                     env = load_environment(self.config, name)
+                    ready_token = secrets.token_urlsafe(24) if name in ('reviews', 'notifications') else None
+                    if ready_token:
+                        env['NATIVE_WORKER_READY_TOKEN'] = ready_token
                     log = self.state_dir / f'{name}.log'
                     if name == 'db':
                         identity = self.backend.postgres_start(self.config, env, log)
@@ -380,6 +417,8 @@ class Controller:
                     if not identity:
                         raise RuntimeError('Process identity unavailable')
                     state[name] = {'identity': identity, 'config': dict(self.config)}
+                    if ready_token:
+                        state[name]['readiness_token'] = ready_token
                     started.append(name)
                     write_json(self.state_file, state)
                     self.backend.wait(name, self.config, env)
@@ -403,6 +442,7 @@ class Controller:
 
 
 def entry(config, name):
+    ready_token = os.environ.get('NATIVE_WORKER_READY_TOKEN')
     environment = load_environment(config, name)
     os.environ.clear()
     os.environ.update(environment)
@@ -415,13 +455,14 @@ def entry(config, name):
             host='127.0.0.1', port=config['api_port' if name == 'api' else 'asr_port'],
             access_log=False, proxy_headers=False)
     elif name == 'notifications':
-        import runpy
-        runpy.run_module('app.workers.main', run_name='__main__')
+        from app.workers.main import main as notification_main
+        notification_main(on_ready=lambda: publish_consumer_ready(config, name, ready_token))
     else:
         validate_budget(config['ledger'])
         from app.workers.budgeted_reviews import main
         raise SystemExit(main(['--live', '--ordinary-worker-stopped', '--ledger', config['ledger'],
-            '--budget-usd', '10', '--max-seconds', '86400', '--max-stages', '10000']))
+            '--budget-usd', '10', '--max-seconds', '86400', '--max-stages', '10000'],
+            on_ready=lambda: publish_consumer_ready(config, name, ready_token)))
 
 
 def main():
@@ -440,6 +481,8 @@ def main():
     try:
         if args.existing_budget_worker:
             validate_budget(args.ledger, args.budget_usd)
+            # Python script execution adds /workspace/infra, not the Docker WORKDIR, to sys.path.
+            sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'services/api'))
             from app.workers.budgeted_reviews import main as worker_main
             return worker_main(['--live', '--ordinary-worker-stopped', '--ledger', str(args.ledger),
                 '--budget-usd', args.budget_usd, '--max-seconds', '86400', '--max-stages', '10000'])

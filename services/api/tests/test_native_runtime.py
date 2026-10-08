@@ -1,7 +1,12 @@
 """Native lifecycle safety, with no real processes, network or paid I/O."""
 import importlib.util
 import json
+import os
 from pathlib import Path
+import subprocess
+import sys
+from contextlib import contextmanager
+from types import SimpleNamespace
 
 import pytest
 
@@ -43,6 +48,10 @@ class FakeProcesses:
     def wait(self, name, config, env):
         if name == self.fail_ready:
             raise RuntimeError('Not ready')
+        if name in ('notifications', 'reviews'):
+            record = json.loads((Path(config['state_dir']) / 'processes.json').read_text())[name]
+            (Path(config['state_dir']) / f'{name}.ready.json').write_text(json.dumps({
+                'pid': record['identity']['pid'], 'token': record['readiness_token'], 'service': name}))
 
     def stop(self, name, record, config):
         assert self.identity(record['pid']) == record
@@ -295,3 +304,167 @@ def test_live_compose_mounts_existing_budget_directory_without_creating_new_volu
     assert 'profiles: ["unbudgeted-ai"]' in ordinary
     assert 'profiles: ["live-ai"]' in paid
     assert 'profiles: ["live-ai"]' not in ordinary
+
+
+def test_docker_entry_bootstraps_api_package_with_no_pythonpath(tmp_path):
+    repo = tmp_path / 'container-workspace'
+    script = repo / 'infra/native_runtime.py'
+    script.parent.mkdir(parents=True)
+    script.write_bytes((ROOT / 'infra/native_runtime.py').read_bytes())
+    api = repo / 'services/api'
+    fake_worker = api / 'app/workers/budgeted_reviews.py'
+    fake_worker.parent.mkdir(parents=True)
+    (api / 'app/__init__.py').touch()
+    (api / 'app/workers/__init__.py').touch()
+    fake_worker.write_text('def main(argv):\n    print("FAKE_WORKER_BOOTSTRAPPED")\n    return 0\n')
+    budget = tmp_path / 'budget'
+    budget.mkdir()
+    ledger = budget / 'budget.json'
+    ledger.write_text('{"limit_usd":"10","spent_or_reserved_usd":"0","calls":[]}')
+    (budget / 'frozen.json').write_text('{}')
+    env = {k: v for k, v in os.environ.items() if k.upper() in
+           ('SYSTEMROOT', 'WINDIR', 'PATH', 'TEMP', 'TMP')}
+    result = subprocess.run([sys.executable, '-I', str(script), '--existing-budget-worker',
+        '--ledger', str(ledger)], cwd=api, env=env, capture_output=True, text=True, timeout=15)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == 'FAKE_WORKER_BOOTSTRAPPED'
+
+
+@pytest.mark.parametrize('marker', ['absent', 'old-token', 'wrong-pid', 'dead'])
+def test_native_consumer_wait_refuses_unconfirmed_or_old_startup(tmp_path, marker):
+    module = runtime()
+    backend = module.WindowsProcesses.__new__(module.WindowsProcesses)
+    identity = {'pid': 123, 'created': 'synthetic', 'exe': 'fake-python.exe'}
+    backend.identity = lambda pid: None if marker == 'dead' else identity
+    record = {'identity': identity, 'readiness_token': 'new-startup'}
+    (tmp_path / 'processes.json').write_text(json.dumps({'reviews': record}))
+    if marker != 'absent':
+        value = dict(pid=123, token='new-startup', service='reviews')
+        if marker == 'old-token':
+            value['token'] = 'old-startup'
+        if marker == 'wrong-pid':
+            value['pid'] = 999
+        (tmp_path / 'reviews.ready.json').write_text(json.dumps(value))
+    with pytest.raises(RuntimeError, match='readiness|startup'):
+        backend.wait('reviews', dict(state_dir=str(tmp_path), ready_timeout_seconds=0), {})
+
+
+def test_native_consumer_wait_accepts_own_confirmed_startup(tmp_path):
+    module = runtime()
+    backend = module.WindowsProcesses.__new__(module.WindowsProcesses)
+    identity = {'pid': 123, 'created': 'synthetic', 'exe': 'fake-python.exe'}
+    backend.identity = lambda pid: identity
+    (tmp_path / 'processes.json').write_text(json.dumps({'reviews': {
+        'identity': identity, 'readiness_token': 'current-startup'}}))
+    (tmp_path / 'reviews.ready.json').write_text(json.dumps({
+        'pid': 123, 'token': 'current-startup', 'service': 'reviews'}))
+    backend.wait('reviews', dict(state_dir=str(tmp_path), ready_timeout_seconds=1), {})
+
+
+@pytest.mark.parametrize('failure', ['none', 'file-lock', 'frozen', 'database-lock'])
+def test_budgeted_callback_occurs_only_after_locks_and_frozen_pass(tmp_path, monkeypatch, failure):
+    from app.core import config as settings_module, db as db_module
+    from app.modules.ai_review import provider as provider_module
+    from app.workers import budgeted_reviews as worker
+    settings = settings_module.Settings(_env_file=None, openai_api_key='synthetic')
+    monkeypatch.setattr(settings_module, 'settings', settings)
+    monkeypatch.setattr(db_module, 'get_engine', lambda: object())
+    monkeypatch.setattr(provider_module, 'OpenAIReviewProvider', lambda *args, **kwargs: object())
+    ledger = tmp_path / 'budget.json'
+    ledger.write_text('{"limit_usd":"10","spent_or_reserved_usd":"0","calls":[]}')
+    frozen = dict(models=[settings.ai_light_model, settings.ai_model, settings.ai_complex_model],
+        max_output_tokens=settings.ai_max_output_tokens,
+        complex_max_output_tokens=settings.ai_complex_max_output_tokens,
+        price_date=worker.PRICE_DATE, budget_usd='10')
+    (tmp_path / 'frozen.json').write_text(json.dumps({} if failure == 'frozen' else frozen))
+    events = []
+    @contextmanager
+    def database_guard(engine):
+        events.append('database-lock')
+        if failure == 'database-lock':
+            raise RuntimeError('Lock busy')
+        yield SimpleNamespace(check=lambda: events.append('ownership-checked'), ledger=None)
+    monkeypatch.setattr(worker, 'single_database_consumer', database_guard)
+    monkeypatch.setattr(worker, 'run', lambda *args, **kwargs: events.append('run') or 0)
+    args = ['--live', '--ordinary-worker-stopped', '--ledger', str(ledger), '--budget-usd', '10']
+    if failure == 'file-lock':
+        with worker.exclusive_worker(ledger.with_suffix('.lock')):
+            result = worker.main(args, on_ready=lambda: events.append('ready'))
+    else:
+        result = worker.main(args, on_ready=lambda: events.append('ready'))
+    if failure == 'none':
+        assert result == 0
+        assert events == ['database-lock', 'ownership-checked', 'ready', 'run']
+    else:
+        assert result == 2
+        assert 'ready' not in events and 'run' not in events
+
+
+def test_notification_ready_only_after_successful_database_commit(monkeypatch):
+    from app.workers import main as worker
+    events = []
+    class Session:
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            pass
+        def commit(self):
+            events.append('commit')
+    monkeypatch.setattr(worker, 'get_engine', lambda: object())
+    monkeypatch.setattr(worker, 'sessionmaker', lambda *args, **kwargs: Session)
+    monkeypatch.setattr(worker, 'dispose_engine', lambda: events.append('dispose'))
+    monkeypatch.setattr(worker, 'process_outbox', lambda *args: events.append('outbox'))
+    def on_ready():
+        events.append('ready')
+        raise KeyboardInterrupt()
+    worker.main(on_ready=on_ready)
+    assert events == ['outbox', 'commit', 'ready', 'dispose']
+
+
+def test_notification_commit_failure_cannot_publish_ready(monkeypatch):
+    from app.workers import main as worker
+    events = []
+    attempts = []
+    class Session:
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            pass
+        def commit(self):
+            attempts.append(1)
+            if len(attempts) == 1:
+                events.append('commit-failed')
+                raise RuntimeError('Synthetic database outage')
+            events.append('commit')
+    monkeypatch.setattr(worker, 'get_engine', lambda: object())
+    monkeypatch.setattr(worker, 'sessionmaker', lambda *args, **kwargs: Session)
+    monkeypatch.setattr(worker, 'dispose_engine', lambda: events.append('dispose'))
+    monkeypatch.setattr(worker, 'process_outbox', lambda *args: events.append('outbox'))
+    monkeypatch.setattr(worker.time, 'sleep', lambda _: None)
+    def stop_after_send(*args, **kwargs):
+        events.append('send')
+        raise KeyboardInterrupt()
+    monkeypatch.setattr(worker, 'send_due_notifications', stop_after_send)
+    worker.main(on_ready=lambda: events.append('ready'))
+    assert events == ['outbox', 'commit-failed', 'outbox', 'commit', 'ready', 'send', 'dispose']
+
+
+def test_ready_marker_matches_current_pid_and_start_token(tmp_path, monkeypatch):
+    module = runtime()
+    monkeypatch.setattr(module.os, 'getpid', lambda: 123)
+    module.publish_consumer_ready({'state_dir': str(tmp_path)}, 'reviews', 'current-token')
+    value = json.loads((tmp_path / 'reviews.ready.json').read_text())
+    assert value == {'pid': 123, 'token': 'current-token', 'service': 'reviews'}
+    with pytest.raises(RuntimeError, match='token'):
+        module.publish_consumer_ready({'state_dir': str(tmp_path)}, 'reviews', None)
+
+
+@pytest.mark.parametrize('name', ['notifications', 'reviews'])
+def test_consumer_readiness_failure_rolls_back_start(configuration, name):
+    module, backend = runtime(), FakeProcesses()
+    backend.fail_ready = name
+    control = module.Controller(configuration, backend)
+    with pytest.raises(RuntimeError, match='ready'):
+        control.start(notifications=True, live_ai=True)
+    assert not backend.running
+    assert control.status() == {}

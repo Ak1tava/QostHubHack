@@ -12,8 +12,9 @@ from app.modules.catalog import models as catalog_models  # noqa: F401
 from app.workers.notifications import process_outbox, send_due_notifications
 
 
-def main():
+def main(*, on_ready=None):
     factory = sessionmaker(get_engine(), expire_on_commit=False)
+    ready_reported = False
     try:
         while True:
             try:
@@ -21,6 +22,9 @@ def main():
                 with factory() as db:
                     process_outbox(db, now)
                     db.commit()
+                if not ready_reported and on_ready is not None:
+                    on_ready()
+                    ready_reported = True
                 send_due_notifications(
                     datetime.now(timezone.utc),
                     session_factory=factory,

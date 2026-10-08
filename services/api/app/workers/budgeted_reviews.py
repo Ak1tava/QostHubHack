@@ -269,7 +269,7 @@ def run(engine, provider, *, max_stages=100, max_seconds=600, poll_seconds=1):
     return 0
 
 
-def main(argv=None):
+def main(argv=None, *, on_ready=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--live', action='store_true')
     parser.add_argument('--ordinary-worker-stopped', action='store_true')
@@ -313,6 +313,9 @@ def main(argv=None):
                     lock_guard=guard,
                     max_output_tokens=settings.ai_max_output_tokens,
                     complex_max_output_tokens=settings.ai_complex_max_output_tokens)
+                if on_ready is not None:
+                    provider.check_ownership()
+                    on_ready()
                 result = run(engine, provider, max_stages=args.max_stages, max_seconds=args.max_seconds,
                              poll_seconds=settings.ai_review_poll_seconds)
                 print(f'Live worker finished: budget spent/reserved USD {ledger.spent}; status {result}')
