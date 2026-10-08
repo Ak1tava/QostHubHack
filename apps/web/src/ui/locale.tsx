@@ -1,5 +1,6 @@
 import { useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ApiError } from '../lib/api';
+import { UiError, uiErrorMessages } from '../lib/uiError';
 import type { WorkOrderTemplate } from '../features/work-orders/TemplateRequirements';
 import { LocaleContext, readPreference, translate, type Locale, type MessageKey } from './i18n';
 import { appMessages } from './appMessages';
@@ -29,6 +30,7 @@ const errors: Record<string, [string, string]> = {
   idempotency_conflict: ['Ключ уже использован для другого запроса.', 'Кілт басқа сұрау үшін қолданылған.'],
 };
 export function localizeError(locale: Locale, error: Error): string {
+  if (error instanceof UiError) return translateText(locale, uiErrorMessages[error.uiCode]);
   // Unknown codes and details may contain arbitrary server input; preserve them verbatim.
   if (locale === 'kk' && error instanceof ApiError && Object.hasOwn(errors, error.code)) return errors[error.code][1];
   return error.message;

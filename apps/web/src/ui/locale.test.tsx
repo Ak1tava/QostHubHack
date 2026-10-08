@@ -1,8 +1,16 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
-import { LocaleProvider, useLocale, localizedTemplate } from './locale';
-import { ApiClient, ApiError } from '../lib/api';
+import { LocaleProvider, useLocale, localizedTemplate, localizeError } from './locale';
+import { ApiClient, ApiError, type UserView } from '../lib/api';
+import { MemoryRouter } from 'react-router';
+import { OrderDetailsPage } from '../features/work-orders/OrderDetailsPage';
+import { PhotoUpload } from '../features/work-orders/PhotoUpload';
+import { TelegramPage } from '../features/telegram/TelegramPage';
+import { NotificationDeliveryPanel } from '../features/telegram/NotificationDeliveryPanel';
+import { ReportFilters } from '../features/reports/ReportFilters';
+import { useReportContext } from '../features/reports/data';
+import { compressPhoto } from '../lib/compressPhoto';
 import { SpeechInput } from '../features/speech/SpeechInput';
 import { LoginPage } from '../features/auth/LoginPage';
 import { leakTemplate } from '../features/work-orders/templateFixture.test-helper';
@@ -11,6 +19,8 @@ import { leakTemplate } from '../features/work-orders/templateFixture.test-helpe
 const container = document.createElement('div');
 document.body.append(container);
 const root = createRoot(container);
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+const master: UserView = { id: 'master', role: 'master', display_name: 'Мастер', brigade_id: null, shift_id: null, specialty: null, grade: null };
 afterEach(async () => { await act(async () => root.render(null)); localStorage.clear(); vi.restoreAllMocks(); });
 function Switch() {
   const { locale, setLocale } = useLocale();
@@ -72,4 +82,74 @@ it('translates shipped template ID/version/checklist IDs only and preserves desc
   expect(localizedTemplate({ ...leakTemplate, id: 'custom' } as unknown as typeof leakTemplate, 'kk')).toEqual({ ...leakTemplate, id: 'custom' });
   const custom = { ...leakTemplate, checklist: [{ id: 'custom', label: 'Непереводимый текст', required: true }] };
   expect(localizedTemplate(custom, 'kk').checklist[0].label).toBe('Непереводимый текст');
+});
+
+it('switches master commands, selected command and known history while preserving raw input and unknown actions', async () => {
+  const api = new ApiClient(async input => {
+    const path = String(input);
+    if (path.endsWith('/notifications')) return json([]);
+    if (path.includes('/catalog/')) return json({ items: [], total: 0 });
+    if (path.includes('/shift')) return json({ items: [], timezone: 'Asia/Qostanay' });
+    return json({ id: 'order', number: 'T17', status: 'ISSUED', priority: 'normal', description: 'Отменить', created_at: '2026-10-08T10:00:00Z', due_at: '2026-10-08T12:00:00Z', allowed_actions: ['cancel', 'reassign', 'reprioritize'],
+      events: [{ id: 'known', action: 'create', occurred_at: '2026-10-08T10:00:00Z' }, { id: 'unknown', action: 'Отменить', occurred_at: '2026-10-08T10:00:00Z' }] });
+  });
+  await act(async () => root.render(<LocaleProvider><Switch /><MemoryRouter><OrderDetailsPage api={api} user={master} orderId="order" /></MemoryRouter></LocaleProvider>));
+  await act(async () => [...container.querySelectorAll('button')].find(button => button.textContent === 'Отменить')!.click());
+  const reason = container.querySelector<HTMLTextAreaElement>('[name="reason"]')!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(reason, 'Причина без перевода');
+    reason.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await toggle();
+  const labels = [...container.querySelectorAll('.choices button')].map(button => button.textContent);
+  expect(labels).toEqual(['Қайта тағайындау', 'Болдырмау', 'Басымдықты өзгерту']);
+  expect(container.querySelector('.action-form h3')!.textContent).toBe('Болдырмау');
+  expect(container.querySelector<HTMLTextAreaElement>('[name="reason"]')!.value).toBe('Причина без перевода');
+  expect([...container.querySelectorAll('.history strong')].map(element => element.textContent)).toEqual(['Беру', 'Отменить']);
+  expect(container.querySelector('.full-description')!.textContent).toBe('Отменить');
+});
+
+it('updates already displayed authored Telegram and delivery errors after switching languages', async () => {
+  const api = new ApiClient(async input => {
+    const path = String(input);
+    if (path.endsWith('/csrf')) return json({ csrf_token: 'csrf' });
+    if (path.endsWith('/status')) return json({ linked: false });
+    return json({ error: { code: 'telegram_not_configured', message: 'private diagnostic', details: [] } }, 503);
+  });
+  await act(async () => root.render(<LocaleProvider><Switch /><TelegramPage api={api} /><NotificationDeliveryPanel api={api} user={master} orderId="order" /></LocaleProvider>));
+  await act(async () => [...container.querySelectorAll('button')].find(button => button.textContent === 'Привязать Telegram')!.click());
+  expect([...container.querySelectorAll('[role="alert"]')].map(element => element.textContent)).toEqual(Array(2).fill('Telegram пока не настроен. Обратитесь к мастеру.'));
+  await toggle();
+  expect([...container.querySelectorAll('[role="alert"]')].map(element => element.textContent)).toEqual(Array(2).fill('Telegram әлі бапталмаған. Шеберге хабарласыңыз.'));
+  expect(container.textContent).not.toContain('private diagnostic');
+});
+
+it('localizes actual photo helper errors at render and leaves untyped or unknown server errors unchanged', async () => {
+  const raw = 'Исходное фото слишком большое или пустое. Выберите фото до 40 МБ.';
+  const failure = await compressPhoto(new File([], 'empty.jpg', { type: 'image/jpeg' })).catch(error => error as Error);
+  expect(localizeError('ru', failure as Error)).toBe(raw);
+  expect(localizeError('kk', failure as Error)).toBe('Бастапқы фото тым үлкен немесе бос. 40 МБ дейінгі фотоны таңдаңыз.');
+  expect(localizeError('kk', new Error(raw))).toBe(raw);
+  expect(localizeError('kk', new ApiError(422, 'custom_unknown', raw))).toBe(raw);
+  await act(async () => root.render(<LocaleProvider><Switch /><PhotoUpload api={new ApiClient()} orderId="order" type="before" disabled={false} onUploaded={() => {}} /></LocaleProvider>));
+  const input = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+  await act(async () => {
+    Object.defineProperty(input, 'files', { value: [new File([], 'empty.jpg', { type: 'image/jpeg' })], configurable: true });
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  expect(container.querySelector('[role="alert"]')!.textContent).toBe(raw);
+  await toggle();
+  expect(container.querySelector('[role="alert"]')!.textContent).toBe('Бастапқы фото тым үлкен немесе бос. 40 МБ дейінгі фотоны таңдаңыз.');
+});
+
+it('switches authored period validation while retaining entered dates', async () => {
+  const api = new ApiClient(async input => String(input).includes('/shift')
+    ? json({ items: [], timezone: 'Asia/Qostanay', as_of: '2026-10-08T12:00:00Z' })
+    : json({ items: [], total: 0 }));
+  function Period() { const context = useReportContext(api, master); return <ReportFilters context={context} user={master} />; }
+  await act(async () => root.render(<LocaleProvider><Switch /><MemoryRouter initialEntries={['/?start=2026-10-08T12:00&end=2026-10-07T12:00']}><Period /></MemoryRouter></LocaleProvider>));
+  expect(container.querySelector('[role="alert"]')!.textContent).toBe('Начало периода должно быть раньше окончания');
+  await toggle();
+  expect(container.querySelector('[role="alert"]')!.textContent).toBe('Кезеңнің басталуы аяқталуынан бұрын болуы керек');
+  expect(container.querySelector<HTMLInputElement>('[name="start"]')!.value).toBe('2026-10-08T12:00');
 });

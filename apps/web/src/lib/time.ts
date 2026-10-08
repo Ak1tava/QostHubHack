@@ -1,3 +1,4 @@
+import { UiError } from './uiError';
 const formatter = (timezone: string) => new Intl.DateTimeFormat('en-CA', {
   timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
 });
@@ -8,7 +9,7 @@ export function localDateTime(value: string, timezone: string): string {
 }
 
 export function utcDateTime(value: string, timezone: string): string {
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) throw new Error('Укажите срок');
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) throw new UiError('deadline_required');
   const target = Date.parse(`${value}:00Z`);
   let instant = target;
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -16,7 +17,7 @@ export function utcDateTime(value: string, timezone: string): string {
     if (displayed === value) return new Date(instant).toISOString();
     instant += target - Date.parse(`${displayed}:00Z`);
   }
-  throw new Error('Это время не существует в часовом поясе предприятия');
+  throw new UiError('deadline_nonexistent');
 }
 
 export function displayTime(value: string, timezone: string): string {

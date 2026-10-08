@@ -1,3 +1,4 @@
+import { UiError } from '../../lib/uiError';
 import type { components } from '../../../../../packages/contracts/api.generated';
 import type { paths } from '../../../../../packages/contracts/api.generated';
 import { useCallback, useRef } from 'react';
@@ -37,7 +38,7 @@ export function useReportContext(api: ApiClient, user: UserView, allowShift = fa
   let end = params.get('end') ?? defaults.end;
   const shiftId = allowShift ? params.get('shift_id') ?? '' : '';
   let query: Record<string, string | undefined> | null = null;
-  let validationError: string | null = null;
+  let validationError: Error | null = null;
   if (timezone && shift.data) {
     try {
       if (!params.has('start') && params.has('start_at')) start = localDateTime(params.get('start_at')!, timezone);
@@ -46,12 +47,12 @@ export function useReportContext(api: ApiClient, user: UserView, allowShift = fa
         start_at: params.has('start') ? utcDateTime(start, timezone) : params.get('start_at') ?? utcDateTime(start, timezone),
         end_at: params.has('end') ? utcDateTime(end, timezone) : params.get('end_at') ?? bootstrap.current!.asOf,
       };
-      if (!shiftId && (!Number.isFinite(Date.parse(period.start_at!)) || !Number.isFinite(Date.parse(period.end_at!)))) throw new Error('Проверьте границы периода');
-      if (!shiftId && Date.parse(period.start_at!) >= Date.parse(period.end_at!)) throw new Error('Начало периода должно быть раньше окончания');
+      if (!shiftId && (!Number.isFinite(Date.parse(period.start_at!)) || !Number.isFinite(Date.parse(period.end_at!)))) throw new UiError('period_bounds');
+      if (!shiftId && Date.parse(period.start_at!) >= Date.parse(period.end_at!)) throw new UiError('period_order');
       query = { ...period, area_id: areaId || undefined, equipment_id: params.get('equipment_id') || undefined,
         assignee_id: user.role === 'worker' ? user.id : params.get('assignee_id') || undefined,
         brigade_id: user.role === 'worker' ? undefined : params.get('brigade_id') || undefined };
-    } catch (error) { validationError = error instanceof Error ? error.message : 'Проверьте период'; }
+    } catch (error) { validationError = error instanceof Error ? error : new UiError('period_invalid'); }
   }
   function filter(name: string, value: string) {
     const next = new URLSearchParams(params);

@@ -65,7 +65,7 @@ export function ReportFilters({ context, user, allowShift = false, period }: { c
       </>}
     </fieldset>
     </details></div>
-    {context.validationError && <p role="alert">{context.validationError}</p>}
+    {context.validationError && <p role="alert">{errorText(context.validationError)}</p>}
   </>;
 }
 

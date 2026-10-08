@@ -50,7 +50,7 @@ export function TelegramPage({ api }: { api: ApiClient }) {
     <h2>Telegram</h2><p>{tx("Уведомления приходят в Telegram. Принятие и закрытие наряда выполняются в приложении.")}</p>
     {status.loading && <p role="status">{tx("Проверяем привязку…")}</p>}
     {status.data && <p role="status">{status.data.linked ? tx("Привязан") : tx("Не привязан")}</p>}
-    {(error || status.error) && <p role="alert">{error || telegramError(status.error)}</p>}
+    {(error || status.error) && <p role="alert">{tx(error || telegramError(status.error))}</p>}
     <div className="choices">
       {status.data && <button type="button" disabled={busy} onClick={() => void change(status.data!.linked ? 'unlink' : 'link-token')}>{status.data.linked ? tx("Отвязать Telegram") : link ? tx("Получить новую ссылку") : tx("Привязать Telegram")}</button>}
       <button type="button" disabled={busy || status.loading} onClick={status.reload}>{tx("Проверить привязку")}</button>

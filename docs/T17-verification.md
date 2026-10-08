@@ -23,3 +23,15 @@ Vitest/build запускались с разрешением для дочер�
 После полной Vitest/build проверки изменена только подпись заголовка колонки (тот же tx, что select/aria-label) и убраны пустые строки; typecheck/diff check повторены. Браузерные T17 E2E, mobile long KK labels, визуальное ревью и общий production acceptance выполняет основной агент после интеграции; здесь не заявляются PASS. Казахская терминология требует человеческого ревью. Платные API и Telegram не вызывались этим агентом.
 
 Код: `apps/web/src/ui/locale.tsx`, `appMessages.ts`, `locale.test.tsx`, подключённые экраны и `design.css`.
+
+## Исправления независимого ревью — round 1
+
+Два P2 из `t17-t18-task-review.md` подтверждены четырьмя новыми behavioral тестами. Команды/выбранное действие/история мастера используют переводы известных карт; неизвестное событие сохраняется буквально. Telegram helper возвращает только authored сообщения, перевод происходит при render. Фото/период/срок выбрасывают локальный `UiError` с фиксированным ID; неизвестные Error/ApiError сохраняют сообщение даже при совпадении с текстом известной ошибки. Состояние фото/выдачи хранит Error, поэтому уже показанные ошибки меняют язык без сброса полей.
+
+- RED: `node node_modules/vitest/vitest.mjs run src/ui/locale.test.tsx` — 4 FAIL / 5 PASS (9 tests); фактические падения map/history, Telegram, compressPhoto и period validation.
+- GREEN: `node node_modules/vitest/vitest.mjs run src/ui/locale.test.tsx src/features/work-orders/OrderDetailsPage.test.tsx src/features/work-orders/CreateOrderPage.test.tsx src/features/work-orders/PhotoUpload.test.tsx src/features/telegram/TelegramPage.test.tsx src/features/reports/Reports.test.tsx src/features/reports/data.test.ts src/lib/compressPhoto.test.ts src/lib/time.test.ts` — **9 файлов / 56 PASS**, exit 0; locale содержит 9 tests.
+- `node apps/web/node_modules/typescript/bin/tsc --noEmit --project apps/web/tsconfig.json` — PASS, exit 0.
+- `node apps/web/node_modules/typescript/bin/tsc --noEmit --project apps/web/tsconfig.e2e.json` — PASS, exit 0.
+- `git diff --check` — PASS, exit 0.
+
+Полный suite/build/browser после round 1 повторяет основной агент в общей интеграционной ветке. E2E не редактировались этим агентом.

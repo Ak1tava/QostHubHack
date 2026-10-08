@@ -1,3 +1,4 @@
+import { UiError } from '../../lib/uiError';
 import { localizedTemplate, useLocale } from '../../ui/locale';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
@@ -31,7 +32,7 @@ export function CreateOrderPage({ api, user }: { api: ApiClient; user: UserView 
   const [priority, setPriority] = useState<NonNullable<CreateOrder['priority']>>('normal');
   const [deadline, setDeadline] = useState('');
   const deadlineInitialized = useRef(false);
-  const [validation, setValidation] = useState('');
+  const [validation, setValidation] = useState<Error | null>(null);
   const [beforePhotos, setBeforePhotos] = useState<File[]>([]);
   const [uploadedPhotos, setUploadedPhotos] = useState<Photo[]>([]);
   const [createdOrder, setCreatedOrder] = useState<WorkOrder | null>(null);
@@ -94,14 +95,14 @@ export function CreateOrderPage({ api, user }: { api: ApiClient; user: UserView 
   const valid = !!(user.role === 'master' && catalogs.data && timezone && areaId && equipmentId && description.trim() && deadline && assigned);
   async function preparePhotos(files: File[]) {
     if (!files.length || photoRunning.current || createdRef.current) return;
-    if (beforePhotos.length + files.length > 5) { setValidation(tx("При выдаче можно добавить не более пяти фото.")); return; }
-    photoRunning.current = true; setPhotoBusy(true); setValidation('');
+    if (beforePhotos.length + files.length > 5) { setValidation(new UiError('issuance_photo_limit')); return; }
+    photoRunning.current = true; setPhotoBusy(true); setValidation(null);
     try { const prepared = await Promise.all(files.map(compressPhoto)); setBeforePhotos(previous => [...previous, ...prepared]); }
-    catch (error) { setValidation(error instanceof Error ? errorText(error) : tx("Не удалось подготовить фото.")); }
+    catch (error) { setValidation(error instanceof Error ? error : new UiError('photo_prepare')); }
     finally { photoRunning.current = false; setPhotoBusy(false); }
   }
   async function submit(event: FormEvent) {
-    event.preventDefault(); setValidation('');
+    event.preventDefault(); setValidation(null);
     if (photoRunning.current) return;
     photoRunning.current = true; setPhotoBusy(true);
     try {
@@ -123,7 +124,7 @@ export function CreateOrderPage({ api, user }: { api: ApiClient; user: UserView 
         }
         navigate(`/orders/${created.id}`, { replace: true });
       }
-    } catch (error) { setValidation(error instanceof Error ? errorText(error) : tx("Проверьте поля")); }
+    } catch (error) { setValidation(error instanceof Error ? error : new UiError('check_fields')); }
     finally { photoRunning.current = false; setPhotoBusy(false); }
   }
 
@@ -176,7 +177,7 @@ export function CreateOrderPage({ api, user }: { api: ApiClient; user: UserView 
       </fieldset>
       {createdOrder && <p role="status">{tx("Наряд уже выдан. Загружено фото: ")}{uploadedCount.current}{tx(" из ")}{beforePhotos.length}. <Link to={`/orders/${createdOrder.id}`}>{tx("Открыть наряд")}</Link></p>}
       {uploadedPhotos.map(photo => <figure key={photo.id}><img src={photo.read_url} alt={tx("Загруженное фото при выдаче")} /><figcaption>{tx("Загружено")}</figcaption></figure>)}
-      {(validation || command.error) && <p role="alert">{validation || errorText(command.error!)}</p>}
+      {(validation || command.error) && <p role="alert">{errorText(validation ?? command.error!)}</p>}
       {command.pending && <p role="status">{tx("Результат выдачи неизвестен. Повтор подтвердит ту же выдачу.")}</p>}
       <div className="form-submit"><button className="primary" type="submit" disabled={photoBusy || command.busy || (!createdOrder && !command.pending && !valid)}>{command.busy ? tx("Выдаём…") : photoBusy ? tx("Подготавливаем и загружаем фото…") : createdOrder ? tx("Повторить загрузку фото") : command.pending ? tx("Повторить выдачу") : tx("Выдать наряд")}</button></div>
     </form>

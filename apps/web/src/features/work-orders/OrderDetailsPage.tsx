@@ -71,15 +71,15 @@ export function OrderDetailsPage({ api, user, orderId }: { api: ApiClient; user:
       <dl className="order-info">
         <dt>{tx("Участок")}</dt><dd>{catalogs.data?.areas.find(area => area.id === order.area_id)?.name ?? tx("Загружаем…")}</dd>
         <dt>{tx("Оборудование")}</dt><dd><Link to={`/equipment/${order.equipment_id}`}>{catalogs.data?.equipment.find(item => item.id === order.equipment_id)?.name ?? tx("Карточка оборудования")}</Link></dd>
-        <dt>{tx("Исполнитель")}</dt><dd>{shift.data?.items.find(member => member.user.id === (order.assignee_id ?? order.responsible_id))?.user.display_name ?? tx("Назначенный исполнитель")}{order.brigade_id ? (" · " + (catalogs.data?.brigades.find(brigade => brigade.id === order.brigade_id)?.name ?? 'бригада')) : ''}</dd>
+        <dt>{tx("Исполнитель")}</dt><dd>{shift.data?.items.find(member => member.user.id === (order.assignee_id ?? order.responsible_id))?.user.display_name ?? tx("Назначенный исполнитель")}{order.brigade_id ? (" · " + (catalogs.data?.brigades.find(brigade => brigade.id === order.brigade_id)?.name ?? tx('бригада'))) : ''}</dd>
         <dt>{tx("Тип")}</dt><dd>{order.work_type === 'emergency' ? tx("Аварийный") : tx("Плановый")}</dd>
         <dt>{tx("Срок")}</dt><dd>{displayTime(order.due_at, timezone)} ({timezone})</dd>
         <dt>{tx("Выдан")}</dt><dd>{displayTime(order.created_at, timezone)}</dd>
         {order.queue_position != null && <><dt>{tx("Очередь")}</dt><dd>{tx("Позиция ")}{order.queue_position}</dd></>}
       </dl>
-      {user.role === 'master' && <div className="choices" aria-label={tx("Действия мастера")}>{(Object.keys(actionNames) as MasterAction[]).filter(name => order.allowed_actions?.includes(name)).map(name => <button key={name} disabled={command.pending || command.busy} onClick={() => chooseAction(name)}>{actionNames[name]}</button>)}</div>}
+      {user.role === 'master' && <div className="choices" aria-label={tx("Действия мастера")}>{(Object.keys(actionNames) as MasterAction[]).filter(name => order.allowed_actions?.includes(name)).map(name => <button key={name} disabled={command.pending || command.busy} onClick={() => chooseAction(name)}>{tx(actionNames[name])}</button>)}</div>}
       {action && <form className="action-form" onSubmit={submit}>
-        <h3>{actionNames[action]}</h3>
+        <h3>{tx(actionNames[action])}</h3>
         <fieldset disabled={command.pending || command.busy || !allowed} className="form-fields">
           {action === 'reprioritize' ? <label>{tx("Приоритет")}<select name="priority" value={priority} onChange={event => setPriority(event.target.value as typeof priority)}>{Object.entries(priorities).map(([value, label]) => <option key={value} value={value}>{tx(label)}</option>)}</select></label> : <label>{tx("Причина")}<textarea name="reason" value={reason} onChange={event => setReason(event.target.value)} maxLength={4000} required rows={2} /></label>}
           {action === 'reassign' && <>
@@ -98,7 +98,7 @@ export function OrderDetailsPage({ api, user, orderId }: { api: ApiClient; user:
         {!command.pending && <button type="button" disabled={command.busy} onClick={() => setAction(null)}>{tx("Вернуться")}</button>}
       </form>}
       <section aria-label={tx("История наряда")}><h3>{tx("История")}</h3><ol className="history">{order.events?.map(event => <li key={event.id}>
-        <strong>{historyNames[event.action] ?? tx("Изменение")}</strong><time dateTime={event.occurred_at}>{displayTime(event.occurred_at, timezone)}</time>
+        <strong>{Object.hasOwn(historyNames, event.action) ? tx(historyNames[event.action]) : event.action}</strong><time dateTime={event.occurred_at}>{displayTime(event.occurred_at, timezone)}</time>
         <span>{event.actor_id ? shift.data?.items.find(member => member.user.id === event.actor_id)?.user.display_name ?? tx("Сотрудник") : tx("Система")}</span>
         {event.reason && <p>{event.reason}</p>}
       </li>)}</ol></section>

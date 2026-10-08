@@ -15,7 +15,7 @@ export function NotificationDeliveryPanel({ api, user, orderId }: { api: ApiClie
   const rows = deliveries.data?.filter(row => user.role !== 'worker' || row.recipient_id === user.id);
   return <section aria-label={tx("Доставка Telegram")}><h3>{tx("Доставка Telegram")}</h3>
     {deliveries.loading && <p role="status">{tx("Проверяем доставку…")}</p>}
-    {deliveries.error && <p role="alert">{telegramError(deliveries.error)}</p>}
+    {deliveries.error && <p role="alert">{tx(telegramError(deliveries.error))}</p>}
     {rows?.length === 0 && <p>{tx("Уведомлений пока нет.")}</p>}
     {rows?.map(row => <p key={row.id}>{tx(kinds[row.kind] ?? "Уведомление")}: <strong>{tx(statuses[row.status] ?? "Статус недоступен")}</strong>{tx(" · попыток: ")}{row.attempts}{row.status === 'BLOCKED' && tx(" · Проверьте привязку Telegram.")}</p>)}
     <button type="button" disabled={deliveries.loading} onClick={deliveries.reload}>{tx("Обновить доставку")}</button>
