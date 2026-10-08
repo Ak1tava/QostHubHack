@@ -41,6 +41,17 @@ it('labels prepared scenarios and links both photo phases without marking live r
   } finally { await act(async () => root.unmount()); container.remove(); }
 });
 
+it('links worker before-photo evidence missing from issuance photos without guessing its phase', async () => {
+  const container = document.createElement('div'); const root = createRoot(container);
+  const id = 'd57ee760-77df-4946-a506-cf0d0b64e1a6';
+  try {
+    await act(async () => root.render(<ReviewPanel order={{ id: 'order', issuance_photos: [], ai_review: { source: 'provider', is_mock: false, model: 'live', prompt_version: 'v1', result: { verdict: 'human_review', score: null, findings: [{ message: 'Проверить фото', evidence_refs: [`photo:${id}`, 'photo:https://bad.test', 'photo:not-a-uuid'] }], missing_evidence: [], limitations: [] } } } as unknown as WorkOrderDetail} />));
+    expect(container.querySelector(`a[href="/api/v1/photos/${id}"]`)?.textContent).toBe('Фото к проверке');
+    expect(container.querySelectorAll('a')).toHaveLength(1);
+    expect(container.textContent).toContain('photo:not-a-uuid');
+  } finally { await act(async () => root.unmount()); }
+});
+
 it('explains when review begins before a report exists', async () => {
   const container = document.createElement('div'); const root = createRoot(container);
   try {

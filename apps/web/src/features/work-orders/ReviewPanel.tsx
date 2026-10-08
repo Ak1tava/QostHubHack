@@ -21,6 +21,7 @@ export function ReviewPanel({ order }: { order: WorkOrderDetail }) {
     const photoId = ref.startsWith('photo:') ? ref.slice(6) : '';
     if (photoId && order.submission?.after_photo_ids?.includes(photoId)) return <a href={`/api/v1/photos/${encodeURIComponent(photoId)}`}>{tx("Фото после работы")}</a>;
     if (photoId && order.issuance_photos?.some(photo => photo.id === photoId)) return <a href={`/api/v1/photos/${encodeURIComponent(photoId)}`}>{tx("Фото до работы")}</a>;
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(photoId)) return <a href={`/api/v1/photos/${encodeURIComponent(photoId)}`}>{tx('Фото к проверке')}</a>;
     if (ref === 'work_description' && order.submission) return <a href={`#submission-${order.submission.id}`}>{tx("Сохранённый отчёт")}</a>;
     if (ref === 'problem') return <a href={`#problem-${order.id}`}>{tx("Заявка")}</a>;
     return <span>{ref}</span>;
