@@ -13,8 +13,12 @@ from app.modules.auth.schemas import (
     CsrfResponse,
     ErrorResponse,
     LoginRequest,
+    JudgeLoginRequest,
+    JudgeProfile,
+    JudgeProfilesResponse,
     UserView,
 )
+from app.modules.auth.judges import PROFILE_LABELS
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 ERRORS = {code: {"model": ErrorResponse} for code in (401, 403, 422, 429, 503)}
@@ -81,6 +85,25 @@ def login(
 ):
     response.headers["Cache-Control"] = "no-store"
     user, token = service.login(db, request, response, payload)
+    return AuthResponse(user=UserView.model_validate(user), csrf_token=token)
+
+
+@router.get("/judge-profiles", response_model=JudgeProfilesResponse,
+            dependencies=[Depends(service.require_judge_mode)], responses={404: {"model": ErrorResponse}, 503: ERRORS[503]})
+def judge_profiles(response: Response, db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "no-store"
+    service.judge_users(db)
+    return JudgeProfilesResponse(profiles=[
+        JudgeProfile(code=code, display_name=name, role=role) for code, name, role in PROFILE_LABELS
+    ])
+
+
+@router.post("/judge-login", response_model=AuthResponse,
+             dependencies=[Depends(service.require_judge_mode)], responses={**ERRORS, 404: {"model": ErrorResponse}})
+def judge_login(payload: JudgeLoginRequest, request: Request, response: Response,
+                db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "no-store"
+    user, token = service.judge_login(db, request, response, payload)
     return AuthResponse(user=UserView.model_validate(user), csrf_token=token)
 
 

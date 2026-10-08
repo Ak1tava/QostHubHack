@@ -10,6 +10,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 from starlette.requests import HTTPConnection
 
+from app.core.config import settings
 from app.core.security import (
     AuthError,
     cookie_secure,
@@ -19,7 +20,8 @@ from app.core.security import (
     verify_password,
 )
 from app.modules.auth.models import AuthSession, AuthThrottle, User
-from app.modules.auth.schemas import LoginRequest
+from app.modules.auth.schemas import JudgeLoginRequest, LoginRequest
+from app.modules.auth.judges import validate_profiles
 
 COOKIE = "qosthub_session"
 _DUMMY_HASH = hash_password(secrets.token_urlsafe(32))
@@ -154,6 +156,39 @@ def login(db: Session, request: Request, response: Response, payload: LoginReque
     if not verified or not user or not user.is_active:
         db.commit()
         raise AuthError(401, "invalid_credentials", "Неверный логин или пароль")
+    db.delete(row)
+    new_row = issue_session(db, user.id, response)
+    db.commit()
+    return user, new_row.csrf_token
+
+
+def require_judge_mode():
+    if not settings.judge_mode_enabled:
+        raise AuthError(404, "not_found", "Не найдено")
+
+
+def judge_users(db: Session):
+    require_judge_mode()
+    try:
+        return validate_profiles(db, settings.judge_cohort, {
+            "master": settings.judge_master_user_id,
+            "worker-1": settings.judge_worker_1_user_id,
+            "worker-2": settings.judge_worker_2_user_id,
+        })
+    except ValueError as exc:
+        raise AuthError(503, "configuration_error", "Вход судей не настроен") from exc
+
+
+def judge_login(db: Session, request: Request, response: Response, payload: JudgeLoginRequest):
+    users = judge_users(db)
+    row = read_session(db, request, lock=True)
+    require_csrf(request, row)
+    user = users[payload.profile]
+    enforce_limits(db, [("login-ip:" + peer(request), 30, 900)])
+    enforce_limits(db, [
+        ("login-account:" + user.login.casefold(), 10, 900),
+        ("login-pair:" + peer(request) + ":" + user.login.casefold(), 5, 900),
+    ])
     db.delete(row)
     new_row = issue_session(db, user.id, response)
     db.commit()

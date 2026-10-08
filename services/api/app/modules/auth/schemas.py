@@ -18,6 +18,21 @@ class LoginRequest(BaseModel):
         return value
 
 
+class JudgeLoginRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    profile: Literal["master", "worker-1", "worker-2"]
+
+
+class JudgeProfile(BaseModel):
+    code: Literal["master", "worker-1", "worker-2"]
+    display_name: str
+    role: Literal["master", "worker"]
+
+
+class JudgeProfilesResponse(BaseModel):
+    profiles: list[JudgeProfile]
+
+
 class UserView(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID

@@ -1,4 +1,5 @@
 from pathlib import Path
+from uuid import UUID
 
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -21,6 +22,11 @@ class Settings(BaseSettings):
     database_url: SecretStr | None = None
     session_secret: SecretStr | None = None
     session_cookie_secure: bool = False
+    judge_mode_enabled: bool = False
+    judge_cohort: str | None = None
+    judge_master_user_id: UUID | None = None
+    judge_worker_1_user_id: UUID | None = None
+    judge_worker_2_user_id: UUID | None = None
     telegram_bot_token: SecretStr | None = None
     telegram_bot_username: str | None = None
     telegram_webhook_secret: SecretStr | None = None
