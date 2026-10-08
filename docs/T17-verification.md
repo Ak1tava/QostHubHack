@@ -14,9 +14,11 @@
 - `node apps/web/node_modules/typescript/bin/tsc --noEmit --project apps/web/tsconfig.json` — PASS, exit 0.
 - `node apps/web/node_modules/typescript/bin/tsc --noEmit --project apps/web/tsconfig.e2e.json` — PASS, exit 0.
 - `node node_modules/vite/bin/vite.js build` из apps/web — PASS, exit 0; 101 модуля, generateSW, 11 precache entries.
-- `git -c core.autocrlf=false diff --check` — PASS, exit 0.
+- `git diff --check HEAD^ HEAD` после коммита `9cb97e5` — PASS, exit 0.
 
 Vitest/build запускались с разрешением для дочерних процессов: sandbox давал spawn EPERM. Зависимости используются через junction на существующие `.worktrees/t12-t15/apps/web/node_modules`; manifests/lock/контракты не менялись. Исходные root deps не содержали qrcode, поэтому первая typecheck завершилась TS2307 до подключения полного каталога.
+
+Первый `git -c core.autocrlf=false diff --check` вернул exit 1: изменение настройки нормализации включило все исходные CRLF файлами в diff и пометило CR как whitespace. Проверка нормализованного коммита штатным `git diff --check HEAD^ HEAD` проходит.
 
 После полной Vitest/build проверки изменена только подпись заголовка колонки (тот же tx, что select/aria-label) и убраны пустые строки; typecheck/diff check повторены. Браузерные T17 E2E, mobile long KK labels, визуальное ревью и общий production acceptance выполняет основной агент после интеграции; здесь не заявляются PASS. Казахская терминология требует человеческого ревью. Платные API и Telegram не вызывались этим агентом.
 
