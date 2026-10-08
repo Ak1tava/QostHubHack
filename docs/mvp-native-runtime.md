@@ -38,8 +38,9 @@ Windows venv Python может создавать wrapper и настоящий 
 
 | Поле | Существующий источник |
 | --- | --- |
-| `repo` | Интегрированная ветка/checkout с актуальным `apps/web/dist` |
-| `env_file` | `.worktrees/t17-t19-integration/.tooling/t17-t19/judge-live/.env` либо `environment.json` |
+| `repo` | Закреплённый `.tooling/mvp-native-release/release-<SHA>` с production `apps/web/dist`; точный путь в `config.json` |
+| `env_file` | `.tooling/mvp-native-release/environment.json`; содержит актуальный ASR token, значения не выводить |
+| `state_dir` | `.tooling/mvp-native-release/state` |
 | `python` | `.worktrees/t13-t16-delivery/services/api/.venv/Scripts/python.exe` |
 | `nginx`, `nginx_mime_types` | `.worktrees/t08-t10-integration/.tooling/bin/nginx-1.30.5/{nginx.exe,conf/mime.types}` |
 | `cloudflared` | `.worktrees/t08-t10-integration/.tooling/bin/cloudflared.exe` |
@@ -48,7 +49,7 @@ Windows venv Python может создавать wrapper и настоящий 
 | `ledger` | `.worktrees/t08-t10-integration/.tooling/mobile/budget.json` — именно прежний файл |
 | Порты | PostgreSQL `55486`, API `8036`, Nginx `5214`; ASR `8016` только если свободен |
 
-`postgres_bin`/`postgres_data` берутся из действующего portable PostgreSQL, `manage_postgres=false`. Не копировать чужой PID registry и не использовать старый `api.py`: он явно запрещает ASR. В ignored env интегратор добавляет общий `SPEECH_SERVICE_TOKEN`; model/service paths launcher задаёт сам. В текущей реализации ASR readiness проверяет файлы/зависимости; настоящий inference и restart — отдельная живая приёмка.
+Активный config: `.tooling/mvp-native-release/config.json`. Для текущего стенда использовать его с `start --notifications --live-ai`, без `--tunnel`: внешний Quick Tunnel уже работает. `postgres_bin`/`postgres_data` берутся из действующего portable PostgreSQL, `manage_postgres=false`. Не копировать чужой PID registry и не использовать старый `api.py`: он явно запрещает ASR. Общий `SPEECH_SERVICE_TOKEN` уже находится в ignored env; model/service paths launcher задаёт сам. ASR readiness проверяет файлы/зависимости; фактический inference, перезапуск и восстановление подтверждаются отдельно в [проверке релиза](MVP-finalization-verification.md).
 
 ## Compose и бюджет
 

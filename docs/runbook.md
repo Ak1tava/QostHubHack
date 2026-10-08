@@ -220,7 +220,7 @@ docker compose -f compose.yaml -f compose.tunnel.yaml exec api .venv/bin/python 
 
 При каждом новом URL пересоздайте API, web, notification worker и используемый AI consumer, затем повторите `set-webhook`. Tunnel overlay заменяет лишь `${TUNNEL_HOSTNAME}` через [NGINX_ENVSUBST_FILTER](https://github.com/nginx/docker-nginx/blob/master/mainline/alpine-slim/20-envsubst-on-templates.sh); `$uri`/`$remote_addr` сохраняются. Чужой Host получает 421, healthcheck использует правильный Host. `X-Forwarded-Proto=https` фиксирован только в overlay; `X-Forwarded-For`/`X-Real-IP` берутся из `$remote_addr`, `Forwarded`/`CF-Connecting-IP`/`True-Client-IP` удаляются. API доверяет только Nginx `172.30.42.10`.
 
-Два iPhone через один host tunnel могут иметь общий серверный IP и общую квоту входа/CSRF. Не подменяйте заголовки и не отключайте rate limit; при 429 дождитесь указанного `Retry-After`. Первую живую приёмку выполнить на двух iPhone; Android остаётся отдельным обязательным замером.
+Два iPhone через один host tunnel могут иметь общий серверный IP и общую квоту входа/CSRF. Не подменяйте заголовки и не отключайте rate limit; при 429 дождитесь указанного `Retry-After`. Физические проверки iPhone/Android и мобильные замеры отложены отдельно от программного выпуска.
 
 ## Текущий демонстрационный runtime и бюджет
 
