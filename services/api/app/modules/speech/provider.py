@@ -3,6 +3,7 @@ from pydantic import ValidationError
 
 from app.core.config import settings
 from app.core.security import AuthError
+from app.modules.speech.audio import validate_language
 from app.modules.speech.schemas import SpeechTranscription
 
 
@@ -16,6 +17,7 @@ class HttpSpeechProvider:
         self.url, self.token, self.timeout, self.transport = url, token, timeout, transport
 
     async def transcribe(self, content: bytes, content_type: str, language: str) -> SpeechTranscription:
+        validate_language(language)
         try:
             async with httpx.AsyncClient(timeout=self.timeout, transport=self.transport,
                                          follow_redirects=False, trust_env=False) as client:

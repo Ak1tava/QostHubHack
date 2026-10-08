@@ -27,20 +27,21 @@ async function action(page: Page, label: string) {
   await page.getByRole('button', { name: 'Применить', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Применить', exact: true })).toHaveCount(0);
 }
-async function recognize(page: Page, language: 'ru' | 'kk', expected: string) {
-  const speech = page.getByRole('region', { name: 'Голосовой ввод', exact: true });
-  await speech.getByRole('combobox', { name: 'Язык речи', exact: true }).selectOption(language);
+async function recognize(page: Page, locale: 'ru' | 'kk', expected: string) {
+  const speech = page.getByRole('region', { name: locale === 'kk' ? 'Дауыспен енгізу' : 'Голосовой ввод', exact: true });
+  await expect(speech.getByRole('combobox')).toHaveCount(0);
+  await expect(speech).toContainText(locale === 'kk' ? 'Сөйлеуді тану тек орыс тілінде қолжетімді.' : 'Распознавание речи доступно только на русском языке.');
   const pending = page.waitForResponse(response => new URL(response.url()).pathname === speechPath && response.request().method() === 'POST');
   await speech.getByLabel('Аудиофайл', { exact: true }).setInputFiles({ name: 'synthetic-tone.wav', mimeType: 'audio/wav', buffer: wav() });
   const response = await pending;
   expect(response.status()).toBe(200); expect(response.headers()['cache-control']).toBe('no-store');
-  expect(await response.json()).toMatchObject({ text: expected, language, is_mock: true });
-  await expect(speech.getByRole('textbox', { name: 'Черновик расшифровки', exact: true })).toHaveValue(expected);
-  await expect(speech.getByRole('status')).toContainText('Тестовая расшифровка');
+  expect(await response.json()).toMatchObject({ text: expected, language: 'ru', is_mock: true });
+  await expect(speech.getByRole('textbox', { name: locale === 'kk' ? 'Танылған мәтіннің нобайы' : 'Черновик расшифровки', exact: true })).toHaveValue(expected);
+  await expect(speech.getByRole('status')).toContainText(locale === 'kk' ? 'Сынақ мәтіні' : 'Тестовая расшифровка');
   return speech;
 }
 
-test('real RU/KK ASR upload keeps reviewed drafts separate until explicit creation and submission', async ({ page, browser }) => {
+test('Russian ASR in RU/KZ UI keeps reviewed drafts separate until explicit creation and submission', async ({ page, browser }) => {
   test.setTimeout(90_000);
   await login(page, true);
   await page.getByRole('article').filter({ hasText: `Исполнитель ${scenario}` }).getByRole('link', { name: 'Выдать', exact: true }).click();
@@ -81,11 +82,15 @@ test('real RU/KK ASR upload keeps reviewed drafts separate until explicit creati
     expect(original.status).toBe('IN_PROGRESS'); expect(original.submission).toBeNull();
     const commands: string[] = [];
     worker.on('request', request => { if (request.method() === 'POST' && new URL(request.url()).pathname.startsWith(`/api/v1/work-orders/${id}/`)) commands.push(request.url()); });
-    const kk = await recognize(worker, 'kk', 'Мойынтірек ауыстырылды');
+    await worker.getByRole('button', { name: 'KZ', exact: true }).click();
+    await recognize(worker, 'kk', 'Заменён подшипник');
+    await worker.getByRole('button', { name: 'RU', exact: true }).click();
+    const kk = worker.getByRole('region', { name: 'Голосовой ввод', exact: true });
     await expect(work).toHaveValue('Осмотр выполнен вручную');
-    await kk.getByRole('textbox', { name: 'Черновик расшифровки', exact: true }).fill('Мойынтірек ауыстырылды, білік тексерілді');
+    await expect(kk.getByRole('textbox', { name: 'Черновик расшифровки', exact: true })).toHaveValue('Заменён подшипник');
+    await kk.getByRole('textbox', { name: 'Черновик расшифровки', exact: true }).fill('Подшипник заменён, вал проверен');
     await kk.getByRole('button', { name: 'Вставить', exact: true }).click();
-    const completed = 'Осмотр выполнен вручную\n\nМойынтірек ауыстырылды, білік тексерілді';
+    const completed = 'Осмотр выполнен вручную\n\nПодшипник заменён, вал проверен';
     await expect(work).toHaveValue(completed); expect(commands).toEqual([]);
     const unchanged = await (await worker.request.get(`/api/v1/work-orders/${id}`)).json();
     expect(unchanged.status).toBe('IN_PROGRESS'); expect(unchanged.version).toBe(original.version); expect(unchanged.submission).toBeNull();

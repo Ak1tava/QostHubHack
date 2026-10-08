@@ -47,7 +47,7 @@ test('T17 RU is the default; KK persists and localizes authored login errors wit
   await mobileFits(page, 'login');
 });
 
-test('T17 KK create and template report preserve user data, drafts, checks and speech choices across switches', async ({ page, browser }) => {
+test('T17 KK create and template report preserve user data, drafts, checks and Russian speech guidance across switches', async ({ page, browser }) => {
   test.setTimeout(90_000);
   await login(page, true);
   await page.getByRole('button', { name: 'KZ', exact: true }).click();
@@ -60,14 +60,15 @@ test('T17 KK create and template report preserve user data, drafts, checks and s
   await page.getByRole('combobox', { name: 'Үлгі', exact: true }).selectOption('visible_leak');
   await expect(page.getByRole('region', { name: 'Үлгі талаптары', exact: true })).toContainText('Көрінетін ағуды жою');
   await page.getByRole('textbox', { name: 'Жұмыс сипаттамасы', exact: true }).fill(suppliedDescription);
-  await expect(page.getByRole('combobox', { name: 'Сөйлеу тілі', exact: true })).toHaveValue('kk');
+  await expect(page.getByRole('region', { name: 'Дауыспен енгізу', exact: true })).toContainText('Сөйлеуді тану тек орыс тілінде қолжетімді.');
+  await expect(page.getByRole('region', { name: 'Дауыспен енгізу', exact: true }).getByRole('combobox')).toHaveCount(0);
   await page.getByRole('button', { name: 'RU', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Описание работ', exact: true })).toHaveValue(suppliedDescription);
   await expect(page.getByRole('combobox', { name: 'Шаблон', exact: true })).toHaveValue('visible_leak');
-  await expect(page.getByRole('combobox', { name: 'Язык речи', exact: true })).toHaveValue('ru');
+  await expect(page.getByRole('region', { name: 'Голосовой ввод', exact: true })).toContainText('Распознавание речи доступно только на русском языке.');
   await page.getByRole('button', { name: 'KZ', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Жұмыс сипаттамасы', exact: true })).toHaveValue(suppliedDescription);
-  await expect(page.getByRole('combobox', { name: 'Сөйлеу тілі', exact: true })).toHaveValue('kk');
+  await expect(page.getByRole('region', { name: 'Дауыспен енгізу', exact: true })).toContainText('Сөйлеуді тану тек орыс тілінде қолжетімді.');
   await mobileFits(page, 'create-template');
   await page.getByRole('button', { name: 'Наряд беру', exact: true }).click();
   await expect(page).toHaveURL(/\/orders\/[0-9a-f-]+$/);
@@ -108,12 +109,12 @@ test('T17 KK create and template report preserve user data, drafts, checks and s
     await expect(worker.getByRole('group', { name: 'Үлгінің тексеру тізімі', exact: true })).toContainText('Ағудың көрінетін жері көрсетіліп, тіркелген.');
     await expect(worker.locator('input[name="template-identify_leak"]')).toBeChecked();
     await expect(worker.locator('.full-description')).toHaveText(suppliedDescription);
-    const voice = worker.getByRole('combobox', { name: 'Сөйлеу тілі', exact: true });
-    await expect(voice).toHaveValue('kk');
-    await voice.selectOption('ru');
+    const voice = worker.getByRole('region', { name: 'Дауыспен енгізу', exact: true });
+    await expect(voice.getByRole('combobox')).toHaveCount(0);
+    await expect(voice).toContainText('Сөйлеуді тану тек орыс тілінде қолжетімді.');
     await worker.getByRole('button', { name: 'RU', exact: true }).click();
     await worker.getByRole('button', { name: 'KZ', exact: true }).click();
-    await expect(voice).toHaveValue('ru');
+    await expect(voice).toContainText('Сөйлеуді тану тек орыс тілінде қолжетімді.');
     await expect(worker.getByRole('textbox', { name: 'Орындалған жұмыстар', exact: true })).toHaveValue(manualReport);
     await expect(worker.locator('input[name="template-identify_leak"]')).toBeChecked();
     const submissions: string[] = [];

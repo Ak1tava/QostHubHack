@@ -45,20 +45,20 @@ class LocalWhisperService:
         return self._model
 
     def transcribe(self, content: bytes, mime: str, language: str) -> SpeechTranscription:
+        validate_language(language)
         if not self._gate.acquire(blocking=False):
             raise AuthError(429, "speech_busy", "Распознавание занято. Повторите позже", retry_after=5)
         try:
-            validate_language(language)
             validate_mime(mime)
             model = self._load_model()
             decoded = decode_audio(content, mime)
-            segments, _info = model.transcribe(decoded.samples, language=language,
+            segments, _info = model.transcribe(decoded.samples, language="ru",
                 task="transcribe", beam_size=1, vad_filter=True, condition_on_previous_text=False)
             # faster-whisper segments are lazy: inference and errors occur while iterating.
             text = " ".join(segment.text.strip() for segment in segments).strip()
             if not text:
                 raise AuthError(422, "speech_no_speech", "Речь не найдена. Попробуйте другую запись")
-            return SpeechTranscription(text=text, language=language,
+            return SpeechTranscription(text=text, language="ru",
                 duration_seconds=decoded.duration_seconds, is_mock=False)
         except AuthError:
             raise
@@ -102,7 +102,7 @@ def create_app(config=settings) -> FastAPI:
                       responses={code: {"model": ErrorResponse} for code in (401, 413, 415, 422, 429, 503)},
                       dependencies=[Depends(authorize)])
     async def transcribe(response: Response, file: UploadFile = File(...),
-                         language: str = Form(..., json_schema_extra={"enum": ["ru", "kk"]})):
+                         language: str = Form(..., json_schema_extra={"enum": ["ru"]})):
         content, mime = await read_upload(file, language)
         result = await run_in_threadpool(service.transcribe, content, mime, language)
         response.headers["Cache-Control"] = "no-store"

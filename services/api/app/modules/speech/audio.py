@@ -22,8 +22,8 @@ MIME_FORMATS = {
 
 
 def validate_language(language: str) -> str:
-    if language not in {"ru", "kk"}:
-        raise AuthError(422, "speech_invalid_language", "Выберите русский или казахский язык")
+    if language != "ru":
+        raise AuthError(422, "speech_invalid_language", "Распознавание доступно только на русском языке")
     return language
 
 

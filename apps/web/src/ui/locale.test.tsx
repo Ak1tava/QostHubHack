@@ -64,14 +64,55 @@ it('works when localStorage is denied and ignores unsupported persisted locales'
   expect(container.textContent).toContain('Кіру');
 });
 
-it('uses UI locale as speech default while preserving an explicit speech language edit', async () => {
+it('always transcribes Russian in Kazakh UI while preserving the draft across switches', async () => {
   localStorage.setItem('naryadai.locale', 'kk');
-  await act(async () => root.render(<LocaleProvider><Switch /><SpeechInput api={new ApiClient()} value="" onChange={() => {}} maxLength={4000} /></LocaleProvider>));
-  const select = container.querySelector('select')!;
-  expect(select.value).toBe('kk');
-  await act(async () => { select.value = 'ru'; select.dispatchEvent(new Event('change', { bubbles: true })); });
-  await toggle(); await toggle();
-  expect(select.value).toBe('ru');
+  let sentLanguage: unknown;
+  const api = new ApiClient(async (input, init) => {
+    if (String(input).endsWith('/csrf')) return json({ csrf_token: 'csrf' });
+    sentLanguage = (init!.body as FormData).get('language');
+    return json({ text: 'Заменён подшипник', language: 'ru', model: 'large-v3-turbo', duration_seconds: 1, is_mock: true });
+  });
+  await act(async () => root.render(<LocaleProvider><Switch /><SpeechInput api={api} value="" onChange={() => {}} maxLength={4000} /></LocaleProvider>));
+  expect(container.querySelector('select')).toBeNull();
+  expect(container.textContent).toContain('Сөйлеуді тану тек орыс тілінде қолжетімді.');
+  await selectSpeechFile();
+  expect(sentLanguage).toBe('ru');
+  await toggle();
+  expect(container.querySelector<HTMLTextAreaElement>('textarea')!.value).toBe('Заменён подшипник');
+  await toggle();
+  expect(container.querySelector<HTMLTextAreaElement>('textarea')!.value).toBe('Заменён подшипник');
+});
+
+async function selectSpeechFile(file = new File(['voice'], 'voice.wav', { type: 'audio/wav' })) {
+  await act(async () => {
+    const input = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+}
+
+it.each(['provider', 'upload', 'microphone', 'limit'])('retranslates an already displayed speech %s error when UI locale changes', async mode => {
+  const api = new ApiClient(async input => String(input).endsWith('/csrf')
+    ? json({ csrf_token: 'csrf' })
+    : mode === 'limit' ? json({ text: 'Очень длинный распознанный текст', language: 'ru', model: 'large-v3-turbo', duration_seconds: 1, is_mock: false })
+      : json({ error: { code: 'speech_unavailable', message: 'private diagnostic', details: [] } }, 503));
+  if (mode === 'microphone') {
+    vi.stubGlobal('MediaRecorder', class {});
+    Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: async () => { throw new DOMException('Denied', 'NotAllowedError'); } } });
+  }
+  try {
+    await act(async () => root.render(<LocaleProvider><Switch /><SpeechInput api={api} value="ручной текст" onChange={() => {}} maxLength={12} /></LocaleProvider>));
+    if (mode === 'microphone') await act(async () => [...container.querySelectorAll('button')].find(button => button.textContent === 'Записать голос')!.click());
+    else await selectSpeechFile(mode === 'upload' ? new File([], 'empty.wav', { type: 'audio/wav' }) : undefined);
+    if (mode === 'limit') await act(async () => [...container.querySelectorAll('button')].find(button => button.textContent === 'Вставить')!.click());
+    const ru = container.querySelector('[role="alert"]')!.textContent;
+    await toggle();
+    const kk = container.querySelector('[role="alert"]')!.textContent;
+    expect(kk).not.toBe(ru); expect(kk).not.toContain('private diagnostic');
+    if (mode === 'limit') expect(kk).toContain('12');
+    await toggle();
+    expect(container.querySelector('[role="alert"]')!.textContent).toBe(ru);
+  } finally { vi.unstubAllGlobals(); }
 });
 
 it('localizes known error codes while preserving unknown server error text', async () => {

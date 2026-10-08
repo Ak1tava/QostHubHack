@@ -51,7 +51,7 @@ def post(client, content=None, mime='audio/wav', language='ru'):
         data={'language': language})
 
 
-@pytest.mark.parametrize('language', ['ru', 'kk'])
+@pytest.mark.parametrize('language', ['ru'])
 def test_allowed_actor_gets_editable_transcription(speech_client, language):
     client, actor = speech_client
     response = post(client, language=language)
@@ -66,6 +66,21 @@ def test_readonly_roles_cannot_use_speech(speech_client, role):
     client, actor = speech_client
     actor.role = role
     assert post(client).status_code == 403
+    assert post(client, language='kk').status_code == 403
+
+
+@pytest.mark.parametrize('language', ['kk', 'en'])
+def test_non_russian_language_is_rejected_before_provider_resolution(speech_client, language):
+    from app.modules.speech.router import get_speech_provider
+    client, _ = speech_client
+    def unavailable_provider():
+        from app.modules.speech.provider import unavailable
+        raise unavailable()
+    client.app.dependency_overrides[get_speech_provider] = unavailable_provider
+    response = post(client, language=language)
+    assert response.status_code == 422
+    assert response.json()['error']['code'] == 'speech_invalid_language'
+    assert response.headers['cache-control'] == 'no-store'
 
 
 @pytest.mark.parametrize('content,mime,language,status,code', [
@@ -120,10 +135,10 @@ def test_real_authenticated_roles_can_transcribe(authenticated_speech_client, lo
     client = authenticated_speech_client
     token = sign_in(client, login)
     response = client.post('/api/v1/speech/transcriptions',
-        files={'file': ('a.wav', wav_audio(), 'audio/wav')}, data={'language': 'kk'},
+        files={'file': ('a.wav', wav_audio(), 'audio/wav')}, data={'language': 'ru'},
         headers={'Origin': 'http://localhost:5173', 'X-CSRF-Token': token})
     assert response.status_code == 200
-    assert response.json()['language'] == 'kk'
+    assert response.json()['language'] == 'ru'
 
 
 @pytest.mark.parametrize('headers', [{}, {'Origin': 'https://attacker.invalid', 'X-CSRF-Token': 'bad'},

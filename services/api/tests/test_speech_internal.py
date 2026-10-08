@@ -41,7 +41,7 @@ def test_internal_missing_local_model_returns_503(speech_directory):
     with TestClient(module.create_app(config)) as client:
         assert client.get('/health/ready').status_code == 503
         response = client.post('/transcribe', files={'file': ('a.wav', wav_audio(), 'audio/wav')},
-            data={'language': 'kk'}, headers={'Authorization': 'Bearer private-test-token'})
+            data={'language': 'ru'}, headers={'Authorization': 'Bearer private-test-token'})
         assert response.status_code == 503
         assert str(speech_directory) not in response.text
 
@@ -74,7 +74,7 @@ def test_upload_is_closed_even_on_rejection():
     (429, {'error': {'code': 'private-error', 'message': 'secret path'}}, 429),
     (500, {'error': {'message': 'secret path'}}, 503),
     (422, {'error': {'code': 'speech_no_speech', 'message': 'secret path'}}, 422),
-    (200, {'text': 'ok', 'language': 'en'}, 503),
+    (200, {'text': 'ok', 'language': 'kk', 'model': 'large-v3-turbo', 'duration_seconds': 1, 'is_mock': False}, 503),
 ])
 def test_http_provider_returns_safe_errors_without_retry(status, body, want):
     import asyncio
@@ -141,7 +141,7 @@ def test_local_model_iterates_lazy_segments_and_reuses_loaded_model(speech_direc
             assert kwargs['local_files_only'] is True
             loads.append(path)
         def transcribe(self, audio, **kwargs):
-            assert kwargs['language'] in {'ru', 'kk'}
+            assert kwargs['language'] == 'ru'
             assert kwargs['task'] == 'transcribe'
             def segments():
                 yield SimpleNamespace(text=' Насос ')
@@ -150,7 +150,7 @@ def test_local_model_iterates_lazy_segments_and_reuses_loaded_model(speech_direc
     monkeypatch.setattr(faster_whisper, 'WhisperModel', Model)
     service = module.LocalWhisperService(SimpleNamespace(speech_model_path=speech_directory,
         speech_device='cpu', speech_compute_type='int8'))
-    for language in ('ru', 'kk'):
+    for language in ('ru', 'ru'):
         result = service.transcribe(wav_audio(), 'audio/wav', language)
         assert result.text == 'Насос жөнделді'
         assert result.language == language
@@ -209,14 +209,14 @@ def test_running_inference_returns_busy_then_allows_next_request():
         first = pool.submit(service.transcribe, wav_audio(), 'audio/wav', 'ru')
         try:
             assert started.wait(3)
-            second = pool.submit(service.transcribe, wav_audio(), 'audio/wav', 'kk')
+            second = pool.submit(service.transcribe, wav_audio(), 'audio/wav', 'ru')
             with pytest.raises(Exception) as exc:
                 second.result(timeout=3)
             assert exc.value.status_code == 429
         finally:
             release.set()
         assert first.result(timeout=3).text == 'ремонт'
-        assert service.transcribe(wav_audio(), 'audio/wav', 'kk').language == 'kk'
+        assert service.transcribe(wav_audio(), 'audio/wav', 'ru').language == 'ru'
 
 
 @pytest.mark.parametrize('container,codec,mime', [
@@ -273,7 +273,7 @@ def test_cancelling_internal_request_keeps_inference_gate_until_worker_finishes(
             with pytest.raises(asyncio.CancelledError):
                 await pending
             with pytest.raises(Exception) as exc:
-                service.transcribe(wav_audio(), 'audio/wav', 'kk')
+                service.transcribe(wav_audio(), 'audio/wav', 'ru')
             assert exc.value.status_code == 429
         finally:
             release.set()
@@ -293,12 +293,62 @@ def test_http_provider_round_trip_auth_and_internal_contract(speech_directory):
             return iter([SimpleNamespace(text='Құбыр жөнделді')]), SimpleNamespace()
     application.state.speech_service._model = Model()
     provider = HttpSpeechProvider('http://asr', 'private-test-token', transport=httpx.ASGITransport(app=application))
-    result = asyncio.run(provider.transcribe(wav_audio(), 'audio/wav', 'kk'))
+    result = asyncio.run(provider.transcribe(wav_audio(), 'audio/wav', 'ru'))
     assert result.text == 'Құбыр жөнделді'
-    assert result.language == 'kk'
+    assert result.language == 'ru'
     assert result.model == 'large-v3-turbo'
     assert result.duration_seconds == 0.1
     assert result.is_mock is False
+
+
+@pytest.mark.parametrize('language', ['kk', 'en'])
+def test_internal_rejects_other_languages_without_loading_model(language):
+    module = load_internal()
+    config = SimpleNamespace(speech_service_token=SecretStr('test-only'), speech_model_path=None)
+    application = module.create_app(config)
+    def load_model():
+        raise AssertionError('Model must not load')
+    application.state.speech_service._load_model = load_model
+    with TestClient(application) as client:
+        response = client.post('/transcribe', files={'file': ('a.wav', wav_audio(), 'audio/wav')},
+            data={'language': language}, headers={'Authorization': 'Bearer test-only'})
+    assert response.status_code == 422
+    assert response.json()['error']['code'] == 'speech_invalid_language'
+
+
+def test_response_cannot_claim_kazakh_transcription():
+    from pydantic import ValidationError
+    from app.modules.speech.schemas import SpeechTranscription
+    with pytest.raises(ValidationError):
+        SpeechTranscription(text='ремонт', language='kk', duration_seconds=1)
+
+
+@pytest.mark.parametrize('language', ['kk', 'en'])
+def test_http_provider_rejects_other_languages_without_transport(language):
+    import asyncio
+    from app.modules.speech.provider import HttpSpeechProvider
+    def handler(request):
+        return httpx.Response(503)
+    provider = HttpSpeechProvider('http://asr', 'test-only', transport=httpx.MockTransport(handler))
+    with pytest.raises(Exception) as exc:
+        asyncio.run(provider.transcribe(wav_audio(), 'audio/wav', language))
+    assert exc.value.status_code == 422
+    assert exc.value.code == 'speech_invalid_language'
+
+
+@pytest.mark.parametrize('language', ['kk', 'en'])
+def test_synthetic_http_fixture_rejects_other_languages(language, monkeypatch):
+    import importlib.util
+    path = Path(__file__).resolve().parents[3] / 'infra' / 'fake_speech_service.py'
+    spec = importlib.util.spec_from_file_location('fake_speech_fixture', path)
+    fixture = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fixture)
+    monkeypatch.setenv('SPEECH_SERVICE_TOKEN', 'test-only')
+    with TestClient(fixture.app) as client:
+        response = client.post('/transcribe', files={'file': ('a.wav', wav_audio(), 'audio/wav')},
+            data={'language': language}, headers={'Authorization': 'Bearer test-only'})
+    assert response.status_code == 422
+    assert response.json()['error']['code'] == 'speech_invalid_language'
 
 def test_playlist_disguised_as_audio_cannot_fetch_external_url():
     from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer

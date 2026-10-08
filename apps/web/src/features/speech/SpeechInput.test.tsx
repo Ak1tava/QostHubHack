@@ -53,9 +53,10 @@ it('keeps the form untouched until edited draft is explicitly appended and never
   await click('Вставить'); expect(description()).toBe('Новый ручной текст\n\nПроверено и исправлено');
   expect(container.querySelector('textarea[aria-label="Черновик расшифровки"]')).toBeNull();
 });
-it('sends selected Kazakh language and multipart audio with abort signal', async () => {
-  await render(); await act(async () => { const select = container.querySelector<HTMLSelectElement>('select[aria-label="Язык речи"]')!; select.value = 'kk'; select.dispatchEvent(new Event('change', { bubbles: true })); });
-  await upload(); expect(uploads[0].get('language')).toBe('kk'); expect(uploads[0].get('file')).toBeInstanceOf(File); expect(signals[0].aborted).toBe(false);
+it('sends Russian multipart audio without a language selector and with abort signal', async () => {
+  await render();
+  expect(container.querySelector('select')).toBeNull();
+  await upload(); expect(uploads[0].get('language')).toBe('ru'); expect(uploads[0].get('file')).toBeInstanceOf(File); expect(signals[0].aborted).toBe(false);
 });
 it('rejects oversized file before uploading and preserves manual input', async () => {
   await render(); const file = new File(['x'], 'large.webm', { type: 'audio/webm' }); Object.defineProperty(file, 'size', { value: 10 * 1024 * 1024 + 1 });

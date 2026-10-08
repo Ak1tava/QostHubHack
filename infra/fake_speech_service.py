@@ -36,8 +36,8 @@ async def transcribe(file: UploadFile = File(...), language: str = Form(...), au
         token = os.environ.get('SPEECH_SERVICE_TOKEN', '')
         if not token or not authorization or not hmac.compare_digest(authorization, 'Bearer ' + token):
             return failure(403, 'forbidden', 'Synthetic fixture authentication required')
-        if language not in ('ru', 'kk'):
-            return failure(422, 'validation_error', 'Unsupported language')
+        if language != 'ru':
+            return failure(422, 'speech_invalid_language', 'Only Russian speech is supported')
         if (file.content_type or '').split(';')[0].lower() not in ('audio/wav', 'audio/x-wav'):
             return failure(415, 'speech_unsupported_format', 'Synthetic fixture accepts PCM WAV')
         content = await file.read(MAX_BYTES + 1)
@@ -53,8 +53,8 @@ async def transcribe(file: UploadFile = File(...), language: str = Form(...), au
             return failure(422, 'speech_invalid_audio', 'Invalid synthetic audio')
         if not frames or not any(frames):
             return failure(422, 'speech_no_speech', 'Synthetic silence contains no speech')
-        result = SpeechTranscription(text='Заменён подшипник' if language == 'ru' else 'Мойынтірек ауыстырылды',
-                                     language=language, duration_seconds=duration, is_mock=True)
+        result = SpeechTranscription(text='Заменён подшипник',
+                                     language='ru', duration_seconds=duration, is_mock=True)
         return JSONResponse(result.model_dump(), headers={'Cache-Control': 'no-store'})
     finally:
         await file.close()
